@@ -28,6 +28,11 @@ const ScenarioManager: React.FC = () => {
     return scenarios.find(s => s.id === selectedScenarioId);
   };
 
+  // Determine if a scenario has customized effect magnitudes
+  const hasCustomMagnitudes = (scenario: Scenario) => {
+    return scenario.effectMagnitudes && Object.keys(scenario.effectMagnitudes).length > 0;
+  };
+
   // Group scenarios for better organization
   const groupedScenarios = scenarios.reduce((groups, scenario) => {
     const disease = scenario.parameters.disease || 'Other';
@@ -172,6 +177,7 @@ const ScenarioManager: React.FC = () => {
                                 {getActiveInterventions(scenario).length 
                                   ? ` ${getActiveInterventions(scenario).length} interventions` 
                                   : ' No interventions'}
+                                {hasCustomMagnitudes(scenario) && ' · Custom magnitudes'}
                               </p>
                             </button>
                             <button
@@ -239,6 +245,12 @@ const ScenarioManager: React.FC = () => {
                               </ul>
                             ) : (
                               <p className="text-gray-500 dark:text-gray-400">No AI interventions active</p>
+                            )}
+                            
+                            {hasCustomMagnitudes(scenario) && (
+                              <div className="mt-2">
+                                <p><strong>Custom Effect Magnitudes:</strong> {Object.keys(scenario.effectMagnitudes || {}).length} parameters adjusted</p>
+                              </div>
                             )}
                           </div>
                         </div>

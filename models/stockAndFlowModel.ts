@@ -630,7 +630,8 @@ export interface AIInterventions {
 // Apply AI intervention effects to parameters
 export const applyAIInterventions = (
   baseParams: ModelParameters,
-  interventions: AIInterventions
+  interventions: AIInterventions,
+  effectMagnitudes: {[key: string]: number} = {}
 ): ModelParameters => {
   const modifiedParams = { ...baseParams };
   
@@ -638,49 +639,74 @@ export const applyAIInterventions = (
   modifiedParams.aiFixedCost = 0;
   modifiedParams.aiVariableCost = 0;
 
+  // Helper function to apply magnitude to an effect
+  const applyMagnitude = (key: string, baseEffect: number, isMultiplier: boolean = false): number => {
+    const magnitude = effectMagnitudes[key] !== undefined ? effectMagnitudes[key] : 1;
+    
+    // If magnitude is 0, return a value that results in no effect
+    if (magnitude === 0) {
+      return isMultiplier ? 1.0 : 0.0;
+    }
+    
+    if (isMultiplier) {
+      // For multipliers (like 0.85 for reduction), we need to adjust differently
+      // If magnitude is 0, effect should be 1.0 (no effect)
+      // If magnitude is 1, effect should be the base effect (e.g., 0.85)
+      // If magnitude is 2, effect should be even stronger (e.g., 0.70)
+      if (baseEffect < 1) {
+        return 1 - ((1 - baseEffect) * magnitude);
+      } else {
+        return 1 + ((baseEffect - 1) * magnitude);
+      }
+    } else {
+      // For additive effects, simply multiply the effect by the magnitude
+      return baseEffect * magnitude;
+    }
+  };
+
   if (interventions.triageAI) {
-    modifiedParams.phi0 += 0.15;      // Increase formal care seeking
-    modifiedParams.sigmaI *= 1.25;    // Faster transition from informal to formal
-    modifiedParams.aiFixedCost += 20000;  // Fixed cost for AI triage system
-    modifiedParams.aiVariableCost += 1;  // Cost per episode for AI triage
+    modifiedParams.phi0 += applyMagnitude('triageAI_φ₀', 0.15);
+    modifiedParams.sigmaI *= applyMagnitude('triageAI_σI', 1.25, true);
+    modifiedParams.aiFixedCost += 20000;
+    modifiedParams.aiVariableCost += 1;
   }
   
   if (interventions.chwAI) {
-    modifiedParams.mu0 += 0.10;       // Better resolution at community level
-    modifiedParams.delta0 *= 0.85;    // Lower death rate at community level
-    modifiedParams.rho0 *= 0.85;      // Fewer unnecessary referrals
-    modifiedParams.aiFixedCost += 15000;  // Fixed cost for CHW AI system
-    modifiedParams.aiVariableCost += 0.5;  // Cost per episode for CHW AI
+    modifiedParams.mu0 += applyMagnitude('chwAI_μ₀', 0.10);
+    modifiedParams.delta0 *= applyMagnitude('chwAI_δ₀', 0.85, true);
+    modifiedParams.rho0 *= applyMagnitude('chwAI_ρ₀', 0.85, true);
+    modifiedParams.aiFixedCost += 15000;
+    modifiedParams.aiVariableCost += 0.5;
   }
   
   if (interventions.diagnosticAI) {
-    modifiedParams.mu1 += 0.10;       // Better resolution at primary care
-    modifiedParams.delta1 *= 0.85;    // Lower death rate at primary care
-    modifiedParams.rho1 *= 0.85;      // Fewer unnecessary referrals
-    modifiedParams.aiFixedCost += 25000;  // Fixed cost for diagnostic AI
-    modifiedParams.aiVariableCost += 2.5;  // Cost per episode for diagnostic AI
+    modifiedParams.mu1 += applyMagnitude('diagnosticAI_μ₁', 0.10);
+    modifiedParams.delta1 *= applyMagnitude('diagnosticAI_δ₁', 0.85, true);
+    modifiedParams.rho1 *= applyMagnitude('diagnosticAI_ρ₁', 0.85, true);
+    modifiedParams.aiFixedCost += 25000;
+    modifiedParams.aiVariableCost += 2.5;
   }
   
   if (interventions.bedManagementAI) {
-    modifiedParams.mu2 += 0.05;       // Faster discharge from district hospital
-    modifiedParams.mu3 += 0.05;       // Faster discharge from tertiary hospital
-    modifiedParams.aiFixedCost += 30000;  // Fixed cost for bed management AI
-    modifiedParams.aiVariableCost += 0;   // No per-episode cost for bed management
+    modifiedParams.mu2 += applyMagnitude('bedManagementAI_μ₂', 0.05);
+    modifiedParams.mu3 += applyMagnitude('bedManagementAI_μ₃', 0.05);
+    modifiedParams.aiFixedCost += 30000;
+    modifiedParams.aiVariableCost += 0;
   }
   
   if (interventions.hospitalDecisionAI) {
-    modifiedParams.delta2 *= 0.80;    // Lower death rate at district hospital
-    modifiedParams.delta3 *= 0.80;    // Lower death rate at tertiary hospital
-    modifiedParams.aiFixedCost += 35000;  // Fixed cost for hospital decision AI
-    modifiedParams.aiVariableCost += 3;   // Cost per episode for hospital decision AI
+    modifiedParams.delta2 *= applyMagnitude('hospitalDecisionAI_δ₂', 0.80, true);
+    modifiedParams.delta3 *= applyMagnitude('hospitalDecisionAI_δ₃', 0.80, true);
+    modifiedParams.aiFixedCost += 35000;
+    modifiedParams.aiVariableCost += 3;
   }
   
   if (interventions.selfCareAI) {
     // Use configurable parameters for self-care AI effects
-    modifiedParams.muI += modifiedParams.selfCareAIEffectMuI;       // Better informal care resolution
-    modifiedParams.deltaI *= modifiedParams.selfCareAIEffectDeltaI;  // Lower death rate in informal care
-    modifiedParams.aiFixedCost += 10000;  // Fixed cost for self-care app platform
-    modifiedParams.aiVariableCost += 0.2;  // Low per-episode cost for self-care apps
+    modifiedParams.muI += applyMagnitude('selfCareAI_μI', modifiedParams.selfCareAIEffectMuI);
+    modifiedParams.deltaI *= applyMagnitude('selfCareAI_δI', modifiedParams.selfCareAIEffectDeltaI, true);
+    modifiedParams.aiFixedCost += 10000;
+    modifiedParams.aiVariableCost += 0.2;
   }
   
   return modifiedParams;

@@ -29,6 +29,7 @@ export const derivedParametersAtom = atom(
     const geography = get(selectedGeographyAtom);
     const disease = get(selectedDiseaseAtom);
     const aiInterventions = get(aiInterventionsAtom);
+    const effectMagnitudes = get(effectMagnitudesAtom);
     
     // Start with base parameters
     let params = { ...baseParams };
@@ -53,7 +54,7 @@ export const derivedParametersAtom = atom(
     }
     
     // Apply AI interventions
-    return applyAIInterventions(params, aiInterventions);
+    return applyAIInterventions(params, aiInterventions, effectMagnitudes);
   }
 );
 
@@ -66,6 +67,9 @@ export const aiInterventionsAtom = atom<AIInterventions>({
   hospitalDecisionAI: false,
   selfCareAI: false
 });
+
+// AI intervention effect magnitudes
+export const effectMagnitudesAtom = atom<{[key: string]: number}>({});
 
 // Atom to trigger simulation run
 export const runSimulationTriggerAtom = atom<number>(0);
@@ -121,6 +125,7 @@ export interface Scenario {
     population?: number;
   };
   aiInterventions: AIInterventions;
+  effectMagnitudes: {[key: string]: number};
   results: SimulationResults | null;
 }
 
@@ -135,6 +140,7 @@ export const addScenarioAtom = atom(
   (get, set) => {
     const params = get(derivedParametersAtom);
     const aiInterventions = get(aiInterventionsAtom);
+    const effectMagnitudes = get(effectMagnitudesAtom);
     const results = get(simulationResultsAtom);
     const scenarios = get(scenariosAtom);
     const geography = get(selectedGeographyAtom);
@@ -151,6 +157,7 @@ export const addScenarioAtom = atom(
         population
       },
       aiInterventions: { ...aiInterventions },
+      effectMagnitudes: { ...effectMagnitudes },
       results: results ? { ...results } : null,
     };
     
@@ -169,6 +176,8 @@ export const loadScenarioAtom = atom(
     if (scenario) {
       set(baseParametersAtom, scenario.parameters);
       set(aiInterventionsAtom, scenario.aiInterventions);
+      // Load effect magnitudes if they exist in the scenario, otherwise use empty object
+      set(effectMagnitudesAtom, scenario.effectMagnitudes || {});
       set(simulationResultsAtom, scenario.results);
       set(selectedScenarioIdAtom, scenarioId);
     }
@@ -192,6 +201,7 @@ export const updateScenarioAtom = atom(
       const scenarios = get(scenariosAtom);
       const params = get(derivedParametersAtom);
       const aiInterventions = get(aiInterventionsAtom);
+      const effectMagnitudes = get(effectMagnitudesAtom);
       const results = get(simulationResultsAtom);
       const population = get(populationSizeAtom);
       
@@ -207,6 +217,7 @@ export const updateScenarioAtom = atom(
                   disease: s.parameters.disease
                 }, 
                 aiInterventions: { ...aiInterventions },
+                effectMagnitudes: { ...effectMagnitudes },
                 results: results ? { ...results } : null 
               }
             : s

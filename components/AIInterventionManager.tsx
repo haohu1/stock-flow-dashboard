@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAtom } from 'jotai';
 import {
   aiInterventionsAtom,
+  effectMagnitudesAtom,
   runSimulationAtom
 } from '../lib/store';
 import { AIInterventions } from '../models/stockAndFlowModel';
@@ -12,6 +13,7 @@ interface AIInterventionConfig {
   name: string;
   description: string;
   interventions: AIInterventions;
+  effectMagnitudes: {[key: string]: number};
 }
 
 interface InterventionEffect {
@@ -30,6 +32,9 @@ interface InterventionInfo {
 const AIInterventionManager: React.FC = () => {
   const [aiInterventions, setAIInterventions] = useAtom(aiInterventionsAtom);
   const [, runSimulation] = useAtom(runSimulationAtom);
+  
+  // Use global atom for effect magnitudes instead of local state
+  const [effectMagnitudes, setEffectMagnitudes] = useAtom(effectMagnitudesAtom);
   
   // State for saved configurations
   const [savedConfigs, setSavedConfigs] = useState<AIInterventionConfig[]>([]);
@@ -72,7 +77,8 @@ const AIInterventionManager: React.FC = () => {
       id: `config-${Date.now()}`,
       name: configName.trim(),
       description: configDescription.trim(),
-      interventions: { ...aiInterventions }
+      interventions: { ...aiInterventions },
+      effectMagnitudes: { ...effectMagnitudes }
     };
     
     setSavedConfigs([...savedConfigs, newConfig]);
@@ -83,6 +89,7 @@ const AIInterventionManager: React.FC = () => {
   
   const loadConfig = (config: AIInterventionConfig) => {
     setAIInterventions({ ...config.interventions });
+    setEffectMagnitudes({ ...config.effectMagnitudes });
   };
   
   const deleteConfig = (id: string) => {
@@ -91,7 +98,53 @@ const AIInterventionManager: React.FC = () => {
   
   const applyAndRun = (config: AIInterventionConfig) => {
     setAIInterventions({ ...config.interventions });
+    setEffectMagnitudes({ ...config.effectMagnitudes });
     setTimeout(() => runSimulation(), 100); // Small delay to ensure state updates
+  };
+  
+  // Handle parameter effect adjustment
+  const handleEffectMagnitudeChange = (interventionKey: string, paramName: string, value: number) => {
+    const effectKey = `${interventionKey}_${paramName}`;
+    setEffectMagnitudes({
+      ...effectMagnitudes,
+      [effectKey]: value
+    });
+  };
+  
+  // Get the actual effect value with any adjustments
+  const getEffectValue = (interventionKey: string, param: string, defaultEffect: string): string => {
+    const effectKey = `${interventionKey}_${param}`;
+    const magnitude = effectMagnitudes[effectKey];
+    
+    // If no custom magnitude is set, return the default effect
+    if (magnitude === undefined) return defaultEffect;
+    
+    // If magnitude is 0, explicitly show no effect
+    if (magnitude === 0) return "None";
+    
+    // Otherwise, adjust the effect based on the magnitude
+    if (defaultEffect.startsWith('+')) {
+      // For additive effects (+0.15 etc.)
+      const baseValue = parseFloat(defaultEffect.substring(1));
+      return `+${(baseValue * magnitude).toFixed(2)}`;
+    } else if (defaultEffect.startsWith('×')) {
+      // For multiplicative effects (×0.85 etc.)
+      const baseValue = parseFloat(defaultEffect.substring(1));
+      // For multiplicative effects less than 1, closer to 1 means less effect
+      // For effects like ×0.85, a magnitude of 0 should give ×1.0 (no effect)
+      // and a magnitude of 2 should give ×0.70 (double effect)
+      if (baseValue < 1) {
+        const effect = 1 - ((1 - baseValue) * magnitude);
+        return `×${effect.toFixed(2)}`;
+      } else {
+        // For effects like ×1.25, a magnitude of 0 should give ×1.0 (no effect)
+        // and a magnitude of 2 should give ×1.50 (double effect)
+        const effect = 1 + ((baseValue - 1) * magnitude);
+        return `×${effect.toFixed(2)}`;
+      }
+    }
+    
+    return defaultEffect;
   };
   
   const interventionInfo: InterventionInfo[] = [
@@ -153,8 +206,34 @@ const AIInterventionManager: React.FC = () => {
     }
   ];
   
+  // Reset all effect magnitudes to default values
+  const resetAllEffectMagnitudes = () => {
+    setEffectMagnitudes({});
+  };
+  
+  // Reset effect magnitudes to default (1.0) for a specific intervention
+  const resetEffectMagnitudes = (interventionKey: keyof AIInterventions) => {
+    const updatedMagnitudes = { ...effectMagnitudes };
+    
+    // Find the specific intervention
+    const intervention = interventionInfo.find(info => info.key === interventionKey);
+    
+    // Reset only the magnitudes for this intervention's effects
+    if (intervention) {
+      intervention.effects.forEach(effect => {
+        const key = `${interventionKey}_${effect.param}`;
+        delete updatedMagnitudes[key];
+      });
+      
+      setEffectMagnitudes(updatedMagnitudes);
+    }
+  };
+  
   // Determine if any intervention is currently active
   const hasActiveInterventions = Object.values(aiInterventions).some(v => v);
+  
+  // Determine if any effect magnitudes are customized
+  const hasCustomMagnitudes = Object.keys(effectMagnitudes).length > 0;
   
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
@@ -167,6 +246,14 @@ const AIInterventionManager: React.FC = () => {
           >
             {showSaveForm ? 'Cancel' : 'Save Configuration'}
           </button>
+          {hasCustomMagnitudes && (
+            <button
+              onClick={resetAllEffectMagnitudes}
+              className="btn bg-blue-50 hover:bg-blue-100 text-blue-600 text-sm"
+            >
+              Reset All Magnitudes
+            </button>
+          )}
           {hasActiveInterventions && (
             <button
               onClick={() => setAIInterventions({
@@ -200,6 +287,17 @@ const AIInterventionManager: React.FC = () => {
         <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
           Subscripts indicate care level: I=informal, 0=CHW, 1=primary care, 2=district hospital, 3=tertiary hospital
         </p>
+        <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+          <h5 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">Adjusting Intervention Strength</h5>
+          <p className="text-xs text-blue-700 dark:text-blue-400">
+            Use the sliders to adjust the magnitude of each intervention effect:
+          </p>
+          <ul className="text-xs text-blue-700 dark:text-blue-400 list-disc pl-5 mt-1">
+            <li><strong>No effect (0)</strong>: The parameter remains at baseline value</li>
+            <li><strong>Default (1)</strong>: The standard effect is applied</li>
+            <li><strong>Stronger (2)</strong>: The effect is doubled in magnitude</li>
+          </ul>
+        </div>
       </div>
       
       {showSaveForm && (
@@ -307,6 +405,14 @@ const AIInterventionManager: React.FC = () => {
                       {intervention.name}
                     </span>
                   </label>
+                  {isActive && (
+                    <button
+                      onClick={() => resetEffectMagnitudes(intervention.key)}
+                      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                    >
+                      Reset to Default
+                    </button>
+                  )}
                 </div>
                 
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
@@ -327,9 +433,33 @@ const AIInterventionManager: React.FC = () => {
                           <span className={`font-mono px-1.5 py-0.5 rounded ${
                             isActive ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' : 
                                       'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-                          }`}>{effect.effect}</span>
+                          }`}>{isActive ? getEffectValue(intervention.key, effect.param, effect.effect) : effect.effect}</span>
                         </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{effect.description}</p>
+                        
+                        {isActive && (
+                          <div className="mt-2">
+                            <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                              <span>No effect</span>
+                              <span>Default</span>
+                              <span>Stronger</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max="2"
+                              step="0.1"
+                              value={effectMagnitudes[`${intervention.key}_${effect.param}`] !== undefined ? 
+                                effectMagnitudes[`${intervention.key}_${effect.param}`] : 1}
+                              onChange={(e) => handleEffectMagnitudeChange(
+                                intervention.key, 
+                                effect.param, 
+                                parseFloat(e.target.value)
+                              )}
+                              className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>

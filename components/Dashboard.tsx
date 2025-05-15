@@ -43,14 +43,47 @@ const Dashboard: React.FC = () => {
         </p>
         <div className="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg border border-blue-200 dark:border-blue-700 max-w-2xl">
           <h3 className="text-lg font-medium text-blue-800 dark:text-blue-200 mb-2">How to use this dashboard</h3>
-          <ol className="list-decimal list-inside text-left text-gray-700 dark:text-gray-300 space-y-2">
-            <li>Select a geography and disease from the sidebar</li>
-            <li>Adjust the population size if needed</li>
-            <li>Toggle AI interventions on or off</li>
-            <li>Press "Run Simulation" to see results</li>
-            <li>Press "Set as Baseline" to compare future scenarios</li>
-            <li>Save scenarios to compare different interventions</li>
+          <ol className="list-decimal list-inside text-left text-gray-700 dark:text-gray-300 space-y-3">
+            <li className="font-medium">Start by understanding the model structure:
+              <ul className="list-disc list-inside ml-4 mt-1 font-normal">
+                <li>Click on the "Model Equations" tab above to review the stock-and-flow model</li>
+                <li>Understand how patients move through different levels of care</li>
+                <li>Review the DALY calculation that adjusts for mean age of infection</li>
+              </ul>
+            </li>
+            <li className="font-medium">Configure your parameters:
+              <ul className="list-disc list-inside ml-4 mt-1 font-normal">
+                <li>Select a geography and disease from the sidebar</li>
+                <li>Click on "Configure Parameters" to adjust any specific values</li>
+                <li>Note that disease incidence rates are adjusted by region</li>
+              </ul>
+            </li>
+            <li className="font-medium">Run your baseline scenario:
+              <ul className="list-disc list-inside ml-4 mt-1 font-normal">
+                <li>Make sure no AI interventions are active (all toggles off)</li>
+                <li>Click "Run Simulation" to generate baseline results</li>
+                <li>Click "Set as Baseline" to save this scenario for comparison</li>
+              </ul>
+            </li>
+            <li className="font-medium">Analyze AI interventions:
+              <ul className="list-disc list-inside ml-4 mt-1 font-normal">
+                <li>Toggle one or more AI interventions on from the sidebar</li>
+                <li>Run a new simulation to compare against the baseline</li>
+                <li>Review DALY and ICER calculations in the results</li>
+              </ul>
+            </li>
+            <li className="font-medium">Save and compare scenarios:
+              <ul className="list-disc list-inside ml-4 mt-1 font-normal">
+                <li>Use "Save as Scenario" to preserve your results</li>
+                <li>Create multiple scenarios with different parameters or interventions</li>
+                <li>Compare outcomes across scenarios</li>
+              </ul>
+            </li>
           </ol>
+          <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-800 rounded">
+            <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">Important Workflow:</p>
+            <p className="text-sm text-yellow-700 dark:text-yellow-300">Always run a baseline scenario first (without interventions), then set it as baseline before testing AI interventions to properly calculate DALYs and ICER values.</p>
+          </div>
         </div>
       </div>
     );

@@ -231,21 +231,21 @@ const Sidebar: React.FC = () => {
       <div className="mb-6 space-y-2">
         <button 
           onClick={handleViewParameters}
-          className="btn bg-blue-500 text-white hover:bg-blue-600 w-full"
+          className="btn bg-blue-500 text-white hover:bg-blue-600 w-full text-sm"
         >
           Configure Parameters
         </button>
         
         <button 
           onClick={() => window.dispatchEvent(new CustomEvent('view-interventions'))}
-          className="btn bg-green-500 text-white hover:bg-green-600 w-full"
+          className="btn bg-green-500 text-white hover:bg-green-600 w-full text-sm"
         >
           Configure AI Interventions
         </button>
         
         <button 
           onClick={handleViewEquations}
-          className="btn bg-purple-500 text-white hover:bg-purple-600 w-full"
+          className="btn bg-purple-500 text-white hover:bg-purple-600 w-full text-sm"
         >
           View Model Structure
         </button>

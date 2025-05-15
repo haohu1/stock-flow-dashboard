@@ -248,14 +248,58 @@ const calculateEconomics = (
 const calculateTimeToResolution = (weeklyStates: StockAndFlowState[]): number => {
   let totalWeeksInSystem = 0;
   let totalResolved = weeklyStates[weeklyStates.length - 1].R;
+  let cumulativeNewCases = 0;
+  let resolvedPatients = 0;
+  
+  // First, count total patients that entered the system during the simulation
+  for (let i = 0; i < weeklyStates.length; i++) {
+    cumulativeNewCases += weeklyStates[i].newCases;
+  }
+  
+  // Calculate how many patients were actually processed to resolution
+  resolvedPatients = Math.min(totalResolved, cumulativeNewCases);
+  
+  if (resolvedPatients === 0) return 0;
+  
+  // Track active cohorts and their resolution
+  let activeCases = 0;
+  let avgWeeks = 0;
+  let casesWithResolutionTracked = 0;
   
   for (let i = 0; i < weeklyStates.length; i++) {
     const state = weeklyStates[i];
-    // Count each patient in each level weighted by week
-    totalWeeksInSystem += (state.U + state.I + state.L0 + state.L1 + state.L2 + state.L3) * i;
+    // Add new cases each week
+    activeCases += state.newCases;
+    
+    // Estimate the number of resolved cases this week
+    const resolvedThisWeek = i > 0 ? 
+      state.R - weeklyStates[i-1].R : 0;
+    
+    // Add their resolution time to the average
+    if (resolvedThisWeek > 0) {
+      // These patients resolved after i weeks in the system
+      // Assume average resolution time of half the current week
+      // plus the weeks they've been in the system
+      avgWeeks += resolvedThisWeek * (i/2);
+      casesWithResolutionTracked += resolvedThisWeek;
+    }
   }
   
-  return totalResolved > 0 ? totalWeeksInSystem / totalResolved : 0;
+  // If we have tracked resolutions, use that for more accurate measure
+  if (casesWithResolutionTracked > 0) {
+    return avgWeeks / casesWithResolutionTracked;
+  }
+  
+  // Fallback: estimate based on resolution rates from params
+  // Get average weekly resolution rate across all care levels
+  const getDefaultParams = getDefaultParameters();
+  const avgResolutionRate = (
+    getDefaultParams.muI + getDefaultParams.mu0 + 
+    getDefaultParams.mu1 + getDefaultParams.mu2 + getDefaultParams.mu3
+  ) / 5;
+  
+  // Average time to resolution is roughly 1 / resolution rate
+  return Math.min(1 / avgResolutionRate, 26); // Cap at 26 weeks (6 months) to avoid unrealistic values
 };
 
 // Main simulation function

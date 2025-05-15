@@ -484,16 +484,7 @@ const ParametersPanel: React.FC = () => {
                           }`}>
                             {formatParamValue(param.key, derivedValue)}
                           </span>
-                          {param.key === 'lambda' && !customGeography && !customDisease && (
-                            <div className="mt-1 text-xs text-orange-600 dark:text-orange-400 font-medium">
-                              Region-adjusted: {formatDecimal(derivedValue, 2)}
-                              {selectedGeography && geographyDefaults[selectedGeography as keyof typeof geographyDefaults]?.diseaseModifiers && selectedDisease && (
-                                <span className="ml-1">
-                                  ({formatDecimal((geographyDefaults[selectedGeography as keyof typeof geographyDefaults]?.diseaseModifiers as any)[selectedDisease] * 100, 0)}% of base)
-                                </span>
-                              )}
-                            </div>
-                          )}
+                          {/* Region-adjusted lambda message removed */}
                         </div>
                       )}
                     </div>

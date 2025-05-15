@@ -16,7 +16,7 @@ export default function Home() {
   const [results] = useAtom(simulationResultsAtom);
   const [aiInterventions] = useAtom(aiInterventionsAtom);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [preSimulationTab, setPreSimulationTab] = useState<'dashboard' | 'parameters' | 'equations'>('dashboard');
+  const [preSimulationTab, setPreSimulationTab] = useState<'dashboard' | 'parameters' | 'equations' | 'interventions'>('dashboard');
   
   // Count active AI interventions
   const activeInterventionsCount = Object.values(aiInterventions).filter(Boolean).length;
@@ -69,6 +69,23 @@ export default function Home() {
     };
   }, [results]);
   
+  // Listen for view-interventions event
+  useEffect(() => {
+    const handleViewInterventions = () => {
+      if (results) {
+        setActiveTab('interventions');
+      } else {
+        setPreSimulationTab('interventions');
+      }
+    };
+    
+    window.addEventListener('view-interventions', handleViewInterventions);
+    
+    return () => {
+      window.removeEventListener('view-interventions', handleViewInterventions);
+    };
+  }, [results]);
+  
   const tabContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -94,6 +111,8 @@ export default function Home() {
         return <ParametersPanel />;
       case 'equations':
         return <EquationExplainer />;
+      case 'interventions':
+        return <AIInterventionManager />;
       case 'dashboard':
       default:
         return <Dashboard />;
@@ -160,11 +179,12 @@ export default function Home() {
                   {[
                     { id: 'dashboard', name: 'Dashboard' },
                     { id: 'parameters', name: 'Configure Parameters' },
+                    { id: 'interventions', name: 'Configure AI Interventions' },
                     { id: 'equations', name: 'Model Equations' },
                   ].map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={() => setPreSimulationTab(tab.id as 'dashboard' | 'parameters' | 'equations')}
+                      onClick={() => setPreSimulationTab(tab.id as 'dashboard' | 'parameters' | 'equations' | 'interventions')}
                       className={`
                         border-b-2 py-4 px-1 text-sm font-medium
                         ${preSimulationTab === tab.id 

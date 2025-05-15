@@ -237,6 +237,13 @@ const Sidebar: React.FC = () => {
         </button>
         
         <button 
+          onClick={() => window.dispatchEvent(new CustomEvent('view-interventions'))}
+          className="btn bg-green-500 text-white hover:bg-green-600 w-full"
+        >
+          Configure AI Interventions
+        </button>
+        
+        <button 
           onClick={handleViewEquations}
           className="btn bg-purple-500 text-white hover:bg-purple-600 w-full"
         >

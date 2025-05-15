@@ -49,15 +49,7 @@ export const derivedParametersAtom = atom(
     // Apply disease profile if available
     if (diseaseProfile) {
       params = { ...params, ...diseaseProfile };
-      
-      // Apply region-specific disease incidence modifier if available
-      if (geographyDefault && 'diseaseModifiers' in geographyDefault && disease) {
-        const modifiers = geographyDefault.diseaseModifiers;
-        if (disease in modifiers) {
-          // Modify the incidence rate (lambda) based on the regional modifier
-          params.lambda = params.lambda * (modifiers as any)[disease];
-        }
-      }
+      // Region-specific disease incidence modifiers have been removed for clarity
     }
     
     // Apply AI interventions

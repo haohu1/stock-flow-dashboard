@@ -26,6 +26,7 @@ export interface ModelParameters {
   // Flow probabilities (weekly)
   phi0: number;               // probability of seeking formal care initially
   sigmaI: number;             // probability of transitioning from informal to formal care
+  informalCareRatio: number;  // proportion of untreated patients who move to informal care
   
   // Resolution and death probabilities by level (weekly)
   muI: number;                // resolution probability in informal care
@@ -46,6 +47,10 @@ export interface ModelParameters {
   
   mu3: number;                // resolution probability at L3
   delta3: number;             // death probability at L3
+  
+  // AI effectiveness parameters
+  selfCareAIEffectMuI: number;   // improvement in resolution from self-care AI  
+  selfCareAIEffectDeltaI: number; // multiplier for death rate reduction from self-care AI
   
   // Economic parameters
   perDiemCosts: {
@@ -121,8 +126,13 @@ const runWeek = (
   // Calculate transitions from U (untreated)
   const seekFormal = params.phi0 * state.U;
   const stayUntreated = state.U - seekFormal;
-  const untreatedDeaths = params.deltaU * stayUntreated;
-  const remainingUntreated = stayUntreated - untreatedDeaths;
+  
+  // Use the configurable parameter to determine how many untreated patients move to informal care
+  const toInformalCare = (1 - params.informalCareRatio) * stayUntreated;
+  const trulyUntreated = params.informalCareRatio * stayUntreated;
+  
+  const untreatedDeaths = params.deltaU * trulyUntreated;
+  const remainingUntreated = trulyUntreated - untreatedDeaths;
   
   // Calculate transitions from I (informal care)
   const informalToFormal = params.sigmaI * state.I;
@@ -155,7 +165,10 @@ const runWeek = (
   
   // Calculate new patient totals for the next week
   const newU = weeklyIncidence + remainingUntreated;
-  const newI = (state.U - seekFormal - remainingUntreated - untreatedDeaths) + remainingInformal;
+  
+  // Include patients who move to informal care
+  const newI = toInformalCare + remainingInformal;
+  
   const newL0 = (seekFormal * 0.6) + (informalToFormal * 0.4) + remainingL0; // Distribute seekers
   const newL1 = (seekFormal * 0.3) + (informalToFormal * 0.4) + l0Referral + remainingL1;
   const newL2 = (seekFormal * 0.1) + (informalToFormal * 0.2) + l1Referral + remainingL2;
@@ -172,8 +185,12 @@ const runWeek = (
     L3: state.patientDays.L3 + state.L3,
   };
   
-  // Calculate episodes touched by AI (simplified - adjust based on which AI interventions are active)
-  const episodesTouched = state.episodesTouched + seekFormal + informalToFormal;
+  // Calculate episodes touched by AI
+  const selfCareActive = params.muI > getDefaultParameters().muI;
+  const episodesTouched = state.episodesTouched + 
+                          seekFormal + 
+                          informalToFormal + 
+                          (selfCareActive ? state.I : 0);  // Count all informal care patients if selfCareAI is active
   
   return {
     U: newU,
@@ -333,36 +350,53 @@ export const applyAIInterventions = (
 ): ModelParameters => {
   const modifiedParams = { ...baseParams };
   
+  // Reset aiFixedCost and aiVariableCost to 0 before applying interventions
+  modifiedParams.aiFixedCost = 0;
+  modifiedParams.aiVariableCost = 0;
+
   if (interventions.triageAI) {
     modifiedParams.phi0 += 0.15;      // Increase formal care seeking
     modifiedParams.sigmaI *= 1.25;    // Faster transition from informal to formal
+    modifiedParams.aiFixedCost += 20000;  // Fixed cost for AI triage system
+    modifiedParams.aiVariableCost += 1;  // Cost per episode for AI triage
   }
   
   if (interventions.chwAI) {
     modifiedParams.mu0 += 0.10;       // Better resolution at community level
     modifiedParams.delta0 *= 0.85;    // Lower death rate at community level
     modifiedParams.rho0 *= 0.85;      // Fewer unnecessary referrals
+    modifiedParams.aiFixedCost += 15000;  // Fixed cost for CHW AI system
+    modifiedParams.aiVariableCost += 0.5;  // Cost per episode for CHW AI
   }
   
   if (interventions.diagnosticAI) {
     modifiedParams.mu1 += 0.10;       // Better resolution at primary care
     modifiedParams.delta1 *= 0.85;    // Lower death rate at primary care
     modifiedParams.rho1 *= 0.85;      // Fewer unnecessary referrals
+    modifiedParams.aiFixedCost += 25000;  // Fixed cost for diagnostic AI
+    modifiedParams.aiVariableCost += 2.5;  // Cost per episode for diagnostic AI
   }
   
   if (interventions.bedManagementAI) {
     modifiedParams.mu2 += 0.05;       // Faster discharge from district hospital
     modifiedParams.mu3 += 0.05;       // Faster discharge from tertiary hospital
+    modifiedParams.aiFixedCost += 30000;  // Fixed cost for bed management AI
+    modifiedParams.aiVariableCost += 0;   // No per-episode cost for bed management
   }
   
   if (interventions.hospitalDecisionAI) {
     modifiedParams.delta2 *= 0.80;    // Lower death rate at district hospital
     modifiedParams.delta3 *= 0.80;    // Lower death rate at tertiary hospital
+    modifiedParams.aiFixedCost += 35000;  // Fixed cost for hospital decision AI
+    modifiedParams.aiVariableCost += 3;   // Cost per episode for hospital decision AI
   }
   
   if (interventions.selfCareAI) {
-    modifiedParams.muI += 0.15;       // Better informal care resolution
-    modifiedParams.deltaI *= 0.90;    // Lower death rate in informal care
+    // Use configurable parameters for self-care AI effects
+    modifiedParams.muI += modifiedParams.selfCareAIEffectMuI;       // Better informal care resolution
+    modifiedParams.deltaI *= modifiedParams.selfCareAIEffectDeltaI;  // Lower death rate in informal care
+    modifiedParams.aiFixedCost += 10000;  // Fixed cost for self-care app platform
+    modifiedParams.aiVariableCost += 0.2;  // Low per-episode cost for self-care apps
   }
   
   return modifiedParams;
@@ -377,6 +411,7 @@ export const getDefaultParameters = (): ModelParameters => ({
   // Flow probabilities
   phi0: 0.45,
   sigmaI: 0.20,
+  informalCareRatio: 0.20,
   
   // Resolution and death probabilities
   muI: 0.30,
@@ -397,6 +432,10 @@ export const getDefaultParameters = (): ModelParameters => ({
   
   mu3: 0.80,
   delta3: 0.08,
+  
+  // AI effectiveness parameters
+  selfCareAIEffectMuI: 0.15,   // improvement in resolution from self-care AI  
+  selfCareAIEffectDeltaI: 0.70, // multiplier for death rate reduction from self-care AI
   
   // Economic parameters
   perDiemCosts: {

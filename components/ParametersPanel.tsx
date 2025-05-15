@@ -24,13 +24,16 @@ const parameterGroups = [
       { key: 'lambda', label: 'Annual Incidence Rate (λ)', description: 'Episodes per person per year' },
       { key: 'disabilityWeight', label: 'Disability Weight', description: 'Severity factor for DALY calculations (0-1)' },
     ],
+    isDiseaseSpecific: true,
   },
   {
     title: 'Care-Seeking Behavior',
     params: [
       { key: 'phi0', label: 'Formal Care Entry (φ₀)', description: 'Probability of seeking formal care initially' },
       { key: 'sigmaI', label: 'Informal to Formal (σI)', description: 'Weekly probability of transition from informal to formal care' },
+      { key: 'informalCareRatio', label: 'Untreated Ratio', description: 'Proportion of patients remaining untreated (vs. informal care)' }
     ],
+    isLocationSpecific: true,
   },
   {
     title: 'Informal Care',
@@ -72,6 +75,13 @@ const parameterGroups = [
     ],
   },
   {
+    title: 'AI Effectiveness Parameters',
+    params: [
+      { key: 'selfCareAIEffectMuI', label: 'Self-Care Resolution Effect', description: 'Improvement in resolution rate from self-care AI' },
+      { key: 'selfCareAIEffectDeltaI', label: 'Self-Care Death Effect', description: 'Multiplier for death rate with self-care AI (lower is better)' },
+    ],
+  },
+  {
     title: 'Economic Parameters',
     params: [
       { key: 'perDiemCosts.I', label: 'Informal Care Cost', description: 'Cost per day in informal care (USD)' },
@@ -84,6 +94,7 @@ const parameterGroups = [
       { key: 'yearsOfLifeLost', label: 'Years of Life Lost', description: 'Average years of life lost per death' },
       { key: 'discountRate', label: 'Discount Rate', description: 'Annual discount rate for economic calculations' },
     ],
+    isLocationSpecific: true,
   },
 ];
 
@@ -308,6 +319,105 @@ const ParametersPanel: React.FC = () => {
           </div>
         </div>
         
+        {/* Show Disease Characteristics group immediately after settings */}
+        {parameterGroups.filter(group => group.isDiseaseSpecific).map((group) => (
+          <div key={group.title} className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">
+              {group.title} <span className="text-xs text-blue-500">(Disease-Specific)</span>
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {group.params.map((param) => {
+                const derivedValue = getParamValue(derivedParams, param.key);
+                
+                return (
+                  <div key={param.key} className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {param.label}
+                        </label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {param.description}
+                        </p>
+                      </div>
+                      {editMode ? (
+                        <input
+                          type="number"
+                          value={getParamValue(editableParams, param.key)}
+                          onChange={(e) => handleParamChange(param.key, e.target.value)}
+                          step={param.key.startsWith('delta') ? '0.001' : '0.01'}
+                          min="0"
+                          max={param.key.startsWith('phi') || param.key.startsWith('rho') ? '1' : undefined}
+                          className="w-24 text-right px-2 py-1 border border-gray-300 rounded-md text-sm"
+                        />
+                      ) : (
+                        <div className="text-right">
+                          <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
+                            {formatParamValue(param.key, derivedValue)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        
+        {/* Location-specific parameters */}
+        {parameterGroups.filter(group => group.isLocationSpecific && !group.isDiseaseSpecific).map((group) => (
+          <div key={group.title} className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">
+              {group.title} <span className="text-xs text-green-500">(Location-Specific)</span>
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {group.params.map((param) => {
+                const baseValue = getParamValue(baseParams, param.key);
+                const derivedValue = getParamValue(derivedParams, param.key);
+                const isModified = baseValue !== derivedValue;
+                
+                return (
+                  <div key={param.key} className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {param.label}
+                        </label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {param.description}
+                        </p>
+                      </div>
+                      {editMode ? (
+                        <input
+                          type="number"
+                          value={getParamValue(editableParams, param.key)}
+                          onChange={(e) => handleParamChange(param.key, e.target.value)}
+                          step={param.key.startsWith('delta') ? '0.001' : '0.01'}
+                          min="0"
+                          max={param.key.startsWith('phi') || param.key.startsWith('rho') ? '1' : undefined}
+                          className="w-24 text-right px-2 py-1 border border-gray-300 rounded-md text-sm"
+                        />
+                      ) : (
+                        <div className="text-right">
+                          <span className={`font-mono text-sm ${isModified ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                            {formatParamValue(param.key, derivedValue)}
+                          </span>
+                          {isModified && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Base: {formatParamValue(param.key, baseValue)}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        
         {/* Display the effect of AI interventions separately */}
         <div className="bg-blue-50 dark:bg-blue-900 p-3 rounded-md">
           <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
@@ -318,7 +428,8 @@ const ParametersPanel: React.FC = () => {
           </p>
         </div>
         
-        {parameterGroups.map((group) => (
+        {/* Other general parameters */}
+        {parameterGroups.filter(group => !group.isDiseaseSpecific && !group.isLocationSpecific).map((group) => (
           <div key={group.title} className="border-t border-gray-200 dark:border-gray-700 pt-4">
             <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">{group.title}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

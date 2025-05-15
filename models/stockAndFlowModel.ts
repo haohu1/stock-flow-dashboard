@@ -225,14 +225,18 @@ const calculateEconomics = (
   const aiCost = params.aiFixedCost + (params.aiVariableCost * state.episodesTouched);
   const totalCost = patientDaysCost + aiCost;
   
-  // Calculate DALYs with age-adjusted YLL
+  // Calculate DALYs with age-adjusted YLL and apply discounting
   // Adjust YLL based on mean age of infection and regional life expectancy
   const adjustedYLL = Math.max(0, params.regionalLifeExpectancy - params.meanAgeOfInfection);
   
-  const deathDalys = state.D * adjustedYLL;
+  // Apply discounting factor (1 = no discount, 0.97 = 3% annual discount)
+  const discountFactor = params.discountRate > 0 ? 
+    (1 - params.discountRate) : 1;
+  
+  const deathDalys = state.D * adjustedYLL * discountFactor;
   const disabilityDalys = 
     (state.patientDays.I + state.patientDays.L0 + state.patientDays.L1 + 
-     state.patientDays.L2 + state.patientDays.L3) * (params.disabilityWeight / 365.25);
+     state.patientDays.L2 + state.patientDays.L3) * (params.disabilityWeight / 365.25) * discountFactor;
   
   const dalys = deathDalys + disabilityDalys;
   

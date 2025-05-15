@@ -8,6 +8,29 @@ export const formatNumber = (value: number): string => {
 };
 
 /**
+ * Formats a number in a compact way for display in small spaces
+ * @param value The number to format
+ * @returns A compact formatted string (like 1.2K, 2.5M, etc.)
+ */
+export const formatCompactNumber = (value: number): string => {
+  if (value === 0) return "0";
+  
+  if (Math.abs(value) < 1000) {
+    return Math.round(value).toString();
+  }
+  
+  const suffixes = ["", "K", "M", "B", "T"];
+  const suffixIndex = Math.floor(Math.log10(Math.abs(value)) / 3);
+  const shortValue = value / Math.pow(10, suffixIndex * 3);
+  
+  // Return with 1 decimal place for values < 100, otherwise round to whole number
+  if (Math.abs(shortValue) < 10) {
+    return `${shortValue.toFixed(1)}${suffixes[suffixIndex]}`;
+  }
+  return `${Math.round(shortValue)}${suffixes[suffixIndex]}`;
+};
+
+/**
  * Formats a number as currency
  * @param value The number to format
  * @param currency The currency symbol (default: $)

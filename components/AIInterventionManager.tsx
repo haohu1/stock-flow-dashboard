@@ -300,49 +300,49 @@ const AIInterventionManager: React.FC = () => {
             <p className="text-sm text-blue-700 dark:text-blue-400 mb-2">
               Each AI intervention modifies specific model parameters that affect how patients move through the healthcare system:
             </p>
-            <ul className="text-xs text-blue-700 dark:text-blue-400 list-disc pl-5 space-y-1">
+            <ul className="text-sm text-blue-700 dark:text-blue-400 list-disc pl-5 space-y-1">
               <li><strong>μ (mu)</strong>: Recovery/resolution rates at different levels of care (higher is better)</li>
               <li><strong>δ (delta)</strong>: Mortality rates at different levels of care (lower is better)</li>
               <li><strong>ρ (rho)</strong>: Referral rates between care levels (optimized based on need)</li>
               <li><strong>φ (phi)</strong>: Initial care-seeking behavior parameters (higher formal care entry is better)</li>
               <li><strong>σ (sigma)</strong>: Transition rates between care pathways (faster transitions to appropriate care is better)</li>
             </ul>
-            <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
+            <p className="text-sm text-blue-700 dark:text-blue-400 mt-2">
               Subscripts indicate care level: I=informal, 0=CHW, 1=primary care, 2=district hospital, 3=tertiary hospital
             </p>
           </div>
-          
-          <div className="px-4 pb-4 border-t border-blue-200 dark:border-blue-700">
-            <div className="pt-3 flex justify-between items-center cursor-pointer" onClick={(e) => {
-              e.stopPropagation();
-              setShowInterventionStrength(!showInterventionStrength);
-            }}>
-              <h5 className="text-sm font-medium text-blue-800 dark:text-blue-300">Adjusting Intervention Strength</h5>
-              <button className="text-blue-700 dark:text-blue-400">
-                {showInterventionStrength ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-            </div>
-            
-            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showInterventionStrength ? 'max-h-48' : 'max-h-0'}`}>
-              <div className="mt-1">
-                <p className="text-xs text-blue-700 dark:text-blue-400">
-                  Use the sliders to adjust the magnitude of each intervention effect:
-                </p>
-                <ul className="text-xs text-blue-700 dark:text-blue-400 list-disc pl-5 mt-1">
-                  <li><strong>No effect (0)</strong>: The parameter remains at baseline value</li>
-                  <li><strong>Default (1)</strong>: The standard effect is applied</li>
-                  <li><strong>Stronger (2)</strong>: The effect is doubled in magnitude</li>
-                </ul>
-              </div>
-            </div>
+        </div>
+      </div>
+      
+      <div className="mb-6 bg-blue-50 dark:bg-blue-900 rounded-md">
+        <div 
+          className="p-4 flex justify-between items-center cursor-pointer" 
+          onClick={() => setShowInterventionStrength(!showInterventionStrength)}
+        >
+          <h4 className="text-md font-medium text-blue-800 dark:text-blue-300">Adjusting Intervention Strength</h4>
+          <button className="text-blue-700 dark:text-blue-400">
+            {showInterventionStrength ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
+        </div>
+        
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showInterventionStrength ? 'max-h-60' : 'max-h-0'}`}>
+          <div className="p-4 pt-0">
+            <p className="text-sm text-blue-700 dark:text-blue-400">
+              Use the sliders to adjust the magnitude of each intervention effect:
+            </p>
+            <ul className="text-sm text-blue-700 dark:text-blue-400 list-disc pl-5 mt-1">
+              <li><strong>No effect (0)</strong>: The parameter remains at baseline value</li>
+              <li><strong>Default (1)</strong>: The standard effect is applied</li>
+              <li><strong>Stronger (2)</strong>: The effect is doubled in magnitude</li>
+            </ul>
           </div>
         </div>
       </div>

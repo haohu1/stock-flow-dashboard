@@ -193,7 +193,9 @@ const EquationExplainer: React.FC = () => {
             
             <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md mb-3">
               <div className="font-mono text-center text-lg text-gray-800 dark:text-gray-200 p-2">
-                {eq.equation}
+                {eq.equation.split('\n').map((line, i) => (
+                  <div key={i} className="mb-2">{line}</div>
+                ))}
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 {eq.explanation}

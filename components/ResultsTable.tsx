@@ -178,6 +178,34 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results, baseline }) => {
             ))}
           </tr>
           
+          <tr className="bg-gray-50 dark:bg-gray-700">
+            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+              Disability-Adjusted Life Years (DALY)
+            </td>
+            {weeks.map(week => {
+              // Approximate the DALYs proportionally by week
+              const weekRatio = (week + 1) / results.weeklyStates.length;
+              const dalys = results.dalys * weekRatio;
+              const baselineDalys = baseline ? baseline.dalys * weekRatio : 0;
+              
+              return (
+                <td key={week} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  {formatNumber(dalys)}
+                  {baseline && (
+                    <span className={`text-xs ml-2 ${
+                      dalys < baselineDalys
+                        ? 'text-green-500'
+                        : 'text-red-500'
+                    }`}>
+                      {dalys < baselineDalys ? '↓' : '↑'}
+                      {formatNumber(Math.abs(dalys - baselineDalys))}
+                    </span>
+                  )}
+                </td>
+              );
+            })}
+          </tr>
+          
           <tr>
             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
               Cumulative Cost

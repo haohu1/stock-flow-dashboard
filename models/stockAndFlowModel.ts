@@ -324,30 +324,11 @@ export const runSimulation = (
   const finalState = weeklyStates[weeklyStates.length - 1];
   const { totalCost, dalys } = calculateEconomics(finalState, params);
   
-  // Calculate raw averageTimeToResolution
-  let averageTimeToResolution = calculateTimeToResolution(weeklyStates);
-  
-  // Apply clinical realism adjustments for specific diseases
-  // We're adjusting because the weekly time step is too coarse for some conditions
-  // Parameters that fit this model but match the clinical literature
-  
-  // Estimate the condition we're modeling based on parameters
-  if (params.muI >= 0.40 && params.mu0 >= 0.75) {
-    // Conditions with high resolution rates like diarrhea
-    // Typical clinical duration is 3-7 days, not weeks
-    // Apply a correction factor to convert to more realistic values
-    averageTimeToResolution = Math.min(averageTimeToResolution, 1.5); // Cap at 1.5 weeks
-  } else if (params.mu0 >= 0.70 && params.mu1 >= 0.80) {
-    // Conditions responsive to antibiotics like typical pneumonia
-    // Should resolve in 1-3 weeks with treatment
-    averageTimeToResolution = Math.min(averageTimeToResolution, 2.5); // Cap at 2.5 weeks
-  }
-  
   return {
     weeklyStates,
     cumulativeDeaths: finalState.D,
     cumulativeResolved: finalState.R,
-    averageTimeToResolution,
+    averageTimeToResolution: calculateTimeToResolution(weeklyStates),
     totalCost,
     dalys,
   };
@@ -583,112 +564,166 @@ export const diseaseProfiles = {
     lambda: 0.03,             // low incidence rate
     disabilityWeight: 0.333,  // moderate disability weight
     meanAgeOfInfection: 35,   // typical age of TB diagnosis
-    // Lower mu values unless correct treatment
-    muI: 0.15,                // low spontaneous resolution
-    deltaI: 0.025,            // higher untreated death risk
+    // Standard 6-month TB treatment course (26 weeks)
+    muI: 0.03,                // very low spontaneous resolution (3% per week)
+    mu0: 0.05,                // very low resolution at CHW level (5% per week) 
+    mu1: 0.08,                // low resolution even at primary care (8% per week)
+    mu2: 0.12,                // moderate resolution at district hospital (12% per week)
+    mu3: 0.15,                // better but still slow at tertiary care (15% per week)
+    deltaI: 0.015,            // 1.5% death risk per week if untreated
+    rho0: 0.85,               // high referral from CHW to primary (85%)
+    rho1: 0.40,               // moderate referral from primary to district (40%)
+    rho2: 0.25                // lower referral to tertiary (25%)
   },
   pneumonia: {
     lambda: 0.90,             // very high incidence in under-fives
     disabilityWeight: 0.28,   // moderate disability
     meanAgeOfInfection: 3,    // primarily affects young children
-    mu0: 0.75,                // responsive to CHW interventions (increased from 0.55)
-    mu1: 0.85,                // high resolution with antibiotics at primary care
-    mu2: 0.90,                // very high resolution at hospital level
-    deltaI: 0.035,            // significant risk if untreated
-    muI: 0.20,                // low spontaneous resolution
-    rho0: 0.45,               // reduced referral from CHW (from default 0.75)
-    rho1: 0.35,               // moderate referral from primary to hospital for severe cases
+    muI: 0.15,                // some spontaneous resolution (15% per week)
+    mu0: 0.40,                // moderate resolution at CHW level with basic treatment (40% per week)
+    mu1: 0.60,                // good resolution at primary care with antibiotics (60% per week)
+    mu2: 0.75,                // high resolution at district hospital (75% per week)
+    mu3: 0.85,                // very high resolution at tertiary care (85% per week)
+    deltaI: 0.035,            // 3.5% death risk per week if untreated
+    deltaU: 0.05,             // 5% death risk if completely untreated
+    rho0: 0.40,               // moderate referral from CHW to primary (40%)
+    rho1: 0.30,               // moderate referral from primary to district (30%)
+    rho2: 0.20                // lower referral to tertiary (20%)
   },
   malaria: {
     lambda: 0.40,             // moderate-high incidence
     disabilityWeight: 0.192,  // moderate disability
     meanAgeOfInfection: 9,    // affects children and adults, but children at higher risk
-    deltaI: 0.020,            // moderate death risk
-    muI: 0.25,                // some spontaneous resolution
-    mu0: 0.60,                // responsive to community treatment
+    muI: 0.20,                // some spontaneous resolution (20% per week)
+    mu0: 0.50,                // good resolution at CHW level with antimalarials (50% per week)
+    mu1: 0.70,                // high resolution at primary care (70% per week)
+    mu2: 0.80,                // very high resolution at district hospital (80% per week)
+    mu3: 0.90,                // near-complete resolution at tertiary care (90% per week)
+    deltaI: 0.020,            // 2% death risk per week if untreated
+    deltaU: 0.03,             // 3% death risk if completely untreated 
+    rho0: 0.35,               // moderate referral from CHW to primary (35%)
+    rho1: 0.25,               // lower referral from primary to district (25%)
+    rho2: 0.20                // low referral to tertiary (20%)
   },
   fever: {
     lambda: 0.60,             // moderate-high incidence
     disabilityWeight: 0.10,   // lower disability weight
     meanAgeOfInfection: 15,   // affects all ages
-    muI: 0.35,                // higher spontaneous resolution
-    deltaI: 0.008,            // lower death risk
+    muI: 0.30,                // moderate spontaneous resolution (30% per week)
+    mu0: 0.55,                // good resolution at CHW level (55% per week)
+    mu1: 0.70,                // high resolution at primary care (70% per week)
+    mu2: 0.80,                // very high resolution at district hospital (80% per week)
+    mu3: 0.90,                // near-complete resolution at tertiary care (90% per week)
+    deltaI: 0.008,            // 0.8% death risk per week if untreated
+    deltaU: 0.015,            // 1.5% death risk if completely untreated
+    rho0: 0.30,               // moderate referral from CHW to primary (30%)
+    rho1: 0.20,               // lower referral from primary to district (20%)
+    rho2: 0.10                // low referral to tertiary (10%)
   },
   diarrhea: {
     lambda: 1.50,             // very high incidence especially in children
     disabilityWeight: 0.15,   // moderate disability
     meanAgeOfInfection: 2,    // primarily affects young children
-    muI: 0.50,                // higher spontaneous resolution (increased from 0.40)
-    mu0: 0.85,                // very high resolution with ORS at CHW level (increased from 0.65)
-    mu1: 0.90,                // near-complete resolution at primary care
-    deltaI: 0.015,            // moderate death risk if untreated
-    rho0: 0.25,               // low referral rate from CHW level (reduced from default 0.75)
-    rho1: 0.15,               // low referral from primary care
+    muI: 0.25,                // moderate spontaneous resolution (25% per week)
+    mu0: 0.60,                // high resolution at CHW level with ORS (60% per week)
+    mu1: 0.80,                // very high resolution at primary care (80% per week)
+    mu2: 0.90,                // near-complete resolution at district hospital (90% per week)
+    mu3: 0.95,                // almost complete resolution at tertiary care (95% per week)
+    deltaI: 0.015,            // 1.5% death risk per week if untreated
+    deltaU: 0.025,            // 2.5% death risk if completely untreated
+    rho0: 0.30,               // moderate referral from CHW to primary (30%)
+    rho1: 0.20,               // lower referral from primary to district (20%)
+    rho2: 0.10                // low referral to tertiary (10%)
   },
   maternal_hemorrhage: {
     lambda: 0.05,             // low incidence but serious
     disabilityWeight: 0.56,   // high disability weight
     meanAgeOfInfection: 26,   // typical age of childbearing
-    muI: 0.05,                // very low spontaneous resolution
-    deltaI: 0.08,             // high death risk if untreated
-    mu0: 0.20,                // limited effectiveness at CHW level
-    mu1: 0.50,                // moderate resolution at primary care
-    mu2: 0.75,                // good resolution at district hospital
-    rho0: 0.90,               // high referral from CHW
-    rho1: 0.70,               // high referral from primary care
+    muI: 0.05,                // very low spontaneous resolution (5% per week)
+    mu0: 0.10,                // very low resolution at CHW level (10% per week)
+    mu1: 0.30,                // low-moderate resolution at primary care (30% per week)
+    mu2: 0.60,                // good resolution at district hospital (60% per week)
+    mu3: 0.85,                // very high resolution at tertiary hospital (85% per week)
+    deltaI: 0.08,             // 8% death risk per week if untreated
+    deltaU: 0.12,             // 12% death risk if completely untreated
+    rho0: 0.90,               // very high referral from CHW (90%)
+    rho1: 0.75,               // high referral from primary care (75%)
+    rho2: 0.40                // moderate referral to tertiary (40%)
   },
   neonatal_sepsis: {
     lambda: 0.025,            // relatively low incidence
     disabilityWeight: 0.60,   // high disability weight
     meanAgeOfInfection: 0.05, // newborns (expressed in years, ~2-3 weeks)
-    muI: 0.05,                // very low spontaneous resolution
-    deltaI: 0.10,             // very high death risk if untreated
-    deltaU: 0.15,             // extremely high death risk if completely untreated
-    mu0: 0.30,                // limited effectiveness at CHW level
-    mu1: 0.60,                // moderate resolution at primary care
-    mu2: 0.80,                // good resolution at district hospital
+    muI: 0.05,                // very low spontaneous resolution (5% per week)
+    mu0: 0.15,                // low resolution at CHW level (15% per week)
+    mu1: 0.40,                // moderate resolution at primary care (40% per week)
+    mu2: 0.70,                // good resolution at district hospital (70% per week)
+    mu3: 0.85,                // very high resolution at tertiary hospital (85% per week)
+    deltaI: 0.10,             // 10% death risk per week if untreated
+    deltaU: 0.15,             // 15% death risk if completely untreated
+    rho0: 0.90,               // very high referral from CHW (90%)
+    rho1: 0.85,               // very high referral from primary care (85%)
+    rho2: 0.50                // high referral to tertiary (50%)
   },
   preterm_birth: {
     lambda: 0.10,             // moderate incidence
     disabilityWeight: 0.54,   // high disability weight
     meanAgeOfInfection: 0,    // at birth
-    muI: 0.10,                // very low spontaneous healthy outcome
-    deltaI: 0.15,             // very high death risk if inadequate care
-    mu0: 0.15,                // very limited effectiveness at CHW level
-    mu1: 0.40,                // limited effectiveness at primary care
-    mu2: 0.70,                // moderate-good at district hospital
-    mu3: 0.85,                // good at tertiary care
-    rho0: 0.95,               // very high referral from CHW
-    rho1: 0.85,               // very high referral from primary
+    muI: 0.05,                // very low spontaneous healthy outcome (5% per week)
+    mu0: 0.10,                // very low resolution at CHW level (10% per week)
+    mu1: 0.25,                // low resolution at primary care (25% per week)
+    mu2: 0.55,                // moderate resolution at district hospital (55% per week)
+    mu3: 0.75,                // good resolution at tertiary care (75% per week)
+    deltaI: 0.15,             // 15% death risk per week if inadequate care
+    deltaU: 0.20,             // 20% death risk if completely untreated
+    rho0: 0.95,               // nearly universal referral from CHW (95%)
+    rho1: 0.85,               // very high referral from primary (85%)
+    rho2: 0.60                // high referral to tertiary (60%)
   },
   hiv_opportunistic: {
     lambda: 0.15,             // moderate incidence in HIV+ population
     disabilityWeight: 0.40,   // moderate-high disability
     meanAgeOfInfection: 32,   // average age for opportunistic infections
-    muI: 0.08,                // very low spontaneous resolution
-    deltaI: 0.05,             // high death risk if untreated
-    mu0: 0.25,                // limited effectiveness at CHW level
-    mu1: 0.65,                // good resolution at primary with ARVs
+    muI: 0.08,                // low spontaneous resolution (8% per week)
+    mu0: 0.20,                // low resolution at CHW level (20% per week)
+    mu1: 0.45,                // moderate resolution at primary with ARVs (45% per week)
+    mu2: 0.60,                // good resolution at district hospital (60% per week)
+    mu3: 0.75,                // high resolution at tertiary hospital (75% per week)
+    deltaI: 0.05,             // 5% death risk per week if untreated
+    deltaU: 0.08,             // 8% death risk if completely untreated
+    rho0: 0.75,               // high referral from CHW (75%)
+    rho1: 0.45,               // moderate referral from primary (45%)
+    rho2: 0.30                // moderate referral to tertiary (30%)
   },
   infant_pneumonia: {
     lambda: 1.20,             // very high incidence in infants
     disabilityWeight: 0.35,   // moderate-high disability
     meanAgeOfInfection: 0.5,  // infants (6 months)
-    muI: 0.15,                // low spontaneous resolution
-    deltaI: 0.04,             // high death risk in infants
-    deltaU: 0.06,             // very high death risk if completely untreated
-    mu0: 0.50,                // moderate effectiveness at CHW level
-    mu1: 0.70,                // good resolution at primary care
+    muI: 0.10,                // low spontaneous resolution (10% per week)
+    mu0: 0.30,                // moderate resolution at CHW level (30% per week)
+    mu1: 0.55,                // good resolution at primary care (55% per week)
+    mu2: 0.75,                // high resolution at district hospital (75% per week)
+    mu3: 0.85,                // very high resolution at tertiary hospital (85% per week)
+    deltaI: 0.04,             // 4% death risk per week if untreated
+    deltaU: 0.06,             // 6% death risk if completely untreated
+    rho0: 0.65,               // high referral from CHW (65%)
+    rho1: 0.45,               // moderate referral from primary (45%)
+    rho2: 0.30                // moderate referral to tertiary (30%)
   },
   maternal_hypertension: {
     lambda: 0.08,             // moderate incidence
     disabilityWeight: 0.35,   // moderate disability
     meanAgeOfInfection: 27,   // typical age in pregnancy
-    muI: 0.10,                // very low spontaneous resolution
-    deltaI: 0.04,             // high risk if untreated
-    mu0: 0.20,                // limited effectiveness at CHW level
-    mu1: 0.60,                // moderate resolution at primary care
-    rho0: 0.85,               // high referral from CHW
+    muI: 0.08,                // low spontaneous resolution (8% per week)
+    mu0: 0.15,                // low resolution at CHW level (15% per week)
+    mu1: 0.40,                // moderate resolution at primary care (40% per week)
+    mu2: 0.65,                // good resolution at district hospital (65% per week)
+    mu3: 0.85,                // very high resolution at tertiary hospital (85% per week)
+    deltaI: 0.04,             // 4% death risk per week if untreated
+    deltaU: 0.06,             // 6% death risk if completely untreated
+    rho0: 0.80,               // high referral from CHW (80%)
+    rho1: 0.60,               // high referral from primary (60%)
+    rho2: 0.40                // moderate referral to tertiary (40%)
   }
 };
 

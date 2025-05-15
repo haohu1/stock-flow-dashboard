@@ -241,11 +241,19 @@ const Dashboard: React.FC = () => {
               `$${formatNumber(results.icer)}/DALY`}
           </p>
           {results.icer !== undefined && (
-            <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">
-              {results.icer === 1 ? 
-                'Both saves money and improves health' : 
-                results.icer < 3 * (parameters.perDiemCosts.L1 * 365) ? 'Cost-effective' : 'Not cost-effective'}
-            </p>
+            <div>
+              <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">
+                {results.icer === 1 ? 
+                  'Both saves money and improves health' : 
+                  results.icer < 3 * (parameters.perDiemCosts.L1 * 365) ? 'Cost-effective' : 'Not cost-effective'}
+              </p>
+              {/* Show actual calculated value */}
+              {results.rawIcerValue !== undefined && (
+                <p className="text-xs mt-1 text-gray-400 dark:text-gray-500">
+                  Raw value: ${formatNumber(results.rawIcerValue)}
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -285,7 +293,7 @@ const Dashboard: React.FC = () => {
               ({Math.abs(percentDeathsReduced).toFixed(1)}%) and {costDifference < 0 ? 'saves' : 'costs'} <strong>${formatNumber(Math.abs(costDifference))}</strong>.
               {results.icer !== undefined && (
                 results.icer === 1 ?
-                ` This intervention is dominant (both saves money and improves health outcomes).` :
+                ` This intervention is dominant (both saves money and improves health outcomes). Raw ICER: $${formatNumber(results.rawIcerValue || 0)}/DALY.` :
                 ` This represents an incremental cost-effectiveness ratio of $${formatNumber(results.icer)} per DALY.`
               )}
             </p>

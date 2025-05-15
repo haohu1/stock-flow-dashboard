@@ -82,6 +82,7 @@ export interface SimulationResults {
   totalCost: number;
   dalys: number;
   icer?: number;              // only populated when comparing to baseline
+  rawIcerValue?: number;      // raw calculated ICER value before any adjustments
 }
 
 // Initialize model with default state
@@ -295,6 +296,10 @@ export const calculateICER = (
   // Add debugging for DALY values
   console.log(`ICER calculation: Cost diff: ${costDiff}, DALY diff: ${dalyDiff}`);
   console.log(`Baseline DALYs: ${baseline.dalys}, Intervention DALYs: ${intervention.dalys}`);
+  console.log(`Raw ICER value: ${costDiff / dalyDiff}`);
+  
+  // Store raw calculated value on the intervention results
+  intervention.rawIcerValue = dalyDiff !== 0 ? costDiff / dalyDiff : Infinity;
   
   // If both costs are reduced and DALYs are reduced, this is a dominant intervention
   // Return a small positive value rather than a negative value

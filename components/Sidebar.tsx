@@ -10,7 +10,8 @@ import {
   addScenarioAtom,
   scenariosAtom,
   selectedScenarioIdAtom,
-  loadScenarioAtom
+  loadScenarioAtom,
+  simulationResultsAtom
 } from '../lib/store';
 
 const Sidebar: React.FC = () => {
@@ -24,6 +25,7 @@ const Sidebar: React.FC = () => {
   const [scenarios] = useAtom(scenariosAtom);
   const [selectedScenarioId] = useAtom(selectedScenarioIdAtom);
   const [, loadScenario] = useAtom(loadScenarioAtom);
+  const [results] = useAtom(simulationResultsAtom);
 
   const handleGeographyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedGeography(e.target.value);
@@ -60,6 +62,21 @@ const Sidebar: React.FC = () => {
     loadScenario(id);
   };
 
+  const handleViewParameters = () => {
+    // Dispatch an event to view parameters
+    window.dispatchEvent(new Event('view-parameters'));
+  };
+
+  const handleViewEquations = () => {
+    // Dispatch an event to view equations
+    window.dispatchEvent(new Event('view-equations'));
+  };
+
+  // Format disease names for display
+  const formatDiseaseName = (name: string): string => {
+    return name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, ' ');
+  };
+
   return (
     <aside className="w-64 bg-white dark:bg-gray-800 p-4 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
       <h2 className="text-xl font-bold mb-6 text-gray-800 dark:text-white">Model Settings</h2>
@@ -68,14 +85,24 @@ const Sidebar: React.FC = () => {
         <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Geography
         </label>
+        <div className="text-sm font-medium mb-2 text-indigo-600 dark:text-indigo-400">
+          {selectedGeography.charAt(0).toUpperCase() + selectedGeography.slice(1)}
+        </div>
         <select
           value={selectedGeography}
           onChange={handleGeographyChange}
           className="input w-full"
         >
           <option value="ethiopia">Ethiopia</option>
-          <option value="mozambique">Manhiça District, Mozambique</option>
+          <option value="kenya">Kenya</option>
+          <option value="malawi">Malawi</option>
+          <option value="nigeria">Nigeria</option>
+          <option value="tanzania">Tanzania</option>
+          <option value="uganda">Uganda</option>
+          <option value="bangladesh">Bangladesh</option>
           <option value="bihar">Rural Bihar, India</option>
+          <option value="uttar_pradesh">Uttar Pradesh, India</option>
+          <option value="pakistan">Pakistan</option>
         </select>
       </div>
 
@@ -83,15 +110,29 @@ const Sidebar: React.FC = () => {
         <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Disease
         </label>
+        <div className="text-sm font-medium mb-2 text-indigo-600 dark:text-indigo-400">
+          {formatDiseaseName(selectedDisease)}
+        </div>
         <select
           value={selectedDisease}
           onChange={handleDiseaseChange}
           className="input w-full"
         >
-          <option value="tuberculosis">Tuberculosis</option>
-          <option value="pneumonia">Pneumonia</option>
-          <option value="malaria">Malaria</option>
-          <option value="fever">Fever of Unknown Origin</option>
+          <optgroup label="Infectious Diseases">
+            <option value="tuberculosis">Tuberculosis</option>
+            <option value="pneumonia">Pneumonia</option>
+            <option value="infant_pneumonia">Infant Pneumonia</option>
+            <option value="malaria">Malaria</option>
+            <option value="fever">Fever of Unknown Origin</option>
+            <option value="diarrhea">Diarrheal Disease</option>
+            <option value="hiv_opportunistic">HIV Opportunistic Infections</option>
+          </optgroup>
+          <optgroup label="Maternal & Neonatal">
+            <option value="maternal_hemorrhage">Maternal Hemorrhage</option>
+            <option value="maternal_hypertension">Maternal Hypertension</option>
+            <option value="neonatal_sepsis">Neonatal Sepsis</option>
+            <option value="preterm_birth">Preterm Birth Complications</option>
+          </optgroup>
         </select>
       </div>
 
@@ -189,25 +230,43 @@ const Sidebar: React.FC = () => {
 
       <div className="mb-6 space-y-2">
         <button 
+          onClick={handleViewParameters}
+          className="btn bg-blue-500 text-white hover:bg-blue-600 w-full"
+        >
+          Configure Parameters
+        </button>
+        
+        <button 
+          onClick={handleViewEquations}
+          className="btn bg-purple-500 text-white hover:bg-purple-600 w-full"
+        >
+          View Model Structure
+        </button>
+        
+        <button 
           onClick={handleRunSimulation}
           className="btn btn-primary w-full"
         >
           Run Simulation
         </button>
         
-        <button 
-          onClick={handleSetBaseline}
-          className="btn btn-secondary w-full"
-        >
-          Set as Baseline
-        </button>
-        
-        <button 
-          onClick={handleAddScenario}
-          className="btn bg-indigo-500 text-white hover:bg-indigo-600 w-full"
-        >
-          Save as Scenario
-        </button>
+        {results && (
+          <>
+            <button 
+              onClick={handleSetBaseline}
+              className="btn btn-secondary w-full"
+            >
+              Set as Baseline
+            </button>
+            
+            <button 
+              onClick={handleAddScenario}
+              className="btn bg-indigo-500 text-white hover:bg-indigo-600 w-full"
+            >
+              Save as Scenario
+            </button>
+          </>
+        )}
       </div>
 
       {scenarios.length > 0 && (

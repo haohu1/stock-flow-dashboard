@@ -33,20 +33,31 @@ export const derivedParametersAtom = atom(
     // Start with base parameters
     let params = { ...baseParams };
     
+    // Get geography defaults
+    const geographyDefault = geography && geographyDefaults[geography as keyof typeof geographyDefaults];
+    
+    // Get disease profile
+    const diseaseProfile = disease && diseaseProfiles[disease as keyof typeof diseaseProfiles];
+    
     // Apply geography defaults if available
-    if (geography && geographyDefaults[geography as keyof typeof geographyDefaults]) {
-      params = { 
-        ...params, 
-        ...geographyDefaults[geography as keyof typeof geographyDefaults] 
-      };
+    if (geographyDefault) {
+      // Copy all geography parameters except for diseaseModifiers
+      const { diseaseModifiers, ...geographyParams } = geographyDefault;
+      params = { ...params, ...geographyParams };
     }
     
     // Apply disease profile if available
-    if (disease && diseaseProfiles[disease as keyof typeof diseaseProfiles]) {
-      params = { 
-        ...params, 
-        ...diseaseProfiles[disease as keyof typeof diseaseProfiles] 
-      };
+    if (diseaseProfile) {
+      params = { ...params, ...diseaseProfile };
+      
+      // Apply region-specific disease incidence modifier if available
+      if (geographyDefault && 'diseaseModifiers' in geographyDefault && disease) {
+        const modifiers = geographyDefault.diseaseModifiers;
+        if (disease in modifiers) {
+          // Modify the incidence rate (lambda) based on the regional modifier
+          params.lambda = params.lambda * (modifiers as any)[disease];
+        }
+      }
     }
     
     // Apply AI interventions

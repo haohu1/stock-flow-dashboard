@@ -16,6 +16,7 @@ export default function Home() {
   const [results] = useAtom(simulationResultsAtom);
   const [aiInterventions] = useAtom(aiInterventionsAtom);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [preSimulationTab, setPreSimulationTab] = useState<'dashboard' | 'parameters' | 'equations'>('dashboard');
   
   // Count active AI interventions
   const activeInterventionsCount = Object.values(aiInterventions).filter(Boolean).length;
@@ -23,7 +24,11 @@ export default function Home() {
   // Listen for view-parameters event
   useEffect(() => {
     const handleViewParameters = () => {
-      setActiveTab('parameters');
+      if (results) {
+        setActiveTab('parameters');
+      } else {
+        setPreSimulationTab('parameters');
+      }
     };
     
     window.addEventListener('view-parameters', handleViewParameters);
@@ -31,7 +36,7 @@ export default function Home() {
     return () => {
       window.removeEventListener('view-parameters', handleViewParameters);
     };
-  }, []);
+  }, [results]);
   
   // Listen for compare-scenarios event
   useEffect(() => {
@@ -47,6 +52,23 @@ export default function Home() {
     };
   }, []);
   
+  // Listen for view-equations event
+  useEffect(() => {
+    const handleViewEquations = () => {
+      if (results) {
+        setActiveTab('equations');
+      } else {
+        setPreSimulationTab('equations');
+      }
+    };
+    
+    window.addEventListener('view-equations', handleViewEquations);
+    
+    return () => {
+      window.removeEventListener('view-equations', handleViewEquations);
+    };
+  }, [results]);
+  
   const tabContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -61,6 +83,18 @@ export default function Home() {
         return <ParametersPanel />;
       case 'equations':
         return <EquationExplainer />;
+      default:
+        return <Dashboard />;
+    }
+  };
+  
+  const preSimulationContent = () => {
+    switch(preSimulationTab) {
+      case 'parameters':
+        return <ParametersPanel />;
+      case 'equations':
+        return <EquationExplainer />;
+      case 'dashboard':
       default:
         return <Dashboard />;
     }
@@ -85,7 +119,7 @@ export default function Home() {
               Model the impact of AI interventions on health outcomes, costs, and resource utilization
             </p>
             
-            {results && (
+            {results ? (
               <div className="border-b border-gray-200 dark:border-gray-700">
                 <nav className="-mb-px flex space-x-8">
                   {[
@@ -120,15 +154,34 @@ export default function Home() {
                   ))}
                 </nav>
               </div>
+            ) : (
+              <div className="border-b border-gray-200 dark:border-gray-700">
+                <nav className="-mb-px flex space-x-8">
+                  {[
+                    { id: 'dashboard', name: 'Dashboard' },
+                    { id: 'parameters', name: 'Configure Parameters' },
+                    { id: 'equations', name: 'Model Equations' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setPreSimulationTab(tab.id as 'dashboard' | 'parameters' | 'equations')}
+                      className={`
+                        border-b-2 py-4 px-1 text-sm font-medium
+                        ${preSimulationTab === tab.id 
+                          ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' 
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}
+                      `}
+                    >
+                      {tab.name}
+                    </button>
+                  ))}
+                </nav>
+              </div>
             )}
           </header>
           
           <div className="space-y-8">
-            {results ? (
-              tabContent()
-            ) : (
-              <Dashboard />
-            )}
+            {results ? tabContent() : preSimulationContent()}
           </div>
         </div>
       </Layout>

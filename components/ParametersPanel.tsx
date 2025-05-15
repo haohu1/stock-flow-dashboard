@@ -6,7 +6,8 @@ import {
   selectedGeographyAtom,
   selectedDiseaseAtom,
   populationSizeAtom,
-  runSimulationAtom
+  runSimulationAtom,
+  simulationResultsAtom
 } from '../lib/store';
 import { formatDecimal } from '../lib/utils';
 import { 
@@ -23,6 +24,7 @@ const parameterGroups = [
     params: [
       { key: 'lambda', label: 'Annual Incidence Rate (λ)', description: 'Episodes per person per year' },
       { key: 'disabilityWeight', label: 'Disability Weight', description: 'Severity factor for DALY calculations (0-1)' },
+      { key: 'meanAgeOfInfection', label: 'Mean Age of Infection', description: 'Average age when patients contract the disease (years)' },
     ],
     isDiseaseSpecific: true,
   },
@@ -91,7 +93,7 @@ const parameterGroups = [
       { key: 'perDiemCosts.L3', label: 'Tertiary Hospital Cost', description: 'Cost per day at tertiary hospital (USD)' },
       { key: 'aiFixedCost', label: 'AI Fixed Cost', description: 'Fixed cost for AI implementation (USD)' },
       { key: 'aiVariableCost', label: 'AI Variable Cost', description: 'Variable cost per episode touched by AI (USD)' },
-      { key: 'yearsOfLifeLost', label: 'Years of Life Lost', description: 'Average years of life lost per death' },
+      { key: 'regionalLifeExpectancy', label: 'Life Expectancy', description: 'Regional life expectancy (years)' },
       { key: 'discountRate', label: 'Discount Rate', description: 'Annual discount rate for economic calculations' },
     ],
     isLocationSpecific: true,
@@ -105,8 +107,10 @@ const ParametersPanel: React.FC = () => {
   const [selectedDisease, setSelectedDisease] = useAtom(selectedDiseaseAtom);
   const [populationSize, setPopulationSize] = useAtom(populationSizeAtom);
   const [, runSimulation] = useAtom(runSimulationAtom);
+  const [results] = useAtom(simulationResultsAtom);
   
-  const [editMode, setEditMode] = useState(false);
+  // editMode is now true by default if there are no simulation results yet
+  const [editMode, setEditMode] = useState(!results);
   const [editableParams, setEditableParams] = useState(baseParams);
   const [editablePopulation, setEditablePopulation] = useState(populationSize);
   const [customGeography, setCustomGeography] = useState<boolean>(false);
@@ -119,6 +123,24 @@ const ParametersPanel: React.FC = () => {
   useEffect(() => {
     setEditableParams(baseParams);
   }, [baseParams]);
+  
+  // Update edit mode when results change
+  useEffect(() => {
+    if (!results) {
+      setEditMode(true);
+    }
+  }, [results]);
+  
+  // Update editable params when geography or disease changes
+  useEffect(() => {
+    // Get derived parameters that incorporate geography and disease specific values
+    const updatedParams = { ...derivedParams };
+    
+    // Only update if not in custom mode
+    if (!customGeography && !customDisease) {
+      setEditableParams(updatedParams);
+    }
+  }, [selectedGeography, selectedDisease, derivedParams, customGeography, customDisease]);
   
   // Available geographies and diseases from the model
   const geographies = Object.keys(geographyDefaults);
@@ -146,6 +168,12 @@ const ParametersPanel: React.FC = () => {
     } else {
       setCustomGeography(false);
       setSelectedGeography(value);
+      
+      // If we switched from custom to a predefined geography,
+      // immediately get geography-specific parameters
+      if (customGeography) {
+        // We'll use the useEffect to update the parameters
+      }
     }
   };
   
@@ -156,21 +184,51 @@ const ParametersPanel: React.FC = () => {
     } else {
       setCustomDisease(false);
       setSelectedDisease(value);
+      
+      // If we switched from custom to a predefined disease,
+      // immediately get disease-specific parameters
+      if (customDisease) {
+        // We'll use the useEffect to update the parameters
+      }
     }
   };
   
   const saveChanges = () => {
-    setBaseParams(editableParams);
+    // Apply current geography and disease settings
+    let finalParams = { ...editableParams };
+    
+    // Save parameters to the atom
+    setBaseParams(finalParams);
+    setPopulationSize(editablePopulation);
+    
+    if (!results) {
+      // Only close edit mode if there are simulation results
+      setEditMode(false);
+    } else {
+      // Run simulation with new parameters if there are already results
+      setEditMode(false);
+      setTimeout(() => runSimulation(), 100);
+    }
+  };
+  
+  const saveAndRunSimulation = () => {
+    // Apply current geography and disease settings
+    let finalParams = { ...editableParams };
+    
+    // Save parameters to the atom
+    setBaseParams(finalParams);
     setPopulationSize(editablePopulation);
     setEditMode(false);
-    // Run simulation with new parameters
     setTimeout(() => runSimulation(), 100);
   };
   
   const cancelChanges = () => {
     setEditableParams(baseParams);
     setEditablePopulation(populationSize);
-    setEditMode(false);
+    if (results) {
+      // Only close edit mode if there are simulation results
+      setEditMode(false);
+    }
   };
   
   // Get parameter value, handling nested properties
@@ -180,6 +238,28 @@ const ParametersPanel: React.FC = () => {
       return params[parent as keyof ModelParameters][child as keyof ModelParameters[keyof ModelParameters]];
     }
     return params[path as keyof ModelParameters] as number;
+  };
+  
+  // Check if a parameter is affected by geography selection
+  const isGeographySpecific = (paramKey: string): boolean => {
+    if (customGeography) return false;
+    
+    const defaultValue = getParamValue(defaultParams, paramKey);
+    const geoParams = geographyDefaults[selectedGeography as keyof typeof geographyDefaults] || {};
+    
+    // Check if this parameter exists in the geography defaults
+    return paramKey in geoParams;
+  };
+  
+  // Check if a parameter is affected by disease selection
+  const isDiseaseSpecific = (paramKey: string): boolean => {
+    if (customDisease) return false;
+    
+    const defaultValue = getParamValue(defaultParams, paramKey);
+    const diseaseParams = diseaseProfiles[selectedDisease as keyof typeof diseaseProfiles] || {};
+    
+    // Check if this parameter exists in the disease profile
+    return paramKey in diseaseParams;
   };
   
   // Format parameter value for display
@@ -213,12 +293,14 @@ const ParametersPanel: React.FC = () => {
             </button>
           ) : (
             <div className="flex space-x-2">
-              <button 
-                onClick={cancelChanges}
-                className="btn bg-gray-300 hover:bg-gray-400 text-gray-800 text-sm"
-              >
-                Cancel
-              </button>
+              {results && (
+                <button 
+                  onClick={cancelChanges}
+                  className="btn bg-gray-300 hover:bg-gray-400 text-gray-800 text-sm"
+                >
+                  Cancel
+                </button>
+              )}
               <button 
                 onClick={resetToDefaults}
                 className="btn bg-red-50 hover:bg-red-100 text-red-600 text-sm"
@@ -227,9 +309,15 @@ const ParametersPanel: React.FC = () => {
               </button>
               <button 
                 onClick={saveChanges}
+                className="btn bg-green-50 hover:bg-green-100 text-green-600 text-sm"
+              >
+                Save Parameters
+              </button>
+              <button 
+                onClick={saveAndRunSimulation}
                 className="btn btn-primary text-sm"
               >
-                Save Changes
+                {results ? 'Save & Run Simulation' : 'Run Simulation'}
               </button>
             </div>
           )}
@@ -261,13 +349,27 @@ const ParametersPanel: React.FC = () => {
                   onChange={handleGeographyChange}
                   className="w-full rounded-md border border-gray-300 p-2 text-sm"
                 >
-                  {geographies.map(geo => (
-                    <option key={geo} value={geo}>{geo.charAt(0).toUpperCase() + geo.slice(1)}</option>
-                  ))}
+                  <option value="ethiopia">Ethiopia</option>
+                  <option value="kenya">Kenya</option>
+                  <option value="malawi">Malawi</option>
+                  <option value="nigeria">Nigeria</option>
+                  <option value="tanzania">Tanzania</option>
+                  <option value="uganda">Uganda</option>
+                  <option value="bangladesh">Bangladesh</option>
+                  <option value="bihar">Rural Bihar, India</option>
+                  <option value="uttar_pradesh">Uttar Pradesh, India</option>
+                  <option value="pakistan">Pakistan</option>
                   <option value="custom">Custom</option>
                 </select>
               ) : (
                 <div className="text-sm py-2">{selectedGeography.charAt(0).toUpperCase() + selectedGeography.slice(1)}</div>
+              )}
+              {!customGeography && (
+                <div className="mt-2">
+                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md bg-green-100 text-green-800">
+                    Using {selectedGeography.charAt(0).toUpperCase() + selectedGeography.slice(1)} parameters
+                  </span>
+                </div>
               )}
             </div>
             
@@ -285,13 +387,32 @@ const ParametersPanel: React.FC = () => {
                   onChange={handleDiseaseChange}
                   className="w-full rounded-md border border-gray-300 p-2 text-sm"
                 >
-                  {diseases.map(disease => (
-                    <option key={disease} value={disease}>{disease.charAt(0).toUpperCase() + disease.slice(1)}</option>
-                  ))}
+                  <optgroup label="Infectious Diseases">
+                    <option value="tuberculosis">Tuberculosis</option>
+                    <option value="pneumonia">Pneumonia</option>
+                    <option value="infant_pneumonia">Infant Pneumonia</option>
+                    <option value="malaria">Malaria</option>
+                    <option value="fever">Fever of Unknown Origin</option>
+                    <option value="diarrhea">Diarrheal Disease</option>
+                    <option value="hiv_opportunistic">HIV Opportunistic Infections</option>
+                  </optgroup>
+                  <optgroup label="Maternal & Neonatal">
+                    <option value="maternal_hemorrhage">Maternal Hemorrhage</option>
+                    <option value="maternal_hypertension">Maternal Hypertension</option>
+                    <option value="neonatal_sepsis">Neonatal Sepsis</option>
+                    <option value="preterm_birth">Preterm Birth Complications</option>
+                  </optgroup>
                   <option value="custom">Custom</option>
                 </select>
               ) : (
-                <div className="text-sm py-2">{selectedDisease.charAt(0).toUpperCase() + selectedDisease.slice(1)}</div>
+                <div className="text-sm py-2">{selectedDisease.charAt(0).toUpperCase() + selectedDisease.slice(1).replace(/_/g, ' ')}</div>
+              )}
+              {!customDisease && (
+                <div className="mt-2">
+                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md bg-blue-100 text-blue-800">
+                    Using {selectedDisease.charAt(0).toUpperCase() + selectedDisease.slice(1).replace(/_/g, ' ')} parameters
+                  </span>
+                </div>
               )}
             </div>
             
@@ -348,13 +469,31 @@ const ParametersPanel: React.FC = () => {
                           step={param.key.startsWith('delta') ? '0.001' : '0.01'}
                           min="0"
                           max={param.key.startsWith('phi') || param.key.startsWith('rho') ? '1' : undefined}
-                          className="w-24 text-right px-2 py-1 border border-gray-300 rounded-md text-sm"
+                          className={`w-24 text-right px-2 py-1 border rounded-md text-sm ${
+                            isDiseaseSpecific(param.key)
+                              ? 'border-blue-300 bg-blue-50' 
+                              : 'border-gray-300'
+                          }`}
                         />
                       ) : (
                         <div className="text-right">
-                          <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
+                          <span className={`font-mono text-sm ${
+                            isDiseaseSpecific(param.key)
+                              ? 'text-blue-600 dark:text-blue-400' 
+                              : 'text-gray-700 dark:text-gray-300'
+                          }`}>
                             {formatParamValue(param.key, derivedValue)}
                           </span>
+                          {param.key === 'lambda' && !customGeography && !customDisease && (
+                            <div className="mt-1 text-xs text-orange-600 dark:text-orange-400 font-medium">
+                              Region-adjusted: {formatDecimal(derivedValue, 2)}
+                              {selectedGeography && geographyDefaults[selectedGeography as keyof typeof geographyDefaults]?.diseaseModifiers && selectedDisease && (
+                                <span className="ml-1">
+                                  ({formatDecimal((geographyDefaults[selectedGeography as keyof typeof geographyDefaults]?.diseaseModifiers as any)[selectedDisease] * 100, 0)}% of base)
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -396,11 +535,19 @@ const ParametersPanel: React.FC = () => {
                           step={param.key.startsWith('delta') ? '0.001' : '0.01'}
                           min="0"
                           max={param.key.startsWith('phi') || param.key.startsWith('rho') ? '1' : undefined}
-                          className="w-24 text-right px-2 py-1 border border-gray-300 rounded-md text-sm"
+                          className={`w-24 text-right px-2 py-1 border rounded-md text-sm ${
+                            isGeographySpecific(param.key)
+                              ? 'border-green-300 bg-green-50'
+                              : 'border-gray-300'
+                          }`}
                         />
                       ) : (
                         <div className="text-right">
-                          <span className={`font-mono text-sm ${isModified ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                          <span className={`font-mono text-sm ${
+                            isGeographySpecific(param.key)
+                              ? 'text-green-600 dark:text-green-400'
+                              : 'text-gray-700 dark:text-gray-300'
+                          }`}>
                             {formatParamValue(param.key, derivedValue)}
                           </span>
                           {isModified && (
@@ -458,11 +605,23 @@ const ParametersPanel: React.FC = () => {
                           step={param.key.startsWith('delta') ? '0.001' : '0.01'}
                           min="0"
                           max={param.key.startsWith('phi') || param.key.startsWith('rho') ? '1' : undefined}
-                          className="w-24 text-right px-2 py-1 border border-gray-300 rounded-md text-sm"
+                          className={`w-24 text-right px-2 py-1 border rounded-md text-sm ${
+                            isDiseaseSpecific(param.key)
+                              ? 'border-blue-300 bg-blue-50' 
+                              : isGeographySpecific(param.key)
+                                ? 'border-green-300 bg-green-50'
+                                : 'border-gray-300'
+                          }`}
                         />
                       ) : (
                         <div className="text-right">
-                          <span className={`font-mono text-sm ${isModified ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                          <span className={`font-mono text-sm ${
+                            isDiseaseSpecific(param.key)
+                              ? 'text-blue-600 dark:text-blue-400' 
+                              : isGeographySpecific(param.key)
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-gray-700 dark:text-gray-300'
+                          }`}>
                             {formatParamValue(param.key, derivedValue)}
                           </span>
                           {isModified && (

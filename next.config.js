@@ -8,7 +8,11 @@ const nextConfig = {
   typescript: {
     // Disable TypeScript errors during production builds
     ignoreBuildErrors: true,
-  }
+  },
+  images: {
+    domains: [],
+    unoptimized: true,
+  },
 }
 
 module.exports = nextConfig 

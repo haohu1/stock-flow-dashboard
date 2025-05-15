@@ -22,6 +22,7 @@ export interface ModelParameters {
   // Disease characteristics
   lambda: number;             // annual incidence rate per person
   disabilityWeight: number;   // for DALY calculations
+  meanAgeOfInfection: number; // mean age at which infection/condition occurs
   
   // Flow probabilities (weekly)
   phi0: number;               // probability of seeking formal care initially
@@ -63,7 +64,8 @@ export interface ModelParameters {
   aiFixedCost: number;        // fixed cost of AI implementation
   aiVariableCost: number;     // variable cost per episode touched by AI
   discountRate: number;       // annual discount rate for economic calculations
-  yearsOfLifeLost: number;    // average years of life lost per death
+  yearsOfLifeLost: number;    // base YLL parameter (will be adjusted by meanAgeOfInfection)
+  regionalLifeExpectancy: number; // region-specific life expectancy
 }
 
 export interface SimulationConfig {
@@ -223,8 +225,11 @@ const calculateEconomics = (
   const aiCost = params.aiFixedCost + (params.aiVariableCost * state.episodesTouched);
   const totalCost = patientDaysCost + aiCost;
   
-  // Calculate DALYs
-  const deathDalys = state.D * params.yearsOfLifeLost;
+  // Calculate DALYs with age-adjusted YLL
+  // Adjust YLL based on mean age of infection and regional life expectancy
+  const adjustedYLL = Math.max(0, params.regionalLifeExpectancy - params.meanAgeOfInfection);
+  
+  const deathDalys = state.D * adjustedYLL;
   const disabilityDalys = 
     (state.patientDays.I + state.patientDays.L0 + state.patientDays.L1 + 
      state.patientDays.L2 + state.patientDays.L3) * (params.disabilityWeight / 365.25);
@@ -292,20 +297,197 @@ export const geographyDefaults = {
     phi0: 0.45,  // formal care entry probability
     rho1: 0.75,  // facility referral rate
     mu0: 0.50,   // CHW resolution probability
-    // Other parameters would be set to baseline values
+    regionalLifeExpectancy: 67.5, // 2023 estimate
+    // Region-specific disease incidence modifiers
+    diseaseModifiers: {
+      pneumonia: 1.2,           // 20% higher than baseline
+      tuberculosis: 1.3,        // 30% higher than baseline
+      malaria: 1.1,             // 10% higher than baseline
+      diarrhea: 1.3,            // 30% higher than baseline
+      maternal_hemorrhage: 1.4, // 40% higher than baseline
+      neonatal_sepsis: 1.2,     // 20% higher than baseline
+      preterm_birth: 1.3,       // 30% higher than baseline
+      hiv_opportunistic: 1.5,   // 50% higher than baseline
+      infant_pneumonia: 1.4,    // 40% higher than baseline
+      maternal_hypertension: 1.3 // 30% higher than baseline
+    }
   },
-  mozambique: {
-    phi0: 0.35,  // lower formal care entry due to travel times
-    rho2: 0.60,  // higher referral rates
-    mu1: 0.45,   // lower primary care resolution (baseline might be 0.60)
-    // Other parameters would be set to baseline values
+  malawi: {
+    phi0: 0.37,  // lower formal care entry due to travel times
+    rho2: 0.65,  // higher referral rates in some areas
+    mu1: 0.45,   // lower primary care resolution
+    informalCareRatio: 0.25, // higher untreated ratio due to access barriers
+    regionalLifeExpectancy: 65.1, // 2023 estimate
+    // Region-specific disease incidence modifiers
+    diseaseModifiers: {
+      pneumonia: 1.4,           // 40% higher than baseline
+      tuberculosis: 1.2,        // 20% higher than baseline
+      malaria: 1.5,             // 50% higher than baseline
+      diarrhea: 1.2,            // 20% higher than baseline
+      maternal_hemorrhage: 1.3, // 30% higher than baseline
+      neonatal_sepsis: 1.35,    // 35% higher than baseline
+      preterm_birth: 1.25,      // 25% higher than baseline
+      hiv_opportunistic: 1.6,   // 60% higher than baseline
+      infant_pneumonia: 1.5,    // 50% higher than baseline
+      maternal_hypertension: 1.25 // 25% higher than baseline
+    }
   },
   bihar: {
     phi0: 0.50,  // strong ASHA influence
     rho1: 0.80,  // high referral from community to primary
     mu0: 0.55,   // slightly higher community worker effectiveness
-    // Other parameters would be set to baseline values
+    regionalLifeExpectancy: 69.2, // 2023 estimate for Bihar
+    // Region-specific disease incidence modifiers
+    diseaseModifiers: {
+      pneumonia: 1.1,           // 10% higher than baseline
+      tuberculosis: 1.4,        // 40% higher than baseline
+      malaria: 0.8,             // 20% lower than baseline
+      diarrhea: 1.4,            // 40% higher than baseline
+      maternal_hemorrhage: 1.2, // 20% higher than baseline
+      neonatal_sepsis: 1.3,     // 30% higher than baseline
+      preterm_birth: 1.2,       // 20% higher than baseline
+      hiv_opportunistic: 0.7,   // 30% lower than baseline
+      infant_pneumonia: 1.2,    // 20% higher than baseline
+      maternal_hypertension: 1.1 // 10% higher than baseline
+    }
   },
+  tanzania: {
+    phi0: 0.40,  // moderate formal care entry probability
+    rho1: 0.65,  // moderate facility referral rate
+    mu0: 0.45,   // moderate CHW resolution probability
+    deltaI: 0.025, // slightly higher informal death rate
+    regionalLifeExpectancy: 66.2, // 2023 estimate
+    // Region-specific disease incidence modifiers
+    diseaseModifiers: {
+      pneumonia: 1.15,          // 15% higher than baseline
+      tuberculosis: 1.2,        // 20% higher than baseline
+      malaria: 1.4,             // 40% higher than baseline
+      diarrhea: 1.25,           // 25% higher than baseline
+      maternal_hemorrhage: 1.3, // 30% higher than baseline
+      neonatal_sepsis: 1.2,     // 20% higher than baseline
+      preterm_birth: 1.15,      // 15% higher than baseline
+      hiv_opportunistic: 1.4,   // 40% higher than baseline
+      infant_pneumonia: 1.3,    // 30% higher than baseline
+      maternal_hypertension: 1.2 // 20% higher than baseline
+    }
+  },
+  nigeria: {
+    phi0: 0.38,  // moderate-low formal care entry 
+    rho1: 0.70,  // good referral systems in some areas
+    mu1: 0.48,   // moderate primary care resolution
+    informalCareRatio: 0.30, // higher untreated ratio due to access barriers
+    regionalLifeExpectancy: 55.2, // 2023 estimate
+    // Region-specific disease incidence modifiers
+    diseaseModifiers: {
+      pneumonia: 1.3,           // 30% higher than baseline
+      tuberculosis: 1.1,        // 10% higher than baseline
+      malaria: 1.5,             // 50% higher than baseline
+      diarrhea: 1.4,            // 40% higher than baseline
+      maternal_hemorrhage: 1.5, // 50% higher than baseline
+      neonatal_sepsis: 1.4,     // 40% higher than baseline
+      preterm_birth: 1.35,      // 35% higher than baseline
+      hiv_opportunistic: 1.3,   // 30% higher than baseline
+      infant_pneumonia: 1.45,   // 45% higher than baseline
+      maternal_hypertension: 1.4 // 40% higher than baseline
+    }
+  },
+  uganda: {
+    phi0: 0.42,  // moderate formal care entry
+    mu0: 0.48,   // moderate CHW resolution
+    rho0: 0.72,  // good CHW referral programs
+    regionalLifeExpectancy: 64.3, // 2023 estimate
+    // Region-specific disease incidence modifiers
+    diseaseModifiers: {
+      pneumonia: 1.2,           // 20% higher than baseline
+      tuberculosis: 1.15,       // 15% higher than baseline
+      malaria: 1.35,            // 35% higher than baseline
+      diarrhea: 1.2,            // 20% higher than baseline
+      maternal_hemorrhage: 1.3, // 30% higher than baseline
+      neonatal_sepsis: 1.25,    // 25% higher than baseline
+      preterm_birth: 1.2,       // 20% higher than baseline
+      hiv_opportunistic: 1.4,   // 40% higher than baseline
+      infant_pneumonia: 1.35,   // 35% higher than baseline
+      maternal_hypertension: 1.25 // 25% higher than baseline
+    }
+  },
+  kenya: {
+    phi0: 0.48,  // relatively good formal care entry
+    mu1: 0.58,   // relatively good primary care resolution
+    rho1: 0.68,  // moderate referral rate
+    regionalLifeExpectancy: 67.5, // 2023 estimate
+    // Region-specific disease incidence modifiers
+    diseaseModifiers: {
+      pneumonia: 1.1,           // 10% higher than baseline
+      tuberculosis: 1.2,        // 20% higher than baseline
+      malaria: 1.2,             // 20% higher than baseline
+      diarrhea: 1.15,           // 15% higher than baseline
+      maternal_hemorrhage: 1.2, // 20% higher than baseline
+      neonatal_sepsis: 1.15,    // 15% higher than baseline
+      preterm_birth: 1.1,       // 10% higher than baseline
+      hiv_opportunistic: 1.4,   // 40% higher than baseline
+      infant_pneumonia: 1.2,    // 20% higher than baseline
+      maternal_hypertension: 1.15 // 15% higher than baseline
+    }
+  },
+  bangladesh: {
+    phi0: 0.44,  // moderate formal care entry
+    mu0: 0.52,   // effective community health workers
+    rho0: 0.76,  // high CHW referral rate
+    regionalLifeExpectancy: 73.4, // 2023 estimate
+    // Region-specific disease incidence modifiers
+    diseaseModifiers: {
+      pneumonia: 1.1,           // 10% higher than baseline
+      tuberculosis: 1.2,        // 20% higher than baseline
+      malaria: 0.7,             // 30% lower than baseline
+      diarrhea: 1.3,            // 30% higher than baseline
+      maternal_hemorrhage: 1.1, // 10% higher than baseline
+      neonatal_sepsis: 1.15,    // 15% higher than baseline
+      preterm_birth: 1.1,       // 10% higher than baseline
+      hiv_opportunistic: 0.6,   // 40% lower than baseline
+      infant_pneumonia: 1.15,   // 15% higher than baseline
+      maternal_hypertension: 1.1 // 10% higher than baseline
+    }
+  },
+  pakistan: {
+    phi0: 0.35,  // lower formal care entry in many regions
+    informalCareRatio: 0.28, // higher untreated ratio
+    deltaI: 0.022, // slightly higher informal death rate
+    mu1: 0.50,   // moderate primary care resolution
+    regionalLifeExpectancy: 67.8, // 2023 estimate
+    // Region-specific disease incidence modifiers
+    diseaseModifiers: {
+      pneumonia: 1.2,           // 20% higher than baseline
+      tuberculosis: 1.3,        // 30% higher than baseline
+      malaria: 0.9,             // 10% lower than baseline
+      diarrhea: 1.35,           // 35% higher than baseline
+      maternal_hemorrhage: 1.3, // 30% higher than baseline
+      neonatal_sepsis: 1.25,    // 25% higher than baseline
+      preterm_birth: 1.2,       // 20% higher than baseline
+      hiv_opportunistic: 0.7,   // 30% lower than baseline
+      infant_pneumonia: 1.3,    // 30% higher than baseline
+      maternal_hypertension: 1.25 // 25% higher than baseline
+    }
+  },
+  uttar_pradesh: {
+    phi0: 0.38,  // moderate formal care entry
+    mu0: 0.45,   // moderate CHW effectiveness
+    rho1: 0.70,  // moderate-high primary care referral
+    informalCareRatio: 0.32, // higher untreated ratio in some areas
+    regionalLifeExpectancy: 67.8, // 2023 estimate for UP
+    // Region-specific disease incidence modifiers
+    diseaseModifiers: {
+      pneumonia: 1.25,          // 25% higher than baseline
+      tuberculosis: 1.35,       // 35% higher than baseline
+      malaria: 0.85,            // 15% lower than baseline
+      diarrhea: 1.4,            // 40% higher than baseline
+      maternal_hemorrhage: 1.35, // 35% higher than baseline
+      neonatal_sepsis: 1.3,     // 30% higher than baseline
+      preterm_birth: 1.25,      // 25% higher than baseline
+      hiv_opportunistic: 0.75,  // 25% lower than baseline
+      infant_pneumonia: 1.35,   // 35% higher than baseline
+      maternal_hypertension: 1.3 // 30% higher than baseline
+    }
+  }
 };
 
 // Predefined disease profiles
@@ -313,24 +495,107 @@ export const diseaseProfiles = {
   tuberculosis: {
     lambda: 0.03,             // low incidence rate
     disabilityWeight: 0.333,  // moderate disability weight
+    meanAgeOfInfection: 35,   // typical age of TB diagnosis
     // Lower mu values unless correct treatment
-    // Other parameters would be set appropriately for TB
+    muI: 0.15,                // low spontaneous resolution
+    deltaI: 0.025,            // higher untreated death risk
   },
   pneumonia: {
     lambda: 0.90,             // very high incidence in under-fives
     disabilityWeight: 0.28,   // moderate disability
-    // Other parameters would be set appropriately for pneumonia
+    meanAgeOfInfection: 3,    // primarily affects young children
+    mu0: 0.55,                // responsive to CHW interventions
+    deltaI: 0.035,            // significant risk if untreated
+    muI: 0.20,                // low spontaneous resolution
   },
   malaria: {
     lambda: 0.40,             // moderate-high incidence
     disabilityWeight: 0.192,  // moderate disability
-    // Other parameters would be set appropriately for malaria
+    meanAgeOfInfection: 9,    // affects children and adults, but children at higher risk
+    deltaI: 0.020,            // moderate death risk
+    muI: 0.25,                // some spontaneous resolution
+    mu0: 0.60,                // responsive to community treatment
   },
   fever: {
     lambda: 0.60,             // moderate-high incidence
     disabilityWeight: 0.10,   // lower disability weight
-    // Other parameters would be set appropriately for fever
+    meanAgeOfInfection: 15,   // affects all ages
+    muI: 0.35,                // higher spontaneous resolution
+    deltaI: 0.008,            // lower death risk
   },
+  diarrhea: {
+    lambda: 1.50,             // very high incidence especially in children
+    disabilityWeight: 0.15,   // moderate disability
+    meanAgeOfInfection: 2,    // primarily affects young children
+    muI: 0.40,                // relatively high spontaneous resolution
+    deltaI: 0.015,            // moderate death risk if untreated
+    mu0: 0.65,                // highly responsive to basic treatment
+  },
+  maternal_hemorrhage: {
+    lambda: 0.05,             // low incidence but serious
+    disabilityWeight: 0.56,   // high disability weight
+    meanAgeOfInfection: 26,   // typical age of childbearing
+    muI: 0.05,                // very low spontaneous resolution
+    deltaI: 0.08,             // high death risk if untreated
+    mu0: 0.20,                // limited effectiveness at CHW level
+    mu1: 0.50,                // moderate resolution at primary care
+    mu2: 0.75,                // good resolution at district hospital
+    rho0: 0.90,               // high referral from CHW
+    rho1: 0.70,               // high referral from primary care
+  },
+  neonatal_sepsis: {
+    lambda: 0.025,            // relatively low incidence
+    disabilityWeight: 0.60,   // high disability weight
+    meanAgeOfInfection: 0.05, // newborns (expressed in years, ~2-3 weeks)
+    muI: 0.05,                // very low spontaneous resolution
+    deltaI: 0.10,             // very high death risk if untreated
+    deltaU: 0.15,             // extremely high death risk if completely untreated
+    mu0: 0.30,                // limited effectiveness at CHW level
+    mu1: 0.60,                // moderate resolution at primary care
+    mu2: 0.80,                // good resolution at district hospital
+  },
+  preterm_birth: {
+    lambda: 0.10,             // moderate incidence
+    disabilityWeight: 0.54,   // high disability weight
+    meanAgeOfInfection: 0,    // at birth
+    muI: 0.10,                // very low spontaneous healthy outcome
+    deltaI: 0.15,             // very high death risk if inadequate care
+    mu0: 0.15,                // very limited effectiveness at CHW level
+    mu1: 0.40,                // limited effectiveness at primary care
+    mu2: 0.70,                // moderate-good at district hospital
+    mu3: 0.85,                // good at tertiary care
+    rho0: 0.95,               // very high referral from CHW
+    rho1: 0.85,               // very high referral from primary
+  },
+  hiv_opportunistic: {
+    lambda: 0.15,             // moderate incidence in HIV+ population
+    disabilityWeight: 0.40,   // moderate-high disability
+    meanAgeOfInfection: 32,   // average age for opportunistic infections
+    muI: 0.08,                // very low spontaneous resolution
+    deltaI: 0.05,             // high death risk if untreated
+    mu0: 0.25,                // limited effectiveness at CHW level
+    mu1: 0.65,                // good resolution at primary with ARVs
+  },
+  infant_pneumonia: {
+    lambda: 1.20,             // very high incidence in infants
+    disabilityWeight: 0.35,   // moderate-high disability
+    meanAgeOfInfection: 0.5,  // infants (6 months)
+    muI: 0.15,                // low spontaneous resolution
+    deltaI: 0.04,             // high death risk in infants
+    deltaU: 0.06,             // very high death risk if completely untreated
+    mu0: 0.50,                // moderate effectiveness at CHW level
+    mu1: 0.70,                // good resolution at primary care
+  },
+  maternal_hypertension: {
+    lambda: 0.08,             // moderate incidence
+    disabilityWeight: 0.35,   // moderate disability
+    meanAgeOfInfection: 27,   // typical age in pregnancy
+    muI: 0.10,                // very low spontaneous resolution
+    deltaI: 0.04,             // high risk if untreated
+    mu0: 0.20,                // limited effectiveness at CHW level
+    mu1: 0.60,                // moderate resolution at primary care
+    rho0: 0.85,               // high referral from CHW
+  }
 };
 
 // AI intervention modifiers
@@ -407,6 +672,7 @@ export const getDefaultParameters = (): ModelParameters => ({
   // Disease characteristics
   lambda: 0.20,
   disabilityWeight: 0.20,
+  meanAgeOfInfection: 30,
   
   // Flow probabilities
   phi0: 0.45,
@@ -447,6 +713,7 @@ export const getDefaultParameters = (): ModelParameters => ({
   },
   aiFixedCost: 0,
   aiVariableCost: 0,
-  discountRate: 0.03,
+  discountRate: 0,
   yearsOfLifeLost: 30,
+  regionalLifeExpectancy: 70,
 }); 

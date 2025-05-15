@@ -34,55 +34,52 @@ const Dashboard: React.FC = () => {
   if (!results) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
-          Welcome to the Health System AI Impact Dashboard
-        </h2>
-        <p className="text-gray-600 dark:text-gray-300 max-w-2xl mb-8">
-          This dashboard helps you model the impact of AI interventions on health outcomes in low and middle-income countries. 
-          Select a geography, disease, and AI interventions from the sidebar, then press "Run Simulation" to begin.
-        </p>
         <div className="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg border border-blue-200 dark:border-blue-700 max-w-2xl">
+          <h2 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-2">
+            Health System AI Impact Dashboard
+          </h2>
+          <p className="text-gray-700 dark:text-gray-300 mb-6">
+            Model the impact of AI on health outcomes in low and middle-income countries
+          </p>
+          
           <h3 className="text-lg font-medium text-blue-800 dark:text-blue-200 mb-2">How to use this dashboard</h3>
-          <ol className="list-decimal list-inside text-left text-gray-700 dark:text-gray-300 space-y-3">
-            <li className="font-medium">Start by understanding the model structure:
+          <ol className="list-decimal list-inside text-left text-gray-700 dark:text-gray-300 space-y-2">
+            <li className="font-medium">Start with the model structure:
               <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                <li>Click on the "Model Equations" tab above to review the stock-and-flow model</li>
-                <li>Understand how patients move through different levels of care</li>
-                <li>Review the DALY calculation that adjusts for mean age of infection</li>
+                <li>View "Model Equations" tab to see how patients move through care levels</li>
+                <li>Note how DALYs adjust for age of infection</li>
               </ul>
             </li>
-            <li className="font-medium">Configure your parameters:
+            <li className="font-medium">Set up your parameters:
               <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                <li>Select a geography and disease from the sidebar</li>
-                <li>Click on "Configure Parameters" to adjust any specific values</li>
-                <li>Note that disease incidence rates are adjusted by region</li>
+                <li>Choose geography and disease in sidebar</li>
+                <li>Click "Configure Parameters" for custom values</li>
               </ul>
             </li>
-            <li className="font-medium">Run your baseline scenario:
+            <li className="font-medium">Run baseline scenario:
               <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                <li>Make sure no AI interventions are active (all toggles off)</li>
-                <li>Click "Run Simulation" to generate baseline results</li>
-                <li>Click "Set as Baseline" to save this scenario for comparison</li>
+                <li>Turn off all AI interventions</li>
+                <li>Click "Run Simulation"</li>
+                <li>Click "Set as Baseline"</li>
               </ul>
             </li>
-            <li className="font-medium">Analyze AI interventions:
+            <li className="font-medium">Test AI interventions:
               <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                <li>Toggle one or more AI interventions on from the sidebar</li>
-                <li>Run a new simulation to compare against the baseline</li>
-                <li>Review DALY and ICER calculations in the results</li>
+                <li>Turn on one or more AI options</li>
+                <li>Run a new simulation</li>
+                <li>Review DALY and ICER results</li>
               </ul>
             </li>
-            <li className="font-medium">Save and compare scenarios:
+            <li className="font-medium">Compare scenarios:
               <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                <li>Use "Save as Scenario" to preserve your results</li>
-                <li>Create multiple scenarios with different parameters or interventions</li>
-                <li>Compare outcomes across scenarios</li>
+                <li>"Save as Scenario" to store results</li>
+                <li>Create different intervention combinations</li>
               </ul>
             </li>
           </ol>
           <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-800 rounded">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">Important Workflow:</p>
-            <p className="text-sm text-yellow-700 dark:text-yellow-300">Always run a baseline scenario first (without interventions), then set it as baseline before testing AI interventions to properly calculate DALYs and ICER values.</p>
+            <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">Important:</p>
+            <p className="text-sm text-yellow-700 dark:text-yellow-300">Always run a baseline first, then test AI interventions to calculate ICER values correctly.</p>
           </div>
         </div>
       </div>
@@ -239,11 +236,15 @@ const Dashboard: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
           <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Cost-Effectiveness</h3>
           <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">
-            {results.icer !== undefined ? `$${formatNumber(results.icer)}/DALY` : 'N/A'}
+            {results.icer === undefined ? 'N/A' : 
+              results.icer === 1 ? 'DOMINANT' :
+              `$${formatNumber(results.icer)}/DALY`}
           </p>
           {results.icer !== undefined && (
             <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">
-              {results.icer < 3 * (parameters.perDiemCosts.L1 * 365) ? 'Cost-effective' : 'Not cost-effective'}
+              {results.icer === 1 ? 
+                'Both saves money and improves health' : 
+                results.icer < 3 * (parameters.perDiemCosts.L1 * 365) ? 'Cost-effective' : 'Not cost-effective'}
             </p>
           )}
         </div>
@@ -282,7 +283,11 @@ const Dashboard: React.FC = () => {
             <p>
               Compared to the baseline scenario, this intervention {deathsAverted > 0 ? 'averts' : 'adds'} <strong>{formatNumber(Math.abs(deathsAverted))}</strong> deaths
               ({Math.abs(percentDeathsReduced).toFixed(1)}%) and {costDifference < 0 ? 'saves' : 'costs'} <strong>${formatNumber(Math.abs(costDifference))}</strong>.
-              {results.icer !== undefined && ` This represents an incremental cost-effectiveness ratio of $${formatNumber(results.icer)} per DALY.`}
+              {results.icer !== undefined && (
+                results.icer === 1 ?
+                ` This intervention is dominant (both saves money and improves health outcomes).` :
+                ` This represents an incremental cost-effectiveness ratio of $${formatNumber(results.icer)} per DALY.`
+              )}
             </p>
           )}
           

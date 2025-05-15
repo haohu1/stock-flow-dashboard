@@ -156,7 +156,7 @@ const EquationExplainer: React.FC = () => {
         { symbol: 'DALY_i', name: 'Intervention DALYs', value: 'From simulation' },
         { symbol: 'DALY_0', name: 'Baseline DALYs', value: 'From baseline' },
       ],
-      example: 'A lower ICER value indicates a more cost-effective intervention. Values under 1× GDP per capita are considered highly cost-effective.'
+      example: 'A lower ICER value indicates a more cost-effective intervention. When both costs are reduced and health is improved, the intervention is considered "dominant" and displayed as such.'
     },
   ];
 

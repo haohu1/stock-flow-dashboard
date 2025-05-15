@@ -292,6 +292,16 @@ export const calculateICER = (
   const costDiff = intervention.totalCost - baseline.totalCost;
   const dalyDiff = baseline.dalys - intervention.dalys; // Negative DALYs = health improvement
   
+  // Add debugging for DALY values
+  console.log(`ICER calculation: Cost diff: ${costDiff}, DALY diff: ${dalyDiff}`);
+  console.log(`Baseline DALYs: ${baseline.dalys}, Intervention DALYs: ${intervention.dalys}`);
+  
+  // If both costs are reduced and DALYs are reduced, this is a dominant intervention
+  // Return a small positive value rather than a negative value
+  if (costDiff < 0 && dalyDiff > 0) {
+    return 1; // Dominant (both better and cheaper) - return symbolic value
+  }
+  
   return dalyDiff !== 0 ? costDiff / dalyDiff : Infinity;
 };
 

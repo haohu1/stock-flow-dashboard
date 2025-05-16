@@ -365,196 +365,66 @@ export const geographyDefaults = {
     phi0: 0.45,  // formal care entry probability
     rho1: 0.75,  // facility referral rate
     mu0: 0.50,   // CHW resolution probability
-    regionalLifeExpectancy: 67.5, // 2023 estimate
-    // Region-specific disease incidence modifiers
-    diseaseModifiers: {
-      pneumonia: 1.2,           // 20% higher than baseline
-      tuberculosis: 1.3,        // 30% higher than baseline
-      malaria: 1.1,             // 10% higher than baseline
-      diarrhea: 1.3,            // 30% higher than baseline
-      maternal_hemorrhage: 1.4, // 40% higher than baseline
-      neonatal_sepsis: 1.2,     // 20% higher than baseline
-      preterm_birth: 1.3,       // 30% higher than baseline
-      hiv_opportunistic: 1.5,   // 50% higher than baseline
-      infant_pneumonia: 1.4,    // 40% higher than baseline
-      maternal_hypertension: 1.3 // 30% higher than baseline
-    }
+    regionalLifeExpectancy: 67.5 // 2023 estimate
   },
   malawi: {
     phi0: 0.37,  // lower formal care entry due to travel times
     rho2: 0.65,  // higher referral rates in some areas
     mu1: 0.45,   // lower primary care resolution
     informalCareRatio: 0.25, // higher untreated ratio due to access barriers
-    regionalLifeExpectancy: 65.1, // 2023 estimate
-    // Region-specific disease incidence modifiers
-    diseaseModifiers: {
-      pneumonia: 1.4,           // 40% higher than baseline
-      tuberculosis: 1.2,        // 20% higher than baseline
-      malaria: 1.5,             // 50% higher than baseline
-      diarrhea: 1.2,            // 20% higher than baseline
-      maternal_hemorrhage: 1.3, // 30% higher than baseline
-      neonatal_sepsis: 1.35,    // 35% higher than baseline
-      preterm_birth: 1.25,      // 25% higher than baseline
-      hiv_opportunistic: 1.6,   // 60% higher than baseline
-      infant_pneumonia: 1.5,    // 50% higher than baseline
-      maternal_hypertension: 1.25 // 25% higher than baseline
-    }
+    regionalLifeExpectancy: 65.1 // 2023 estimate
   },
   bihar: {
     phi0: 0.50,  // strong ASHA influence
     rho1: 0.80,  // high referral from community to primary
     mu0: 0.55,   // slightly higher community worker effectiveness
-    regionalLifeExpectancy: 69.2, // 2023 estimate for Bihar
-    // Region-specific disease incidence modifiers
-    diseaseModifiers: {
-      pneumonia: 1.1,           // 10% higher than baseline
-      tuberculosis: 1.4,        // 40% higher than baseline
-      malaria: 0.8,             // 20% lower than baseline
-      diarrhea: 1.4,            // 40% higher than baseline
-      maternal_hemorrhage: 1.2, // 20% higher than baseline
-      neonatal_sepsis: 1.3,     // 30% higher than baseline
-      preterm_birth: 1.2,       // 20% higher than baseline
-      hiv_opportunistic: 0.7,   // 30% lower than baseline
-      infant_pneumonia: 1.2,    // 20% higher than baseline
-      maternal_hypertension: 1.1 // 10% higher than baseline
-    }
+    regionalLifeExpectancy: 69.2 // 2023 estimate for Bihar
   },
   tanzania: {
     phi0: 0.40,  // moderate formal care entry probability
     rho1: 0.65,  // moderate facility referral rate
     mu0: 0.45,   // moderate CHW resolution probability
     deltaI: 0.025, // slightly higher informal death rate
-    regionalLifeExpectancy: 66.2, // 2023 estimate
-    // Region-specific disease incidence modifiers
-    diseaseModifiers: {
-      pneumonia: 1.15,          // 15% higher than baseline
-      tuberculosis: 1.2,        // 20% higher than baseline
-      malaria: 1.4,             // 40% higher than baseline
-      diarrhea: 1.25,           // 25% higher than baseline
-      maternal_hemorrhage: 1.3, // 30% higher than baseline
-      neonatal_sepsis: 1.2,     // 20% higher than baseline
-      preterm_birth: 1.15,      // 15% higher than baseline
-      hiv_opportunistic: 1.4,   // 40% higher than baseline
-      infant_pneumonia: 1.3,    // 30% higher than baseline
-      maternal_hypertension: 1.2 // 20% higher than baseline
-    }
+    regionalLifeExpectancy: 66.2 // 2023 estimate
   },
   nigeria: {
     phi0: 0.38,  // moderate-low formal care entry 
     rho1: 0.70,  // good referral systems in some areas
     mu1: 0.48,   // moderate primary care resolution
     informalCareRatio: 0.30, // higher untreated ratio due to access barriers
-    regionalLifeExpectancy: 55.2, // 2023 estimate
-    // Region-specific disease incidence modifiers
-    diseaseModifiers: {
-      pneumonia: 1.3,           // 30% higher than baseline
-      tuberculosis: 1.1,        // 10% higher than baseline
-      malaria: 1.5,             // 50% higher than baseline
-      diarrhea: 1.4,            // 40% higher than baseline
-      maternal_hemorrhage: 1.5, // 50% higher than baseline
-      neonatal_sepsis: 1.4,     // 40% higher than baseline
-      preterm_birth: 1.35,      // 35% higher than baseline
-      hiv_opportunistic: 1.3,   // 30% higher than baseline
-      infant_pneumonia: 1.45,   // 45% higher than baseline
-      maternal_hypertension: 1.4 // 40% higher than baseline
-    }
+    regionalLifeExpectancy: 55.2 // 2023 estimate
   },
   uganda: {
     phi0: 0.42,  // moderate formal care entry
     mu0: 0.48,   // moderate CHW resolution
     rho0: 0.72,  // good CHW referral programs
-    regionalLifeExpectancy: 64.3, // 2023 estimate
-    // Region-specific disease incidence modifiers
-    diseaseModifiers: {
-      pneumonia: 1.2,           // 20% higher than baseline
-      tuberculosis: 1.15,       // 15% higher than baseline
-      malaria: 1.35,            // 35% higher than baseline
-      diarrhea: 1.2,            // 20% higher than baseline
-      maternal_hemorrhage: 1.3, // 30% higher than baseline
-      neonatal_sepsis: 1.25,    // 25% higher than baseline
-      preterm_birth: 1.2,       // 20% higher than baseline
-      hiv_opportunistic: 1.4,   // 40% higher than baseline
-      infant_pneumonia: 1.35,   // 35% higher than baseline
-      maternal_hypertension: 1.25 // 25% higher than baseline
-    }
+    regionalLifeExpectancy: 64.3 // 2023 estimate
   },
   kenya: {
     phi0: 0.48,  // relatively good formal care entry
     mu1: 0.58,   // relatively good primary care resolution
     rho1: 0.68,  // moderate referral rate
-    regionalLifeExpectancy: 67.5, // 2023 estimate
-    // Region-specific disease incidence modifiers
-    diseaseModifiers: {
-      pneumonia: 1.1,           // 10% higher than baseline
-      tuberculosis: 1.2,        // 20% higher than baseline
-      malaria: 1.2,             // 20% higher than baseline
-      diarrhea: 1.15,           // 15% higher than baseline
-      maternal_hemorrhage: 1.2, // 20% higher than baseline
-      neonatal_sepsis: 1.15,    // 15% higher than baseline
-      preterm_birth: 1.1,       // 10% higher than baseline
-      hiv_opportunistic: 1.4,   // 40% higher than baseline
-      infant_pneumonia: 1.2,    // 20% higher than baseline
-      maternal_hypertension: 1.15 // 15% higher than baseline
-    }
+    regionalLifeExpectancy: 67.5 // 2023 estimate
   },
   bangladesh: {
     phi0: 0.44,  // moderate formal care entry
     mu0: 0.52,   // effective community health workers
     rho0: 0.76,  // high CHW referral rate
-    regionalLifeExpectancy: 73.4, // 2023 estimate
-    // Region-specific disease incidence modifiers
-    diseaseModifiers: {
-      pneumonia: 1.1,           // 10% higher than baseline
-      tuberculosis: 1.2,        // 20% higher than baseline
-      malaria: 0.7,             // 30% lower than baseline
-      diarrhea: 1.3,            // 30% higher than baseline
-      maternal_hemorrhage: 1.1, // 10% higher than baseline
-      neonatal_sepsis: 1.15,    // 15% higher than baseline
-      preterm_birth: 1.1,       // 10% higher than baseline
-      hiv_opportunistic: 0.6,   // 40% lower than baseline
-      infant_pneumonia: 1.15,   // 15% higher than baseline
-      maternal_hypertension: 1.1 // 10% higher than baseline
-    }
+    regionalLifeExpectancy: 73.4 // 2023 estimate
   },
   pakistan: {
     phi0: 0.35,  // lower formal care entry in many regions
     informalCareRatio: 0.28, // higher untreated ratio
     deltaI: 0.022, // slightly higher informal death rate
     mu1: 0.50,   // moderate primary care resolution
-    regionalLifeExpectancy: 67.8, // 2023 estimate
-    // Region-specific disease incidence modifiers
-    diseaseModifiers: {
-      pneumonia: 1.2,           // 20% higher than baseline
-      tuberculosis: 1.3,        // 30% higher than baseline
-      malaria: 0.9,             // 10% lower than baseline
-      diarrhea: 1.35,           // 35% higher than baseline
-      maternal_hemorrhage: 1.3, // 30% higher than baseline
-      neonatal_sepsis: 1.25,    // 25% higher than baseline
-      preterm_birth: 1.2,       // 20% higher than baseline
-      hiv_opportunistic: 0.7,   // 30% lower than baseline
-      infant_pneumonia: 1.3,    // 30% higher than baseline
-      maternal_hypertension: 1.25 // 25% higher than baseline
-    }
+    regionalLifeExpectancy: 67.8 // 2023 estimate
   },
   uttar_pradesh: {
     phi0: 0.38,  // moderate formal care entry
     mu0: 0.45,   // moderate CHW effectiveness
     rho1: 0.70,  // moderate-high primary care referral
     informalCareRatio: 0.32, // higher untreated ratio in some areas
-    regionalLifeExpectancy: 67.8, // 2023 estimate for UP
-    // Region-specific disease incidence modifiers
-    diseaseModifiers: {
-      pneumonia: 1.25,          // 25% higher than baseline
-      tuberculosis: 1.35,       // 35% higher than baseline
-      malaria: 0.85,            // 15% lower than baseline
-      diarrhea: 1.4,            // 40% higher than baseline
-      maternal_hemorrhage: 1.35, // 35% higher than baseline
-      neonatal_sepsis: 1.3,     // 30% higher than baseline
-      preterm_birth: 1.25,      // 25% higher than baseline
-      hiv_opportunistic: 0.75,  // 25% lower than baseline
-      infant_pneumonia: 1.35,   // 35% higher than baseline
-      maternal_hypertension: 1.3 // 30% higher than baseline
-    }
+    regionalLifeExpectancy: 67.8 // 2023 estimate for UP
   }
 };
 

@@ -7,16 +7,17 @@ import ParametersPanel from '../components/ParametersPanel';
 import EquationExplainer from '../components/EquationExplainer';
 import ScenarioManager from '../components/ScenarioManager';
 import AIInterventionManager from '../components/AIInterventionManager';
+import BubbleChartView from '../components/BubbleChartView';
 import { useAtom } from 'jotai';
 import { simulationResultsAtom, aiInterventionsAtom } from '../lib/store';
 
-type TabType = 'dashboard' | 'scenarios' | 'interventions' | 'sensitivity' | 'parameters' | 'equations';
+type TabType = 'dashboard' | 'scenarios' | 'interventions' | 'sensitivity' | 'parameters' | 'equations' | 'comparison';
 
 export default function Home() {
   const [results] = useAtom(simulationResultsAtom);
   const [aiInterventions] = useAtom(aiInterventionsAtom);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [preSimulationTab, setPreSimulationTab] = useState<'dashboard' | 'parameters' | 'equations' | 'interventions'>('dashboard');
+  const [preSimulationTab, setPreSimulationTab] = useState<'dashboard' | 'scenarios' | 'parameters' | 'equations' | 'interventions'>('dashboard');
   
   // Count active AI interventions
   const activeInterventionsCount = Object.values(aiInterventions).filter(Boolean).length;
@@ -41,8 +42,11 @@ export default function Home() {
   // Listen for compare-scenarios event
   useEffect(() => {
     const handleCompareScenarios = () => {
-      // This would open a scenario comparison view
-      setActiveTab('scenarios');
+      if (results) {
+        setActiveTab('scenarios');
+      } else {
+        setPreSimulationTab('scenarios');
+      }
     };
     
     window.addEventListener('compare-scenarios', handleCompareScenarios);
@@ -50,7 +54,7 @@ export default function Home() {
     return () => {
       window.removeEventListener('compare-scenarios', handleCompareScenarios);
     };
-  }, []);
+  }, [results]);
   
   // Listen for view-equations event
   useEffect(() => {
@@ -86,6 +90,23 @@ export default function Home() {
     };
   }, [results]);
   
+  // Listen for view-dashboard event
+  useEffect(() => {
+    const handleViewDashboard = () => {
+      if (results) {
+        setActiveTab('dashboard');
+      } else {
+        setPreSimulationTab('dashboard');
+      }
+    };
+    
+    window.addEventListener('view-dashboard', handleViewDashboard);
+    
+    return () => {
+      window.removeEventListener('view-dashboard', handleViewDashboard);
+    };
+  }, [results]);
+  
   const tabContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -100,6 +121,8 @@ export default function Home() {
         return <ParametersPanel />;
       case 'equations':
         return <EquationExplainer />;
+      case 'comparison':
+        return <BubbleChartView />;
       default:
         return <Dashboard />;
     }
@@ -107,6 +130,8 @@ export default function Home() {
   
   const preSimulationContent = () => {
     switch(preSimulationTab) {
+      case 'scenarios':
+        return <ScenarioManager />;
       case 'parameters':
         return <ParametersPanel />;
       case 'equations':
@@ -152,6 +177,7 @@ export default function Home() {
                     { id: 'sensitivity', name: 'Sensitivity' },
                     { id: 'parameters', name: 'Parameters' },
                     { id: 'equations', name: 'Equations' },
+                    { id: 'comparison', name: 'Bubble Chart' },
                   ].map((tab) => (
                     <button
                       key={tab.id}
@@ -178,13 +204,14 @@ export default function Home() {
                 <nav className="-mb-px flex space-x-8">
                   {[
                     { id: 'dashboard', name: 'Dashboard' },
+                    { id: 'scenarios', name: 'Scenarios' },
                     { id: 'parameters', name: 'Configure Parameters' },
                     { id: 'interventions', name: 'Configure AI Interventions' },
                     { id: 'equations', name: 'Model Equations' },
                   ].map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={() => setPreSimulationTab(tab.id as 'dashboard' | 'parameters' | 'equations' | 'interventions')}
+                      onClick={() => setPreSimulationTab(tab.id as 'dashboard' | 'scenarios' | 'parameters' | 'equations' | 'interventions')}
                       className={`
                         border-b-2 py-4 px-1 text-sm font-medium
                         ${preSimulationTab === tab.id 

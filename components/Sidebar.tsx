@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAtom } from 'jotai';
 import {
   selectedGeographyAtom,
   selectedDiseaseAtom,
+  selectedDiseasesAtom,
   populationSizeAtom,
   aiInterventionsAtom,
   runSimulationAtom,
@@ -17,6 +18,7 @@ import {
 const Sidebar: React.FC = () => {
   const [selectedGeography, setSelectedGeography] = useAtom(selectedGeographyAtom);
   const [selectedDisease, setSelectedDisease] = useAtom(selectedDiseaseAtom);
+  const [selectedDiseases, setSelectedDiseases] = useAtom(selectedDiseasesAtom);
   const [population, setPopulation] = useAtom(populationSizeAtom);
   const [aiInterventions, setAIInterventions] = useAtom(aiInterventionsAtom);
   const [, runSimulation] = useAtom(runSimulationAtom);
@@ -26,13 +28,109 @@ const Sidebar: React.FC = () => {
   const [selectedScenarioId] = useAtom(selectedScenarioIdAtom);
   const [, loadScenario] = useAtom(loadScenarioAtom);
   const [results] = useAtom(simulationResultsAtom);
+  
+  // Local state for disease checkboxes
+  const [diseaseOptions, setDiseaseOptions] = useState<{
+    id: string;
+    name: string;
+    group: string;
+    checked: boolean;
+  }[]>([]);
+
+  // Initialize disease options
+  useEffect(() => {
+    const options = [
+      // Infectious Diseases
+      { id: 'tuberculosis', name: 'Tuberculosis', group: 'Infectious Diseases', checked: selectedDiseases.includes('tuberculosis') },
+      { id: 'pneumonia', name: 'Pneumonia', group: 'Infectious Diseases', checked: selectedDiseases.includes('pneumonia') },
+      { id: 'infant_pneumonia', name: 'Infant Pneumonia', group: 'Infectious Diseases', checked: selectedDiseases.includes('infant_pneumonia') },
+      { id: 'malaria', name: 'Malaria', group: 'Infectious Diseases', checked: selectedDiseases.includes('malaria') },
+      { id: 'fever', name: 'Fever of Unknown Origin', group: 'Infectious Diseases', checked: selectedDiseases.includes('fever') },
+      { id: 'diarrhea', name: 'Diarrheal Disease', group: 'Infectious Diseases', checked: selectedDiseases.includes('diarrhea') },
+      { id: 'hiv_opportunistic', name: 'HIV Opportunistic Infections', group: 'Infectious Diseases', checked: selectedDiseases.includes('hiv_opportunistic') },
+      { id: 'urti', name: 'Upper Respiratory Tract Infection (URTI)', group: 'Infectious Diseases', checked: selectedDiseases.includes('urti') },
+      
+      // Maternal & Neonatal
+      { id: 'maternal_hemorrhage', name: 'Maternal Hemorrhage', group: 'Maternal & Neonatal', checked: selectedDiseases.includes('maternal_hemorrhage') },
+      { id: 'maternal_hypertension', name: 'Maternal Hypertension', group: 'Maternal & Neonatal', checked: selectedDiseases.includes('maternal_hypertension') },
+      { id: 'neonatal_sepsis', name: 'Neonatal Sepsis', group: 'Maternal & Neonatal', checked: selectedDiseases.includes('neonatal_sepsis') },
+      { id: 'preterm_birth', name: 'Preterm Birth Complications', group: 'Maternal & Neonatal', checked: selectedDiseases.includes('preterm_birth') },
+      { id: 'high_risk_pregnancy_low_anc', name: 'High-Risk Pregnancy (Low ANC)', group: 'Maternal & Neonatal', checked: selectedDiseases.includes('high_risk_pregnancy_low_anc') },
+      
+      // General & Chronic Conditions
+      { id: 'anemia', name: 'Anemia', group: 'General & Chronic Conditions', checked: selectedDiseases.includes('anemia') },
+      { id: 'hiv_management_chronic', name: 'HIV Management (Chronic)', group: 'General & Chronic Conditions', checked: selectedDiseases.includes('hiv_management_chronic') },
+      { id: 'congestive_heart_failure', name: 'Congestive Heart Failure', group: 'General & Chronic Conditions', checked: selectedDiseases.includes('congestive_heart_failure') },
+    ];
+    
+    setDiseaseOptions(options);
+  }, [selectedDiseases]);
 
   const handleGeographyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedGeography(e.target.value);
   };
 
   const handleDiseaseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedDisease(e.target.value);
+    const newPrimaryDisease = e.target.value;
+    
+    // Set the primary disease
+    setSelectedDisease(newPrimaryDisease);
+    
+    // Update the selectedDiseases array
+    if (!selectedDiseases.includes(newPrimaryDisease)) {
+      // If not already included, add it to the array
+      setSelectedDiseases([newPrimaryDisease, ...selectedDiseases]);
+      
+      // Update checkboxes state to reflect the new disease
+      setDiseaseOptions(
+        diseaseOptions.map(option => 
+          option.id === newPrimaryDisease
+            ? { ...option, checked: true }
+            : option
+        )
+      );
+    } else {
+      // If already in the array, reorder it to be first (make it primary)
+      const reorderedDiseases = [
+        newPrimaryDisease,
+        ...selectedDiseases.filter(d => d !== newPrimaryDisease)
+      ];
+      setSelectedDiseases(reorderedDiseases);
+    }
+    
+    // Force display to switch to this disease in the dashboard
+    window.dispatchEvent(new CustomEvent('primary-disease-changed', { detail: { disease: newPrimaryDisease } }));
+  };
+
+  const handleDiseaseToggle = (diseaseId: string, isChecked: boolean) => {
+    let newSelectedDiseases: string[];
+    
+    if (isChecked) {
+      // Add disease to selection if not already included
+      newSelectedDiseases = selectedDiseases.includes(diseaseId)
+        ? selectedDiseases
+        : [...selectedDiseases, diseaseId];
+    } else {
+      // Remove disease from selection
+      newSelectedDiseases = selectedDiseases.filter(d => d !== diseaseId);
+    }
+    
+    // Update selected diseases
+    setSelectedDiseases(newSelectedDiseases);
+    
+    // Also update the main selected disease if needed
+    if (newSelectedDiseases.length > 0 && selectedDisease !== newSelectedDiseases[0]) {
+      setSelectedDisease(newSelectedDiseases[0]);
+    }
+    
+    // Update checkboxes state
+    setDiseaseOptions(
+      diseaseOptions.map(option => 
+        option.id === diseaseId
+          ? { ...option, checked: isChecked }
+          : option
+      )
+    );
   };
 
   const handlePopulationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,7 +145,10 @@ const Sidebar: React.FC = () => {
   };
 
   const handleRunSimulation = () => {
+    // Now we always use runSimulation which handles both single and multiple disease cases
     runSimulation();
+    // Dispatch a custom event to switch to the dashboard tab
+    window.dispatchEvent(new CustomEvent('view-dashboard'));
   };
 
   const handleSetBaseline = () => {
@@ -77,6 +178,15 @@ const Sidebar: React.FC = () => {
     return name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, ' ');
   };
 
+  // Group disease options by category
+  const groupedDiseaseOptions = diseaseOptions.reduce((acc, option) => {
+    if (!acc[option.group]) {
+      acc[option.group] = [];
+    }
+    acc[option.group].push(option);
+    return acc;
+  }, {} as Record<string, typeof diseaseOptions>);
+
   return (
     <aside className="w-64 bg-white dark:bg-gray-800 p-4 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
       <h2 className="text-xl font-bold mb-6 text-gray-800 dark:text-white">Model Settings</h2>
@@ -85,9 +195,6 @@ const Sidebar: React.FC = () => {
         <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Geography
         </label>
-        <div className="text-sm font-medium mb-2 text-indigo-600 dark:text-indigo-400">
-          {selectedGeography.charAt(0).toUpperCase() + selectedGeography.slice(1)}
-        </div>
         <select
           value={selectedGeography}
           onChange={handleGeographyChange}
@@ -108,11 +215,8 @@ const Sidebar: React.FC = () => {
 
       <div className="mb-6">
         <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Disease
+          Primary Disease
         </label>
-        <div className="text-sm font-medium mb-2 text-indigo-600 dark:text-indigo-400">
-          {formatDiseaseName(selectedDisease)}
-        </div>
         <select
           value={selectedDisease}
           onChange={handleDiseaseChange}
@@ -141,6 +245,37 @@ const Sidebar: React.FC = () => {
             <option value="congestive_heart_failure">Congestive Heart Failure</option>
           </optgroup>
         </select>
+      </div>
+
+      <div className="mb-6">
+        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Compare Multiple Diseases
+        </label>
+        <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md max-h-48 overflow-y-auto">
+          {Object.entries(groupedDiseaseOptions).map(([group, options]) => (
+            <div key={group} className="mb-2">
+              <h4 className="text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">{group}</h4>
+              <div className="space-y-1">
+                {options.map(option => (
+                  <label key={option.id} className="flex items-center text-sm">
+                    <input
+                      type="checkbox"
+                      checked={option.checked}
+                      onChange={(e) => handleDiseaseToggle(option.id, e.target.checked)}
+                      className="mr-2"
+                    />
+                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                      {option.name}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-1 text-xs text-gray-500">
+          Selected: {selectedDiseases.length} disease{selectedDiseases.length !== 1 ? 's' : ''}
+        </div>
       </div>
 
       <div className="mb-6">
@@ -237,29 +372,8 @@ const Sidebar: React.FC = () => {
 
       <div className="mb-6 space-y-2">
         <button 
-          onClick={handleViewParameters}
-          className="btn bg-blue-500 text-white hover:bg-blue-600 w-full text-sm"
-        >
-          Configure Parameters
-        </button>
-        
-        <button 
-          onClick={() => window.dispatchEvent(new CustomEvent('view-interventions'))}
-          className="btn bg-green-500 text-white hover:bg-green-600 w-full text-sm"
-        >
-          Configure AI Interventions
-        </button>
-        
-        <button 
-          onClick={handleViewEquations}
-          className="btn bg-purple-500 text-white hover:bg-purple-600 w-full text-sm"
-        >
-          View Model Structure
-        </button>
-        
-        <button 
           onClick={handleRunSimulation}
-          className="btn btn-primary w-full"
+          className="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg w-full text-lg shadow-lg transition-all duration-200 transform hover:scale-105"
         >
           Run Simulation
         </button>
@@ -268,14 +382,13 @@ const Sidebar: React.FC = () => {
           <>
             <button 
               onClick={handleSetBaseline}
-              className="btn btn-secondary w-full"
+              className="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg w-full mt-2"
             >
               Set as Baseline
             </button>
-            
             <button 
               onClick={handleAddScenario}
-              className="btn bg-indigo-500 text-white hover:bg-indigo-600 w-full"
+              className="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg w-full mt-2"
             >
               Save as Scenario
             </button>
@@ -285,17 +398,16 @@ const Sidebar: React.FC = () => {
 
       {scenarios.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-md font-semibold mb-3 text-gray-700 dark:text-gray-300">Saved Scenarios</h3>
-          
-          <div className="space-y-2">
+          <h3 className="text-md font-semibold mb-2 text-gray-700 dark:text-gray-300">Saved Scenarios</h3>
+          <div className="space-y-1 max-h-40 overflow-y-auto">
             {scenarios.map((scenario) => (
               <button
                 key={scenario.id}
                 onClick={() => handleLoadScenario(scenario.id)}
-                className={`w-full px-3 py-2 text-left rounded-md text-sm ${
-                  selectedScenarioId === scenario.id 
-                    ? 'bg-blue-100 dark:bg-blue-900 border-l-4 border-blue-500' 
-                    : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
+                className={`text-left p-2 text-sm rounded w-full ${
+                  selectedScenarioId === scenario.id
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200'
+                    : 'hover:bg-gray-100 text-gray-700 dark:hover:bg-gray-700 dark:text-gray-300'
                 }`}
               >
                 {scenario.name}

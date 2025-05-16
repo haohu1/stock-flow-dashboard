@@ -1,11 +1,12 @@
 import React from 'react';
 import { useAtom } from 'jotai';
-import { derivedParametersAtom } from '../lib/store';
+import { derivedParametersAtom, populationSizeAtom } from '../lib/store';
 import { formatDecimal } from '../lib/utils';
 // No direct import - will use a standard image tag with public path
 
 const EquationExplainer: React.FC = () => {
   const [params] = useAtom(derivedParametersAtom);
+  const [population] = useAtom(populationSizeAtom);
 
   const equations = [
     {
@@ -14,9 +15,9 @@ const EquationExplainer: React.FC = () => {
       explanation: 'New cases entering the system each week based on annual incidence rate.',
       variables: [
         { symbol: 'λ', name: 'Annual Incidence Rate', value: params.lambda },
-        { symbol: 'Pop', name: 'Population', value: 'User defined' },
+        { symbol: 'Pop', name: 'Population', value: population.toLocaleString() },
       ],
-      example: `For a population of 300,000 with λ = ${formatDecimal(params.lambda, 2)}, approximately ${formatDecimal((params.lambda * 300000) / 52, 0)} new cases per week.`
+      example: `For a population of ${population.toLocaleString()} with λ = ${formatDecimal(params.lambda, 2)}, approximately ${formatDecimal((params.lambda * population) / 52, 0)} new cases per week.`
     },
     {
       title: 'Initial Care Seeking',

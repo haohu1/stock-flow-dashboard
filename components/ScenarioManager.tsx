@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAtom } from 'jotai';
 import {
   scenariosAtom,
@@ -10,6 +10,7 @@ import {
   Scenario
 } from '../lib/store';
 import { formatNumber } from '../lib/utils';
+import BubbleChartView from './BubbleChartView';
 
 const ScenarioManager: React.FC = () => {
   const [scenarios, setScenarios] = useAtom(scenariosAtom);
@@ -22,6 +23,10 @@ const ScenarioManager: React.FC = () => {
   const [editingName, setEditingName] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [showDetails, setShowDetails] = useState<string | null>(null);
+  const [showBubbleChart, setShowBubbleChart] = useState(false);
+  
+  // Ref for file input
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Function to get currently selected scenario
   const getSelectedScenario = () => {
@@ -89,28 +94,154 @@ const ScenarioManager: React.FC = () => {
     setSelectedScenarioId(newScenario.id);
   };
   
+  const handleSaveFeasibility = (scenarioId: string, feasibility: number) => {
+    const scenario = scenarios.find(s => s.id === scenarioId);
+    if (scenario) {
+      const updatedScenario = { ...scenario, feasibility };
+      updateScenario(updatedScenario);
+    }
+  };
+  
+  // Export scenarios to JSON file
+  const exportScenarios = () => {
+    // Allow user to choose between exporting all scenarios or just the selected one
+    const exportType = window.confirm(
+      "Do you want to export all scenarios? Click OK to export all, or Cancel to export only the selected scenario."
+    ) ? "all" : "selected";
+    
+    let scenariosToExport: Scenario[] = [];
+    let filename = "";
+    
+    if (exportType === "all") {
+      scenariosToExport = scenarios;
+      filename = `all-scenarios-${new Date().toISOString().split('T')[0]}.json`;
+    } else {
+      const selectedScenario = getSelectedScenario();
+      if (!selectedScenario) {
+        alert("Please select a scenario to export.");
+        return;
+      }
+      scenariosToExport = [selectedScenario];
+      filename = `scenario-${selectedScenario.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+    }
+    
+    const blob = new Blob([JSON.stringify(scenariosToExport, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  
+  // Import scenarios from JSON file
+  const importScenarios = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const importedData = JSON.parse(content);
+        
+        // Check if it's an array of scenarios or a single scenario
+        const importedScenarios: Scenario[] = Array.isArray(importedData) 
+          ? importedData 
+          : [importedData];
+        
+        // Validate that these are actual scenario objects
+        const validScenarios = importedScenarios.filter(s => {
+          return s && typeof s === 'object' && 
+                s.parameters && 
+                s.aiInterventions && 
+                typeof s.name === 'string';
+        });
+        
+        if (validScenarios.length === 0) {
+          alert('No valid scenarios found in the imported file.');
+          return;
+        }
+        
+        // Generate new IDs for imported scenarios to avoid conflicts
+        const timestampBase = Date.now();
+        const updatedScenarios = validScenarios.map((s, index) => ({
+          ...s,
+          id: `imported-${timestampBase + index}`
+        }));
+        
+        // Ask user whether to replace or append
+        const replaceExisting = scenarios.length > 0 && 
+          window.confirm('Do you want to replace existing scenarios? Click OK to replace, or Cancel to append imported scenarios.');
+        
+        if (replaceExisting) {
+          setScenarios(updatedScenarios);
+        } else {
+          setScenarios([...scenarios, ...updatedScenarios]);
+        }
+        
+        // Select the first imported scenario
+        if (updatedScenarios.length > 0) {
+          setSelectedScenarioId(updatedScenarios[0].id);
+          loadScenario(updatedScenarios[0].id);
+        }
+        
+        alert(`Successfully imported ${updatedScenarios.length} scenario(s).`);
+      } catch (error) {
+        console.error('Error importing scenarios:', error);
+        alert('Failed to import scenarios. Please check the file format.');
+      }
+      
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    };
+    
+    reader.readAsText(file);
+  };
+  
   const handleCompareScenarios = () => {
-    // This function would trigger a comparison view showing multiple scenarios side by side
-    window.dispatchEvent(new CustomEvent('compare-scenarios'));
+    // Toggle bubble chart view for comparing scenarios
+    setShowBubbleChart(!showBubbleChart);
   };
   
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Scenario Management</h3>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           <button 
             onClick={() => addScenario()}
             className="btn btn-primary text-sm"
           >
             Save Current as Scenario
           </button>
+          <button
+            onClick={exportScenarios}
+            className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm"
+            disabled={scenarios.length === 0}
+          >
+            Export JSON
+          </button>
+          <label className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm cursor-pointer">
+            Import JSON
+            <input
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={importScenarios}
+              ref={fileInputRef}
+            />
+          </label>
           {scenarios.length > 1 && (
             <button 
               onClick={handleCompareScenarios}
               className="btn bg-indigo-500 text-white hover:bg-indigo-600 text-sm"
             >
-              Compare Scenarios
+              {showBubbleChart ? "Hide Comparison" : "Compare Scenarios"}
             </button>
           )}
         </div>
@@ -124,6 +255,12 @@ const ScenarioManager: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-6">
+          {showBubbleChart && scenarios.length > 1 && (
+            <div className="mb-6">
+              <BubbleChartView />
+            </div>
+          )}
+          
           {Object.entries(groupedScenarios).map(([disease, diseaseScenarios]) => (
             <div key={disease} className="border-t border-gray-200 dark:border-gray-700 pt-4">
               <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">{disease}</h4>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAtom } from 'jotai';
 import {
   baseParametersAtom,
@@ -100,6 +100,17 @@ const parameterGroups = [
   },
 ];
 
+// Define the type for the exported/imported parameters
+interface ParameterConfig {
+  id: string;
+  name: string;
+  description: string;
+  geography: string;
+  disease: string;
+  population: number;
+  parameters: ModelParameters;
+}
+
 const ParametersPanel: React.FC = () => {
   const [baseParams, setBaseParams] = useAtom(baseParametersAtom);
   const [derivedParams] = useAtom(derivedParametersAtom);
@@ -115,6 +126,9 @@ const ParametersPanel: React.FC = () => {
   const [editablePopulation, setEditablePopulation] = useState(populationSize);
   const [customGeography, setCustomGeography] = useState<boolean>(false);
   const [customDisease, setCustomDisease] = useState<boolean>(false);
+  
+  // Ref for file input
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Get default parameters for reference
   const defaultParams = getDefaultParameters();
@@ -205,21 +219,9 @@ const ParametersPanel: React.FC = () => {
       // Only close edit mode if there are simulation results
       setEditMode(false);
     } else {
-      // Run simulation with new parameters if there are already results
+      // Just close edit mode without running simulation
       setEditMode(false);
-      setTimeout(() => runSimulation(), 100);
     }
-  };
-  
-  const saveAndRunSimulation = () => {
-    // Apply current geography and disease settings
-    let finalParams = { ...editableParams };
-    
-    // Save parameters to the atom
-    setBaseParams(finalParams);
-    setPopulationSize(editablePopulation);
-    setEditMode(false);
-    setTimeout(() => runSimulation(), 100);
   };
   
   const cancelChanges = () => {
@@ -279,18 +281,121 @@ const ParametersPanel: React.FC = () => {
     setCustomDisease(false);
   };
 
+  // Export current parameters to JSON file
+  const exportParameters = () => {
+    const configName = prompt("Enter a name for this parameter set:", "My Parameter Configuration");
+    if (!configName) return;
+    
+    const configDescription = prompt("Enter a description (optional):", "");
+    
+    const config: ParameterConfig = {
+      id: `params-${Date.now()}`,
+      name: configName,
+      description: configDescription || "",
+      geography: customGeography ? "custom" : selectedGeography,
+      disease: customDisease ? "custom" : selectedDisease,
+      population: editablePopulation,
+      parameters: { ...editableParams }
+    };
+    
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `parameters-${configName.replace(/\s+/g, '-').toLowerCase()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  
+  // Import parameters from JSON file
+  const importParameters = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const config = JSON.parse(content) as ParameterConfig;
+        
+        // Validate the imported configuration
+        if (typeof config !== 'object' || !config.parameters) {
+          alert('Invalid parameter file format');
+          return;
+        }
+        
+        // Apply the imported parameters
+        setEditableParams(config.parameters);
+        
+        // Handle geography, disease, and population settings
+        if (config.geography === "custom") {
+          setCustomGeography(true);
+        } else {
+          setCustomGeography(false);
+          setSelectedGeography(config.geography);
+        }
+        
+        if (config.disease === "custom") {
+          setCustomDisease(true);
+        } else {
+          setCustomDisease(false);
+          setSelectedDisease(config.disease);
+        }
+        
+        if (config.population) {
+          setEditablePopulation(config.population);
+        }
+        
+        // Switch to edit mode to allow reviewing the imported parameters
+        setEditMode(true);
+        
+        alert(`Parameters "${config.name}" loaded successfully. Review and click "Save Parameters" to apply.`);
+      } catch (error) {
+        console.error('Error importing parameters:', error);
+        alert('Failed to import parameters. Please check the file format.');
+      }
+      
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    };
+    
+    reader.readAsText(file);
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Model Parameters</h3>
         <div>
           {!editMode ? (
-            <button 
-              onClick={() => setEditMode(true)}
-              className="btn btn-primary text-sm"
-            >
-              Edit Parameters
-            </button>
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => setEditMode(true)}
+                className="btn btn-primary text-sm"
+              >
+                Edit Parameters
+              </button>
+              <button
+                onClick={exportParameters}
+                className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm"
+              >
+                Export JSON
+              </button>
+              <label className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm cursor-pointer">
+                Import JSON
+                <input
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={importParameters}
+                  ref={fileInputRef}
+                />
+              </label>
+            </div>
           ) : (
             <div className="flex space-x-2">
               {results && (
@@ -307,17 +412,27 @@ const ParametersPanel: React.FC = () => {
               >
                 Reset to Defaults
               </button>
+              <button
+                onClick={exportParameters}
+                className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm"
+              >
+                Export JSON
+              </button>
+              <label className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm cursor-pointer">
+                Import JSON
+                <input
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={importParameters}
+                  ref={fileInputRef}
+                />
+              </label>
               <button 
                 onClick={saveChanges}
                 className="btn bg-green-50 hover:bg-green-100 text-green-600 text-sm"
               >
                 Save Parameters
-              </button>
-              <button 
-                onClick={saveAndRunSimulation}
-                className="btn btn-primary text-sm"
-              >
-                {results ? 'Save & Run Simulation' : 'Run Simulation'}
               </button>
             </div>
           )}

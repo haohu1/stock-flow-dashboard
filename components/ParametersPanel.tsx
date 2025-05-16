@@ -395,12 +395,19 @@ const ParametersPanel: React.FC = () => {
                     <option value="fever">Fever of Unknown Origin</option>
                     <option value="diarrhea">Diarrheal Disease</option>
                     <option value="hiv_opportunistic">HIV Opportunistic Infections</option>
+                    <option value="urti">Upper Respiratory Tract Infection (URTI)</option>
                   </optgroup>
                   <optgroup label="Maternal & Neonatal">
                     <option value="maternal_hemorrhage">Maternal Hemorrhage</option>
                     <option value="maternal_hypertension">Maternal Hypertension</option>
                     <option value="neonatal_sepsis">Neonatal Sepsis</option>
                     <option value="preterm_birth">Preterm Birth Complications</option>
+                    <option value="high_risk_pregnancy_low_anc">High-Risk Pregnancy (Low ANC)</option>
+                  </optgroup>
+                  <optgroup label="General & Chronic Conditions">
+                    <option value="anemia">Anemia</option>
+                    <option value="hiv_management_chronic">HIV Management (Chronic)</option>
+                    <option value="congestive_heart_failure">Congestive Heart Failure</option>
                   </optgroup>
                   <option value="custom">Custom</option>
                 </select>

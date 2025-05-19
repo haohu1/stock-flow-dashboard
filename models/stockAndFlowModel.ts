@@ -269,11 +269,16 @@ const calculateEconomics = (
 };
 
 // Calculate average time to resolution
-const calculateTimeToResolution = (weeklyStates: StockAndFlowState[]): number => {
-  let totalWeeksInSystem = 0;
-  let totalResolved = weeklyStates[weeklyStates.length - 1].R;
+const calculateTimeToResolution = (
+  weeklyStates: StockAndFlowState[],
+  params: ModelParameters  // Add params parameter to use the actual simulation parameters
+): number => {
+  // If we have no data, return 0
+  if (weeklyStates.length === 0) return 0;
+  
+  const finalState = weeklyStates[weeklyStates.length - 1];
   let cumulativeNewCases = 0;
-  let resolvedPatients = 0;
+  let totalResolved = finalState.R;
   
   // First, count total patients that entered the system during the simulation
   for (let i = 0; i < weeklyStates.length; i++) {
@@ -281,19 +286,17 @@ const calculateTimeToResolution = (weeklyStates: StockAndFlowState[]): number =>
   }
   
   // Calculate how many patients were actually processed to resolution
-  resolvedPatients = Math.min(totalResolved, cumulativeNewCases);
+  const resolvedPatients = Math.min(totalResolved, cumulativeNewCases);
   
   if (resolvedPatients === 0) return 0;
   
-  // Track active cohorts and their resolution
-  let activeCases = 0;
+  // Track patient resolution
   let avgWeeks = 0;
   let casesWithResolutionTracked = 0;
   
+  // Method 1: Track resolved cases by week and calculate weighted average resolution time
   for (let i = 0; i < weeklyStates.length; i++) {
     const state = weeklyStates[i];
-    // Add new cases each week
-    activeCases += state.newCases;
     
     // Estimate the number of resolved cases this week
     const resolvedThisWeek = i > 0 ? 
@@ -301,10 +304,9 @@ const calculateTimeToResolution = (weeklyStates: StockAndFlowState[]): number =>
     
     // Add their resolution time to the average
     if (resolvedThisWeek > 0) {
-      // These patients resolved after i weeks in the system
-      // Assume average resolution time of half the current week
-      // plus the weeks they've been in the system
-      avgWeeks += resolvedThisWeek * (i/2);
+      // More accurate estimation: these patients resolved after approximately i weeks
+      // We add a small correction factor (0.5) to account for resolution occurring throughout the week
+      avgWeeks += resolvedThisWeek * (i + 0.5);
       casesWithResolutionTracked += resolvedThisWeek;
     }
   }
@@ -314,16 +316,65 @@ const calculateTimeToResolution = (weeklyStates: StockAndFlowState[]): number =>
     return avgWeeks / casesWithResolutionTracked;
   }
   
-  // Fallback: estimate based on resolution rates from params
-  // Get average weekly resolution rate across all care levels
-  const getDefaultParams = getDefaultParameters();
-  const avgResolutionRate = (
-    getDefaultParams.muI + getDefaultParams.mu0 + 
-    getDefaultParams.mu1 + getDefaultParams.mu2 + getDefaultParams.mu3
-  ) / 5;
+  // Method 2 (Fallback): Calculate expected time based on actual flow between care levels
+  // Get the final distribution of patients to determine weights
+  const finalPatients = finalState.U + finalState.I + finalState.F + 
+                      finalState.L0 + finalState.L1 + finalState.L2 + finalState.L3;
   
-  // Average time to resolution is roughly 1 / resolution rate
-  return Math.min(1 / avgResolutionRate, 26); // Cap at 26 weeks (6 months) to avoid unrealistic values
+  if (finalPatients === 0) {
+    // If there are no patients left in the system, use the flow parameters directly
+    // Calculate weighted resolution rates based on patient flow through the system
+    
+    // Calculate the probability of reaching each level based on referral rates
+    const pInformal = 1 - params.phi0; // Probability of going to informal care
+    const pFormal = params.phi0;       // Probability of going to formal care
+    
+    // Probability of being at different formal care levels
+    const pL0 = pFormal;
+    const pL1 = pL0 * params.rho0;
+    const pL2 = pL1 * params.rho1;
+    const pL3 = pL2 * params.rho2;
+    
+    // Calculate weighted average resolution rate
+    // Weighted by probability of reaching each level
+    const weightedResolutionRate = 
+      pInformal * params.muI + 
+      pL0 * params.mu0 + 
+      pL1 * params.mu1 + 
+      pL2 * params.mu2 + 
+      pL3 * params.mu3;
+    
+    // Expected weeks to resolution is inverse of weighted resolution rate
+    // Add a minimum rate to prevent division by zero or unrealistic results
+    const minResolutionRate = 0.01; // 1% weekly resolution rate minimum (100 weeks maximum)
+    const effectiveRate = Math.max(weightedResolutionRate, minResolutionRate);
+    
+    return 1 / effectiveRate;
+  } else {
+    // Calculate the current distribution of patients as weights
+    const weights = {
+      I: finalState.I / finalPatients,
+      L0: finalState.L0 / finalPatients,
+      L1: finalState.L1 / finalPatients,
+      L2: finalState.L2 / finalPatients,
+      L3: finalState.L3 / finalPatients
+    };
+    
+    // Calculate weighted resolution rate based on actual patient distribution
+    const weightedResolutionRate = 
+      weights.I * params.muI + 
+      weights.L0 * params.mu0 + 
+      weights.L1 * params.mu1 + 
+      weights.L2 * params.mu2 + 
+      weights.L3 * params.mu3;
+    
+    // Expected weeks to resolution is inverse of weighted resolution rate
+    // Add a minimum rate to prevent division by zero
+    const minResolutionRate = 0.01; // 1% weekly resolution rate minimum (100 weeks maximum)
+    const effectiveRate = Math.max(weightedResolutionRate, minResolutionRate);
+    
+    return 1 / effectiveRate;
+  }
 };
 
 // Main simulation function
@@ -347,7 +398,8 @@ export const runSimulation = (
     weeklyStates,
     cumulativeDeaths: finalState.D,
     cumulativeResolved: finalState.R,
-    averageTimeToResolution: calculateTimeToResolution(weeklyStates),
+    // Pass the params to the calculateTimeToResolution function
+    averageTimeToResolution: calculateTimeToResolution(weeklyStates, params),
     totalCost,
     dalys,
   };

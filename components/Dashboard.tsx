@@ -262,13 +262,6 @@ const Dashboard: React.FC = () => {
         {/* Welcome information */}
         <div className="text-center">
           <div className="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg border border-blue-200 dark:border-blue-700 max-w-2xl">
-            <h2 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-2">
-              Health System AI Impact Dashboard
-            </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-6">
-              Model the impact of AI on health outcomes in low and middle-income countries
-            </p>
-            
             <h3 className="text-lg font-medium text-blue-800 dark:text-blue-200 mb-2">How to use this dashboard</h3>
             <ol className="list-decimal list-inside text-left text-gray-700 dark:text-gray-300 space-y-2">
               <li className="font-medium">Start with the model structure:

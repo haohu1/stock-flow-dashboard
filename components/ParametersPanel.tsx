@@ -589,10 +589,6 @@ const ParametersPanel: React.FC = () => {
                     <option value="urti">Upper Respiratory Tract Infection (URTI)</option>
                   </optgroup>
                   <optgroup label="Maternal & Neonatal">
-                    <option value="maternal_hemorrhage">Maternal Hemorrhage</option>
-                    <option value="maternal_hypertension">Maternal Hypertension</option>
-                    <option value="neonatal_sepsis">Neonatal Sepsis</option>
-                    <option value="preterm_birth">Preterm Birth Complications</option>
                     <option value="high_risk_pregnancy_low_anc">High-Risk Pregnancy (Low ANC)</option>
                   </optgroup>
                   <optgroup label="General & Chronic Conditions">

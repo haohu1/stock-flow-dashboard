@@ -55,10 +55,6 @@ const Sidebar: React.FC = () => {
       { id: 'urti', name: 'Upper Respiratory Tract Infection (URTI)', group: 'Infectious Diseases', checked: selectedDiseases.includes('urti') },
       
       // Maternal & Neonatal
-      { id: 'maternal_hemorrhage', name: 'Maternal Hemorrhage', group: 'Maternal & Neonatal', checked: selectedDiseases.includes('maternal_hemorrhage') },
-      { id: 'maternal_hypertension', name: 'Maternal Hypertension', group: 'Maternal & Neonatal', checked: selectedDiseases.includes('maternal_hypertension') },
-      { id: 'neonatal_sepsis', name: 'Neonatal Sepsis', group: 'Maternal & Neonatal', checked: selectedDiseases.includes('neonatal_sepsis') },
-      { id: 'preterm_birth', name: 'Preterm Birth Complications', group: 'Maternal & Neonatal', checked: selectedDiseases.includes('preterm_birth') },
       { id: 'high_risk_pregnancy_low_anc', name: 'High-Risk Pregnancy (Low ANC)', group: 'Maternal & Neonatal', checked: selectedDiseases.includes('high_risk_pregnancy_low_anc') },
       
       // General & Chronic Conditions
@@ -255,10 +251,6 @@ const Sidebar: React.FC = () => {
             <option value="urti">Upper Respiratory Tract Infection (URTI)</option>
           </optgroup>
           <optgroup label="Maternal & Neonatal">
-            <option value="maternal_hemorrhage">Maternal Hemorrhage</option>
-            <option value="maternal_hypertension">Maternal Hypertension</option>
-            <option value="neonatal_sepsis">Neonatal Sepsis</option>
-            <option value="preterm_birth">Preterm Birth Complications</option>
             <option value="high_risk_pregnancy_low_anc">High-Risk Pregnancy (Low ANC)</option>
           </optgroup>
           <optgroup label="General & Chronic Conditions">

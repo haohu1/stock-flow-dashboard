@@ -608,25 +608,6 @@ export const diseaseProfiles = {
     rho1: 0.30,               // primary care referral to district (severe dehydration, not responding) (30%)
     rho2: 0.10                // district referral to tertiary (highly complex cases) (10%)
   },
-  maternal_hemorrhage: { // Postpartum hemorrhage (PPH), an acute emergency
-    lambda: 0.05,             // incident cases relative to pregnancies/births (model-specific interpretation)
-    disabilityWeight: 0.56,   // high disability weight
-    meanAgeOfInfection: 26,   // typical age of childbearing
-    muI: 0.01,                // negligible spontaneous resolution (1% per week)
-    mu0: 0.05,                // CHW (uterine massage, misoprostol if policy, rapid referral) - limited resolution (5% per week)
-    mu1: 0.40,                // primary care (uterotonics, IV fluids, basic PPH management) (40% per week)
-    mu2: 0.75,                // district hospital (blood transfusion, surgical interventions) (75% per week)
-    mu3: 0.80,                // tertiary hospital (advanced interventions, ICU) (80% per week)
-    deltaI: 0.15,             // very high mortality if PPH unmanaged or only informal care (15% per week)
-    deltaU: 0.20,             // extremely high mortality if completely untreated (20% per week)
-    delta0: 0.12,             // mortality at CHW level (delay in reaching definitive care) (12% per week)
-    delta1: 0.10,             // mortality at primary care (if capacity limited for severe PPH) (10% per week)
-    delta2: 0.05,             // mortality at district hospital (with good PPH management) (5% per week)
-    delta3: 0.03,             // mortality at tertiary hospital (complex/severe cases) (3% per week)
-    rho0: 0.90,               // CHW immediate referral to primary/facility (90%)
-    rho1: 0.75,               // primary care referral to district (uncontrolled bleeding, shock) (75%)
-    rho2: 0.40                // district referral to tertiary (need for advanced surgery/ICU) (40%)
-  },
   infant_pneumonia: { // Pneumonia specifically in infants (<1 year old), often more severe
     lambda: 1.20,             // very high incidence in infants (episodes per infant-year)
     disabilityWeight: 0.35,   // moderate-high disability
@@ -645,25 +626,6 @@ export const diseaseProfiles = {
     rho0: 0.65,               // CHW referral to primary for danger signs/non-response in infants (65%)
     rho1: 0.45,               // primary care referral to district for severe cases (45%)
     rho2: 0.30                // district referral to tertiary for highly complex cases (30%)
-  },
-  maternal_hypertension: { // Hypertensive disorders of pregnancy (e.g. pre-eclampsia)
-    lambda: 0.08,             // incident cases relative to pregnancies/births (model-specific interpretation)
-    disabilityWeight: 0.35,   // moderate disability (can be higher for eclampsia/severe pre-eclampsia)
-    meanAgeOfInfection: 27,   // typical age of childbearing
-    muI: 0.02,                // negligible spontaneous resolution of pre-eclampsia without delivery/care (2% per week)
-    mu0: 0.05,                // CHW (BP monitoring, education, urgent referral) - limited direct resolution (5% per week)
-    mu1: 0.30,                // primary care (antihypertensives, MgSO4 if policy, assess/refer for delivery) (30% per week)
-    mu2: 0.70,                // district hospital (manage severe pre-eclampsia, eclampsia, delivery) (70% per week)
-    mu3: 0.80,                // tertiary hospital (management of severe complications, ICU) (80% per week)
-    deltaI: 0.04,             // mortality with unmanaged maternal hypertension/pre-eclampsia (4% per week)
-    deltaU: 0.06,             // mortality if completely untreated (progression to eclampsia, stroke etc.) (6% per week)
-    delta0: 0.03,             // mortality at CHW level (delay in reaching definitive care) (3% per week)
-    delta1: 0.02,             // mortality at primary care (if capacity limited for severe cases) (2% per week)
-    delta2: 0.01,             // mortality at district hospital (with good management) (1% per week)
-    delta3: 0.005,            // mortality at tertiary hospital (complex/severe cases) (0.5% per week)
-    rho0: 0.80,               // CHW immediate referral to primary/facility for high BP/danger signs (80%)
-    rho1: 0.60,               // primary care referral to district (severe features, need for delivery) (60%)
-    rho2: 0.40                // district referral to tertiary (complex cases, ICU need) (40%)
   },
   anemia: { // Focus on Iron Deficiency Anemia in women/children
     lambda: 0.20,             // 20% annual incidence of symptomatic anemia needing attention

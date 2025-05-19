@@ -562,6 +562,10 @@ const ParametersPanel: React.FC = () => {
                   </span>
                 </div>
               )}
+              <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 p-2 rounded-md">
+                <p className="font-semibold mb-1">Health System Parameters Summary:</p>
+                <p>The health system parameters model patient flow through different levels of care (community health workers, primary care, district hospitals, and tertiary hospitals). They include care-seeking behaviors, referral patterns, resolution rates, and mortality rates at each level. Strong health systems have higher resolution rates, lower mortality, and more efficient referral patterns, while weak systems have limited resources, higher mortality rates, and suboptimal patient flows. Different scenarios represent varying healthcare infrastructure quality across different regions.</p>
+              </div>
             </div>
             
             {/* Disease Selection */}
@@ -606,6 +610,10 @@ const ParametersPanel: React.FC = () => {
                   </span>
                 </div>
               )}
+              <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 p-2 rounded-md">
+                <p className="font-semibold mb-1">Disease Parameters Summary:</p>
+                <p>Disease profiles define the characteristics of different health conditions, including annual incidence rates, disability weights for DALY calculations, and mean age of infection. Each disease has specific resolution and mortality rates at different levels of care. For example, some conditions like tuberculosis have lengthy resolution times, while others like URTI typically resolve quickly. The disease parameters also influence how effectively AI interventions can improve outcomes for each specific condition.</p>
+              </div>
             </div>
             
             {/* Population Size */}

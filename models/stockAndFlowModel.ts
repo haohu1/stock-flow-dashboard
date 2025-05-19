@@ -1,6 +1,7 @@
 export interface StockAndFlowState {
   U: number;      // symptomatic but not yet in any care pathway
   I: number;      // individuals self-treating or in informal care
+  F: number;      // individuals in formal care entry point
   L0: number;     // cases managed by community health workers
   L1: number;     // cases at primary care facilities
   L2: number;     // cases in district hospitals
@@ -9,6 +10,7 @@ export interface StockAndFlowState {
   D: number;      // resolved dead
   patientDays: {  // accumulated patient days for each level
     I: number;
+    F: number;    // patient days in formal care entry
     L0: number;
     L1: number;
     L2: number;
@@ -56,6 +58,7 @@ export interface ModelParameters {
   // Economic parameters
   perDiemCosts: {
     I: number;
+    F: number;    // formal care entry point costs
     L0: number;
     L1: number;
     L2: number;
@@ -102,6 +105,7 @@ const initializeState = (
   const defaultState: StockAndFlowState = {
     U: weeklyIncidence,
     I: 0,
+    F: 0,
     L0: 0,
     L1: 0,
     L2: 0,
@@ -110,6 +114,7 @@ const initializeState = (
     D: 0,
     patientDays: {
       I: 0,
+      F: 0,
       L0: 0,
       L1: 0,
       L2: 0,
@@ -131,22 +136,28 @@ const runWeek = (
   // Calculate weekly incidence
   const weeklyIncidence = (params.lambda * population) / 52;
   
-  // Calculate transitions from U (untreated)
-  const seekFormal = params.phi0 * state.U;
-  const stayUntreated = state.U - seekFormal;
+  // Calculate flow from new cases
+  const directToFormal = params.phi0 * weeklyIncidence;
+  const stayUntreated = (1 - params.phi0) * weeklyIncidence;
   
   // Use the configurable parameter to determine how many untreated patients move to informal care
   const toInformalCare = (1 - params.informalCareRatio) * stayUntreated;
   const trulyUntreated = params.informalCareRatio * stayUntreated;
   
-  const untreatedDeaths = params.deltaU * trulyUntreated;
-  const remainingUntreated = trulyUntreated - untreatedDeaths;
+  // Calculate transitions from U (untreated)
+  const untreatedDeaths = params.deltaU * state.U;
+  const remainingUntreated = state.U - untreatedDeaths;
   
   // Calculate transitions from I (informal care)
   const informalToFormal = params.sigmaI * state.I;
   const informalResolved = params.muI * state.I;
   const informalDeaths = params.deltaI * state.I;
   const remainingInformal = state.I - informalToFormal - informalResolved - informalDeaths;
+  
+  // Calculate distribution from F (formal care) to L0 only
+  // All formal care patients go to CHW (L0) level first
+  const formalToL0 = state.F; // 100% of formal care goes to L0
+  const remainingFormal = 0;  // No patients remain in formal care
   
   // Calculate transitions from L0 (community health workers)
   const l0Referral = params.rho0 * state.L0;
@@ -172,21 +183,27 @@ const runWeek = (
   const remainingL3 = state.L3 - l3Resolved - l3Deaths;
   
   // Calculate new patient totals for the next week
-  const newU = weeklyIncidence + remainingUntreated;
+  const newU = trulyUntreated + remainingUntreated;
   
   // Include patients who move to informal care
   const newI = toInformalCare + remainingInformal;
   
-  const newL0 = (seekFormal * 0.6) + (informalToFormal * 0.4) + remainingL0; // Distribute seekers
-  const newL1 = (seekFormal * 0.3) + (informalToFormal * 0.4) + l0Referral + remainingL1;
-  const newL2 = (seekFormal * 0.1) + (informalToFormal * 0.2) + l1Referral + remainingL2;
+  // Update formal care entry point (new entries + remaining from previous week)
+  const newF = directToFormal + informalToFormal + remainingFormal;
+  
+  // Update levels - now L0 gets all formal care entries
+  const newL0 = formalToL0 + remainingL0;
+  const newL1 = l0Referral + remainingL1;
+  const newL2 = l1Referral + remainingL2;
   const newL3 = l2Referral + remainingL3;
+  
   const newR = state.R + informalResolved + l0Resolved + l1Resolved + l2Resolved + l3Resolved;
   const newD = state.D + untreatedDeaths + informalDeaths + l0Deaths + l1Deaths + l2Deaths + l3Deaths;
   
   // Calculate new patient days
   const newPatientDays = {
     I: state.patientDays.I + state.I,
+    F: state.patientDays.F + state.F,
     L0: state.patientDays.L0 + state.L0,
     L1: state.patientDays.L1 + state.L1,
     L2: state.patientDays.L2 + state.L2,
@@ -196,13 +213,14 @@ const runWeek = (
   // Calculate episodes touched by AI
   const selfCareActive = params.muI > getDefaultParameters().muI;
   const episodesTouched = state.episodesTouched + 
-                          seekFormal + 
+                          directToFormal + 
                           informalToFormal + 
                           (selfCareActive ? state.I : 0);  // Count all informal care patients if selfCareAI is active
   
   return {
     U: newU,
     I: newI,
+    F: newF,
     L0: newL0,
     L1: newL1,
     L2: newL2,
@@ -223,6 +241,7 @@ const calculateEconomics = (
   // Calculate total cost
   const patientDaysCost = 
     state.patientDays.I * params.perDiemCosts.I +
+    state.patientDays.F * params.perDiemCosts.F +
     state.patientDays.L0 * params.perDiemCosts.L0 +
     state.patientDays.L1 * params.perDiemCosts.L1 +
     state.patientDays.L2 * params.perDiemCosts.L2 +
@@ -241,7 +260,7 @@ const calculateEconomics = (
   
   const deathDalys = state.D * adjustedYLL * discountFactor;
   const disabilityDalys = 
-    (state.patientDays.I + state.patientDays.L0 + state.patientDays.L1 + 
+    (state.patientDays.I + state.patientDays.F + state.patientDays.L0 + state.patientDays.L1 + 
      state.patientDays.L2 + state.patientDays.L3) * (params.disabilityWeight / 365.25) * discountFactor;
   
   const dalys = deathDalys + disabilityDalys;
@@ -360,71 +379,136 @@ export const calculateICER = (
 };
 
 // Predefined geography defaults
-export const geographyDefaults = {
-  ethiopia: {
-    phi0: 0.45,  // formal care entry probability
-    rho1: 0.75,  // facility referral rate
-    mu0: 0.50,   // CHW resolution probability
-    regionalLifeExpectancy: 67.5 // 2023 estimate
+export const healthSystemStrengthDefaults = {
+  moderate_urban_system: {
+    // Direct System-Wide Parameters
+    phi0: 0.65, // Probability of seeking formal care initially
+    sigmaI: 0.25, // Probability of transitioning from informal to formal care
+    informalCareRatio: 0.15, // Proportion of patients remaining untreated (vs. informal care)
+    regionalLifeExpectancy: 70, // Regional life expectancy (years)
+    perDiemCosts: { I: 7, F: 12, L0: 15, L1: 30, L2: 120, L3: 350 }, // USD
+
+    // Multipliers for Disease-Specific Base Rates (1.0 means no change from disease baseline)
+    mu_multiplier_I: 1.0,   // Resolution in Informal
+    mu_multiplier_L0: 1.0,  // Resolution at CHW
+    mu_multiplier_L1: 1.0,  // Resolution at Primary Care
+    mu_multiplier_L2: 1.0,  // Resolution at District Hospital
+    mu_multiplier_L3: 1.0,  // Resolution at Tertiary Hospital
+
+    delta_multiplier_U: 1.0, // Death if Untreated
+    delta_multiplier_I: 1.0, // Death in Informal
+    delta_multiplier_L0: 1.0, // Death at CHW
+    delta_multiplier_L1: 1.0, // Death at Primary Care
+    delta_multiplier_L2: 1.0, // Death at District Hospital
+    delta_multiplier_L3: 1.0, // Death at Tertiary Hospital
+
+    rho_multiplier_L0: 1.0,  // Referral CHW to Primary
+    rho_multiplier_L1: 1.0,  // Referral Primary to District
+    rho_multiplier_L2: 1.0,  // Referral District to Tertiary
   },
-  malawi: {
-    phi0: 0.37,  // lower formal care entry due to travel times
-    rho2: 0.65,  // higher referral rates in some areas
-    mu1: 0.45,   // lower primary care resolution
-    informalCareRatio: 0.25, // higher untreated ratio due to access barriers
-    regionalLifeExpectancy: 65.1 // 2023 estimate
+  weak_rural_system: {
+    // Direct System-Wide Parameters
+    phi0: 0.30, // Lower access/trust
+    sigmaI: 0.10, // Harder to transition
+    informalCareRatio: 0.40, // Higher proportion untreated or in very basic informal
+    regionalLifeExpectancy: 55,
+    perDiemCosts: { I: 3, F: 5, L0: 8, L1: 15, L2: 70, L3: 250 }, // Lower, but may reflect scarcity
+
+    // Multipliers (Effectiveness reduction, mortality increase, referral issues)
+    mu_multiplier_I: 0.6,
+    mu_multiplier_L0: 0.5,
+    mu_multiplier_L1: 0.5,
+    mu_multiplier_L2: 0.6,
+    mu_multiplier_L3: 0.7,
+
+    delta_multiplier_U: 1.5,
+    delta_multiplier_I: 1.8,
+    delta_multiplier_L0: 2.0,
+    delta_multiplier_L1: 2.0,
+    delta_multiplier_L2: 1.8,
+    delta_multiplier_L3: 1.5,
+
+    rho_multiplier_L0: 0.7, // Referrals less likely to complete or be made
+    rho_multiplier_L1: 0.6,
+    rho_multiplier_L2: 0.5,
   },
-  bihar: {
-    phi0: 0.50,  // strong ASHA influence
-    rho1: 0.80,  // high referral from community to primary
-    mu0: 0.55,   // slightly higher community worker effectiveness
-    regionalLifeExpectancy: 69.2 // 2023 estimate for Bihar
+  strong_urban_system_lmic: { // Aspirational strong system in an LMIC urban context
+    // Direct System-Wide Parameters
+    phi0: 0.80,
+    sigmaI: 0.35,
+    informalCareRatio: 0.10,
+    regionalLifeExpectancy: 75,
+    perDiemCosts: { I: 10, F: 15, L0: 20, L1: 40, L2: 150, L3: 400 }, // Higher quality might mean higher cost
+
+    // Multipliers (Improved effectiveness, reduced mortality, efficient referrals)
+    mu_multiplier_I: 1.2,
+    mu_multiplier_L0: 1.3,
+    mu_multiplier_L1: 1.3,
+    mu_multiplier_L2: 1.2,
+    mu_multiplier_L3: 1.1,
+
+    delta_multiplier_U: 0.8,
+    delta_multiplier_I: 0.7,
+    delta_multiplier_L0: 0.6,
+    delta_multiplier_L1: 0.6,
+    delta_multiplier_L2: 0.7,
+    delta_multiplier_L3: 0.8,
+
+    rho_multiplier_L0: 1.1, // Efficient and appropriate referrals
+    rho_multiplier_L1: 1.1,
+    rho_multiplier_L2: 1.1,
   },
-  tanzania: {
-    phi0: 0.40,  // moderate formal care entry probability
-    rho1: 0.65,  // moderate facility referral rate
-    mu0: 0.45,   // moderate CHW resolution probability
-    deltaI: 0.025, // slightly higher informal death rate
-    regionalLifeExpectancy: 66.2 // 2023 estimate
+  fragile_conflict_system: { // Humanitarian/conflict zone system
+    // Direct System-Wide Parameters
+    phi0: 0.20, // Severely limited access due to insecurity, destroyed infrastructure
+    sigmaI: 0.08, // Very difficult to transition from informal to formal care
+    informalCareRatio: 0.60, // Majority of patients unable to access formal care
+    regionalLifeExpectancy: 50, // Significantly reduced life expectancy
+    perDiemCosts: { I: 2, F: 6, L0: 10, L1: 20, L2: 150, L3: 400 }, // Variable costs, NGO-supported
+
+    // Multipliers (Severely compromised effectiveness, high mortality, broken referral chains)
+    mu_multiplier_I: 0.4,
+    mu_multiplier_L0: 0.3,
+    mu_multiplier_L1: 0.4,
+    mu_multiplier_L2: 0.5,
+    mu_multiplier_L3: 0.6,
+
+    delta_multiplier_U: 2.5,
+    delta_multiplier_I: 2.3,
+    delta_multiplier_L0: 2.0,
+    delta_multiplier_L1: 2.0,
+    delta_multiplier_L2: 1.7,
+    delta_multiplier_L3: 1.5,
+
+    rho_multiplier_L0: 0.4, // Severely compromised referral paths
+    rho_multiplier_L1: 0.3,
+    rho_multiplier_L2: 0.2,
   },
-  nigeria: {
-    phi0: 0.38,  // moderate-low formal care entry 
-    rho1: 0.70,  // good referral systems in some areas
-    mu1: 0.48,   // moderate primary care resolution
-    informalCareRatio: 0.30, // higher untreated ratio due to access barriers
-    regionalLifeExpectancy: 55.2 // 2023 estimate
-  },
-  uganda: {
-    phi0: 0.42,  // moderate formal care entry
-    mu0: 0.48,   // moderate CHW resolution
-    rho0: 0.72,  // good CHW referral programs
-    regionalLifeExpectancy: 64.3 // 2023 estimate
-  },
-  kenya: {
-    phi0: 0.48,  // relatively good formal care entry
-    mu1: 0.58,   // relatively good primary care resolution
-    rho1: 0.68,  // moderate referral rate
-    regionalLifeExpectancy: 67.5 // 2023 estimate
-  },
-  bangladesh: {
-    phi0: 0.44,  // moderate formal care entry
-    mu0: 0.52,   // effective community health workers
-    rho0: 0.76,  // high CHW referral rate
-    regionalLifeExpectancy: 73.4 // 2023 estimate
-  },
-  pakistan: {
-    phi0: 0.35,  // lower formal care entry in many regions
-    informalCareRatio: 0.28, // higher untreated ratio
-    deltaI: 0.022, // slightly higher informal death rate
-    mu1: 0.50,   // moderate primary care resolution
-    regionalLifeExpectancy: 67.8 // 2023 estimate
-  },
-  uttar_pradesh: {
-    phi0: 0.38,  // moderate formal care entry
-    mu0: 0.45,   // moderate CHW effectiveness
-    rho1: 0.70,  // moderate-high primary care referral
-    informalCareRatio: 0.32, // higher untreated ratio in some areas
-    regionalLifeExpectancy: 67.8 // 2023 estimate for UP
+  high_income_system: { // High income country system
+    // Direct System-Wide Parameters
+    phi0: 0.90, // Very high healthcare seeking
+    sigmaI: 0.70, // High transition to formal
+    informalCareRatio: 0.05, // Very few remain untreated
+    regionalLifeExpectancy: 82, // High life expectancy
+    perDiemCosts: { I: 15, F: 30, L0: 50, L1: 100, L2: 500, L3: 1200 }, // High costs
+
+    // Multipliers (Very high effectiveness, very low mortality, efficient referrals)
+    mu_multiplier_I: 1.5,
+    mu_multiplier_L0: 1.6,
+    mu_multiplier_L1: 1.7,
+    mu_multiplier_L2: 1.6,
+    mu_multiplier_L3: 1.5,
+
+    delta_multiplier_U: 0.5,
+    delta_multiplier_I: 0.4,
+    delta_multiplier_L0: 0.3,
+    delta_multiplier_L1: 0.3,
+    delta_multiplier_L2: 0.4,
+    delta_multiplier_L3: 0.5,
+
+    rho_multiplier_L0: 1.2, // Very efficient, standardized referrals
+    rho_multiplier_L1: 1.2,
+    rho_multiplier_L2: 1.2,
   }
 };
 
@@ -501,7 +585,7 @@ export const diseaseProfiles = {
     delta0: 0.002,            // mortality under CHW care (uncomplicated, accounts for some failures/progression) (0.2% per week)
     delta1: 0.001,            // mortality under primary care (uncomplicated) (0.1% per week)
     delta2: 0.03,             // mortality for severe malaria at district hospital (3% per week)
-    delta3: 0.02,             // mortality for severe/complicated at tertiary (2% per week)
+    delta3: 0.02,             // mortality for very severe/complicated at tertiary (2% per week)
     rho0: 0.50,               // CHW referral to primary (danger signs, RDT positive non-response) (50%)
     rho1: 0.40,               // primary care referral to district (severe malaria criteria) (40%)
     rho2: 0.20                // district referral to tertiary (complex severe cases, organ failure) (20%)
@@ -555,70 +639,13 @@ export const diseaseProfiles = {
     mu3: 0.80,                // tertiary hospital (advanced interventions, ICU) (80% per week)
     deltaI: 0.15,             // very high mortality if PPH unmanaged or only informal care (15% per week)
     deltaU: 0.20,             // extremely high mortality if completely untreated (20% per week)
-    delta0: 0.18,             // mortality at CHW level (delay in reaching definitive care) (18% per week)
+    delta0: 0.12,             // mortality at CHW level (delay in reaching definitive care) (12% per week)
     delta1: 0.10,             // mortality at primary care (if capacity limited for severe PPH) (10% per week)
     delta2: 0.05,             // mortality at district hospital (with good PPH management) (5% per week)
     delta3: 0.03,             // mortality at tertiary hospital (complex/severe cases) (3% per week)
     rho0: 0.90,               // CHW immediate referral to primary/facility (90%)
     rho1: 0.75,               // primary care referral to district (uncontrolled bleeding, shock) (75%)
     rho2: 0.40                // district referral to tertiary (need for advanced surgery/ICU) (40%)
-  },
-  neonatal_sepsis: { // Acute infection in newborns
-    lambda: 0.025,            // incident cases relative to live births (model-specific interpretation)
-    disabilityWeight: 0.60,   // high disability weight
-    meanAgeOfInfection: 0.05, // newborns (expressed in years, ~2-3 weeks old)
-    muI: 0.02,                // very low spontaneous resolution (2% per week)
-    mu0: 0.15,                // CHW (PSBI guidelines - e.g. Amox + Gent if policy, referral) (15% per week)
-    mu1: 0.60,                // primary care with injectable antibiotics (7-10 day course) (60% per week)
-    mu2: 0.75,                // district hospital with supportive care, IV antibiotics (75% per week)
-    mu3: 0.80,                // tertiary hospital/NICU for severe/complicated cases (80% per week)
-    deltaI: 0.10,             // high mortality with informal/no care (10% per week)
-    deltaU: 0.15,             // very high mortality if completely untreated (15% per week)
-    delta0: 0.08,             // mortality at CHW level (delay, severity) (8% per week)
-    delta1: 0.05,             // mortality at primary care (with appropriate antibiotics) (5% per week)
-    delta2: 0.03,             // mortality at district hospital (3% per week)
-    delta3: 0.02,             // mortality at tertiary/NICU (2% per week)
-    rho0: 0.90,               // CHW immediate referral to primary/facility for suspected sepsis (90%)
-    rho1: 0.85,               // primary care referral to district (severe, non-responding) (85%)
-    rho2: 0.50                // district referral to tertiary/NICU (need for advanced care) (50%)
-  },
-  preterm_birth: { // Complications associated with preterm birth
-    lambda: 0.10,             // ~10% of births are preterm, this is incidence of complications
-    disabilityWeight: 0.54,   // high disability weight
-    meanAgeOfInfection: 0,    // at birth
-    muI: 0.10,                // resolution of some complications with good home care (KMC, feeding support) (10% per week)
-    mu0: 0.15,                // CHW support for KMC, feeding, danger sign recognition (15% per week)
-    mu1: 0.30,                // primary care (more skilled support, O2 if available, manage mild complications) (30% per week)
-    mu2: 0.60,                // district hospital (SCN/basic NICU, manage moderate complications) (60% per week)
-    mu3: 0.70,                // tertiary NICU (manage severe/complex complications) (70% per week)
-    deltaI: 0.15,             // high mortality for preterm with complications & informal care (15% per week)
-    deltaU: 0.20,             // very high mortality if completely untreated (20% per week)
-    delta0: 0.12,             // mortality at CHW level (12% per week)
-    delta1: 0.08,             // mortality at primary care (8% per week)
-    delta2: 0.05,             // mortality at district SCN/basic NICU (5% per week)
-    delta3: 0.03,             // mortality at tertiary NICU (3% per week)
-    rho0: 0.95,               // CHW referral to primary/facility for any struggling preterm (95%)
-    rho1: 0.85,               // primary care referral to district for escalating care (85%)
-    rho2: 0.60                // district referral to tertiary NICU (need for specialized care) (60%)
-  },
-  hiv_opportunistic: { // Opportunistic Infections (OIs) in people with HIV
-    lambda: 0.15,             // moderate incidence in HIV+ population (model-specific interpretation)
-    disabilityWeight: 0.40,   // moderate-high disability
-    meanAgeOfInfection: 32,   // average age for OIs in adults
-    muI: 0.05,                // low spontaneous resolution of major OIs without treatment (5% per week)
-    mu0: 0.10,                // CHW (adherence support, referral, basic OI management e.g. oral thrush) (10% per week)
-    mu1: 0.45,                // primary care (ART initiation/management, OI prophylaxis/treatment) (45% per week)
-    mu2: 0.60,                // district hospital (management of more severe OIs) (60% per week)
-    mu3: 0.75,                // tertiary hospital (management of complex/refractory OIs) (75% per week)
-    deltaI: 0.05,             // high mortality with untreated OIs / advanced HIV (5% per week)
-    deltaU: 0.08,             // very high mortality if completely untreated (8% per week)
-    delta0: 0.04,             // mortality at CHW level (4% per week)
-    delta1: 0.02,             // mortality at primary care (with ART and OI treatment) (2% per week)
-    delta2: 0.015,            // mortality at district hospital (1.5% per week)
-    delta3: 0.01,             // mortality at tertiary hospital (1% per week)
-    rho0: 0.75,               // CHW referral to primary for suspected OIs / clinical deterioration (75%)
-    rho1: 0.45,               // primary care referral to district for severe/complex OIs (45%)
-    rho2: 0.30                // district referral to tertiary for highly specialized care (30%)
   },
   infant_pneumonia: { // Pneumonia specifically in infants (<1 year old), often more severe
     lambda: 1.20,             // very high incidence in infants (episodes per infant-year)
@@ -650,7 +677,7 @@ export const diseaseProfiles = {
     mu3: 0.80,                // tertiary hospital (management of severe complications, ICU) (80% per week)
     deltaI: 0.04,             // mortality with unmanaged maternal hypertension/pre-eclampsia (4% per week)
     deltaU: 0.06,             // mortality if completely untreated (progression to eclampsia, stroke etc.) (6% per week)
-    delta0: 0.05,             // mortality at CHW level (delay in reaching definitive care) (5% per week)
+    delta0: 0.03,             // mortality at CHW level (delay in reaching definitive care) (3% per week)
     delta1: 0.02,             // mortality at primary care (if capacity limited for severe cases) (2% per week)
     delta2: 0.01,             // mortality at district hospital (with good management) (1% per week)
     delta3: 0.005,            // mortality at tertiary hospital (complex/severe cases) (0.5% per week)
@@ -691,7 +718,7 @@ export const diseaseProfiles = {
     delta0: 0.002,            // mortality during CHW linkage/support (0.2% weekly)
     delta1: 0.0005,           // mortality on ART at primary care (treatment failure, NCDs) (0.05% weekly)
     delta2: 0.0006,           // similar to L1, maybe slightly higher if sicker patients (0.06% weekly)
-    delta3: 0.001,            // mortality for very complex/failing patients at tertiary (0.1% weekly)
+    delta3: 0.0004,           // mortality for very complex/failing patients at tertiary (0.04% weekly)
     rho0: 0.90,               // high CHW referral for ART initiation (90%)
     rho1: 0.15,               // low primary referral if stable, higher if complications (15%)
     rho2: 0.10                // low district referral to tertiary (10%)
@@ -784,6 +811,7 @@ export const applyAIInterventions = (
   };
 
   if (interventions.triageAI) {
+    // Triage AI improves formal care seeking and transitions from informal care
     modifiedParams.phi0 += applyMagnitude('triageAI_φ₀', 0.15);
     modifiedParams.sigmaI *= applyMagnitude('triageAI_σI', 1.25, true);
     modifiedParams.aiFixedCost += 20000;
@@ -870,6 +898,7 @@ export const getDefaultParameters = (): ModelParameters => ({
   // Economic parameters
   perDiemCosts: {
     I: 5,
+    F: 10,      // formal care entry point cost (triage, registration, initial assessment)
     L0: 12,
     L1: 25,
     L2: 70,

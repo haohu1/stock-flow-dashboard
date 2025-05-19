@@ -69,6 +69,12 @@ const Dashboard: React.FC = () => {
     return disease.charAt(0).toUpperCase() + disease.slice(1).replace(/_/g, ' ');
   };
 
+  // Format health system name for display
+  const formatHealthSystemName = (name: string | undefined): string => {
+    if (!name) return 'N/A';
+    return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   // Generate a consistent color for each disease
   const getDiseaseColor = (disease: string): string => {
     const colors = [
@@ -202,7 +208,7 @@ const Dashboard: React.FC = () => {
                     </div>
                     
                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                      <p><strong>Geography:</strong> {currentScenario.parameters.geography || 'Custom'}</p>
+                      <p><strong>Health System:</strong> {formatHealthSystemName(currentScenario.parameters.healthSystemStrength) || 'Custom'}</p>
                       
                       {/* Display multiple diseases if available */}
                       {currentScenario.selectedDiseases && currentScenario.selectedDiseases.length > 1 ? (
@@ -412,7 +418,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    <p><strong>Geography:</strong> {currentScenario.parameters.geography || 'Custom'}</p>
+                    <p><strong>Health System:</strong> {formatHealthSystemName(currentScenario.parameters.healthSystemStrength) || 'Custom'}</p>
                     
                     {/* Display multiple diseases if available */}
                     {currentScenario.selectedDiseases && currentScenario.selectedDiseases.length > 1 ? (

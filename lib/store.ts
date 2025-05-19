@@ -1,18 +1,18 @@
 import { atom } from 'jotai';
-import { 
-  ModelParameters, 
-  SimulationResults, 
+import {
+  ModelParameters,
+  SimulationResults,
   AIInterventions,
-  getDefaultParameters, 
-  applyAIInterventions, 
-  runSimulation, 
-  calculateICER, 
-  geographyDefaults, 
-  diseaseProfiles 
+  getDefaultParameters,
+  applyAIInterventions,
+  runSimulation,
+  calculateICER,
+  healthSystemStrengthDefaults,
+  diseaseProfiles
 } from '../models/stockAndFlowModel';
 
-// Selected geography and disease
-export const selectedGeographyAtom = atom<string>('ethiopia');
+// Selected health system strength and disease
+export const selectedHealthSystemStrengthAtom = atom<string>('moderate_urban_system');
 export const selectedDiseaseAtom = atom<string>('pneumonia');
 // New atom for multi-disease selection
 export const selectedDiseasesAtom = atom<string[]>(['pneumonia']);
@@ -23,6 +23,46 @@ export const simulationWeeksAtom = atom<number>(52);
 
 // Model parameters with default values
 export const baseParametersAtom = atom<ModelParameters>(getDefaultParameters());
+
+// Define an interface for the health system multipliers
+export interface HealthSystemMultipliers {
+  mu_multiplier_I: number;
+  mu_multiplier_L0: number;
+  mu_multiplier_L1: number;
+  mu_multiplier_L2: number;
+  mu_multiplier_L3: number;
+  delta_multiplier_U: number;
+  delta_multiplier_I: number;
+  delta_multiplier_L0: number;
+  delta_multiplier_L1: number;
+  delta_multiplier_L2: number;
+  delta_multiplier_L3: number;
+  rho_multiplier_L0: number;
+  rho_multiplier_L1: number;
+  rho_multiplier_L2: number;
+}
+
+// Atom to store the current health system multipliers
+// These can be initialized by a scenario and then potentially edited by the user
+export const healthSystemMultipliersAtom = atom<HealthSystemMultipliers>({
+  // Initialize with moderate_urban_system multipliers as a default baseline
+  // This will be overwritten by ParametersPanel when a scenario is selected
+  mu_multiplier_I: healthSystemStrengthDefaults.moderate_urban_system.mu_multiplier_I,
+  mu_multiplier_L0: healthSystemStrengthDefaults.moderate_urban_system.mu_multiplier_L0,
+  mu_multiplier_L1: healthSystemStrengthDefaults.moderate_urban_system.mu_multiplier_L1,
+  mu_multiplier_L2: healthSystemStrengthDefaults.moderate_urban_system.mu_multiplier_L2,
+  mu_multiplier_L3: healthSystemStrengthDefaults.moderate_urban_system.mu_multiplier_L3,
+  delta_multiplier_U: healthSystemStrengthDefaults.moderate_urban_system.delta_multiplier_U,
+  delta_multiplier_I: healthSystemStrengthDefaults.moderate_urban_system.delta_multiplier_I,
+  delta_multiplier_L0: healthSystemStrengthDefaults.moderate_urban_system.delta_multiplier_L0,
+  delta_multiplier_L1: healthSystemStrengthDefaults.moderate_urban_system.delta_multiplier_L1,
+  delta_multiplier_L2: healthSystemStrengthDefaults.moderate_urban_system.delta_multiplier_L2,
+  delta_multiplier_L3: healthSystemStrengthDefaults.moderate_urban_system.delta_multiplier_L3,
+  rho_multiplier_L0: healthSystemStrengthDefaults.moderate_urban_system.rho_multiplier_L0,
+  rho_multiplier_L1: healthSystemStrengthDefaults.moderate_urban_system.rho_multiplier_L1,
+  rho_multiplier_L2: healthSystemStrengthDefaults.moderate_urban_system.rho_multiplier_L2,
+});
+
 
 // Store results for multiple diseases
 export const simulationResultsMapAtom = atom<Record<string, SimulationResults | null>>({});
@@ -36,47 +76,97 @@ export const simulationResultsAtom = atom<SimulationResults | null>(null);
 // Baseline results for comparison
 export const baselineResultsAtom = atom<SimulationResults | null>(null);
 
-// Derive parameters for a specific disease
+// Derive parameters for a specific disease and health system strength
 export const getDerivedParamsForDisease = (
   baseParams: ModelParameters,
-  geography: string,
+  healthSystemStrength: string,
   disease: string,
   aiInterventions: AIInterventions,
-  effectMagnitudes: {[key: string]: number}
+  effectMagnitudes: {[key: string]: number},
+  activeMultipliers: HealthSystemMultipliers
 ): ModelParameters => {
   // Start with base parameters
   let params = { ...baseParams };
-  
-  // Get geography defaults
-  const geographyDefault = geography && geographyDefaults[geography as keyof typeof geographyDefaults];
-  
+
+  // Get health system scenario defaults
+  const healthSystemScenario = healthSystemStrength && healthSystemStrengthDefaults[healthSystemStrength as keyof typeof healthSystemStrengthDefaults];
+
+  // Apply health system scenario direct defaults if available
+  if (healthSystemScenario) {
+    // Apply only non-multiplier parameters directly from the scenario
+    const { 
+      // Exclude multipliers from direct assignment
+      /* eslint-disable @typescript-eslint/no-unused-vars */
+      mu_multiplier_I, mu_multiplier_L0, mu_multiplier_L1, mu_multiplier_L2, mu_multiplier_L3,
+      delta_multiplier_U, delta_multiplier_I, delta_multiplier_L0, delta_multiplier_L1, delta_multiplier_L2, delta_multiplier_L3,
+      rho_multiplier_L0, rho_multiplier_L1, rho_multiplier_L2,
+      /* eslint-enable @typescript-eslint/no-unused-vars */
+      ...directScenarioParams 
+    } = healthSystemScenario;
+    params = { ...params, ...directScenarioParams };
+  }
+
   // Get disease profile
   const diseaseProfile = disease && diseaseProfiles[disease as keyof typeof diseaseProfiles];
-  
-  // Apply geography defaults if available
-  if (geographyDefault) {
-    params = { ...params, ...geographyDefault };
-  }
-  
+
   // Apply disease profile if available
   if (diseaseProfile) {
     params = { ...params, ...diseaseProfile };
   }
   
+  // Apply health system strength multipliers to disease-specific rates
+  if (healthSystemScenario) { // Ensure scenario exists before applying multipliers
+    params.muI *= activeMultipliers.mu_multiplier_I;
+    params.mu0 *= activeMultipliers.mu_multiplier_L0;
+    params.mu1 *= activeMultipliers.mu_multiplier_L1;
+    params.mu2 *= activeMultipliers.mu_multiplier_L2;
+    params.mu3 *= activeMultipliers.mu_multiplier_L3;
+
+    params.deltaU *= activeMultipliers.delta_multiplier_U;
+    params.deltaI *= activeMultipliers.delta_multiplier_I;
+    params.delta0 *= activeMultipliers.delta_multiplier_L0;
+    params.delta1 *= activeMultipliers.delta_multiplier_L1;
+    params.delta2 *= activeMultipliers.delta_multiplier_L2;
+    params.delta3 *= activeMultipliers.delta_multiplier_L3;
+    
+    params.rho0 *= activeMultipliers.rho_multiplier_L0;
+    params.rho1 *= activeMultipliers.rho_multiplier_L1;
+    params.rho2 *= activeMultipliers.rho_multiplier_L2;
+
+    // Ensure probabilities do not exceed 1 or go below 0 after multiplication
+    const probabilityParamKeys = [
+      'muI', 'mu0', 'mu1', 'mu2', 'mu3', 
+      'deltaU', 'deltaI', 'delta0', 'delta1', 'delta2', 'delta3', 
+      'rho0', 'rho1', 'rho2', 
+      'phi0', 'sigmaI'
+    ] as const; 
+    for (const pKey of probabilityParamKeys) {
+      // With `as const`, params[pKey] is now correctly typed as 'number'.
+      // The `typeof params[pKey] === 'number'` check is thus implicitly satisfied.
+      if (params[pKey] > 1) {
+        params[pKey] = 1;
+      }
+      if (params[pKey] < 0) { // Probabilities shouldn't be negative
+        params[pKey] = 0;
+      }
+    }
+  }
+
   // Apply AI interventions
   return applyAIInterventions(params, aiInterventions, effectMagnitudes);
 };
 
-// Update parameters when geography or disease changes
+// Update parameters when health system strength or disease changes
 export const derivedParametersAtom = atom(
   (get) => {
     const baseParams = get(baseParametersAtom);
-    const geography = get(selectedGeographyAtom);
+    const healthSystemStrength = get(selectedHealthSystemStrengthAtom);
     const disease = get(selectedDiseaseAtom);
     const aiInterventions = get(aiInterventionsAtom);
     const effectMagnitudes = get(effectMagnitudesAtom);
+    const activeMultipliers = get(healthSystemMultipliersAtom);
     
-    return getDerivedParamsForDisease(baseParams, geography, disease, aiInterventions, effectMagnitudes);
+    return getDerivedParamsForDisease(baseParams, healthSystemStrength, disease, aiInterventions, effectMagnitudes, activeMultipliers);
   }
 );
 
@@ -111,13 +201,14 @@ export const runSimulationAtom = atom(
     if (selectedDiseases.length > 1) {
       // If multiple diseases selected, use the multi-disease simulation directly
       const baseParams = get(baseParametersAtom);
-      const geography = get(selectedGeographyAtom);
+      const healthSystemStrength = get(selectedHealthSystemStrengthAtom);
       const aiInterventions = get(aiInterventionsAtom);
       const effectMagnitudes = get(effectMagnitudesAtom);
       const population = get(populationSizeAtom);
       const weeks = get(simulationWeeksAtom);
       const baseline = get(baselineResultsAtom);
       const baselineMap = get(baselineResultsMapAtom);
+      const activeMultipliers = get(healthSystemMultipliersAtom);
       
       // Create a new results map
       const newResultsMap: Record<string, SimulationResults | null> = {};
@@ -127,7 +218,7 @@ export const runSimulationAtom = atom(
         console.log("  Running simulation for disease:", disease);
         
         // Get derived parameters for this disease
-        const params = getDerivedParamsForDisease(baseParams, geography, disease, aiInterventions, effectMagnitudes);
+        const params = getDerivedParamsForDisease(baseParams, healthSystemStrength, disease, aiInterventions, effectMagnitudes, activeMultipliers);
         
         // Run simulation with these parameters
         const results = runSimulation(params, {
@@ -171,14 +262,15 @@ export const runSimulationAtom = atom(
       console.log("  Running single-disease simulation for:", disease);
       
       const baseParams = get(baseParametersAtom);
-      const geography = get(selectedGeographyAtom);
+      const healthSystemStrength = get(selectedHealthSystemStrengthAtom);
       const aiInterventions = get(aiInterventionsAtom);
       const effectMagnitudes = get(effectMagnitudesAtom);
       const population = get(populationSizeAtom);
       const weeks = get(simulationWeeksAtom);
+      const activeMultipliers = get(healthSystemMultipliersAtom);
       
       // Get derived parameters for this disease
-      const params = getDerivedParamsForDisease(baseParams, geography, disease, aiInterventions, effectMagnitudes);
+      const params = getDerivedParamsForDisease(baseParams, healthSystemStrength, disease, aiInterventions, effectMagnitudes, activeMultipliers);
       
       const results = runSimulation(params, {
         numWeeks: weeks,
@@ -269,7 +361,7 @@ export interface Scenario {
   id: string;
   name: string;
   parameters: ModelParameters & {
-    geography?: string;
+    healthSystemStrength?: string;
     disease?: string;
     population?: number;
   };
@@ -299,7 +391,7 @@ export const addScenarioAtom = atom(
     const resultsMap = get(simulationResultsMapAtom);
     const baseline = get(baselineResultsAtom);
     const scenarios = get(scenariosAtom);
-    const geography = get(selectedGeographyAtom);
+    const healthSystemStrength = get(selectedHealthSystemStrengthAtom);
     const disease = get(selectedDiseaseAtom);
     const selectedDiseases = get(selectedDiseasesAtom);
     const population = get(populationSizeAtom);
@@ -415,7 +507,7 @@ export const addScenarioAtom = atom(
           name: scenarioName,
           parameters: { 
             ...params,
-            geography,
+            healthSystemStrength,
             disease: diseaseName,  // Set the primary disease to this disease
             population
           },
@@ -538,7 +630,7 @@ export const addScenarioAtom = atom(
         name: scenarioName,
         parameters: { 
           ...params,
-          geography,
+          healthSystemStrength,
           disease,
           population
         },
@@ -562,8 +654,9 @@ export const addScenarioAtom = atom(
         id: newScenario.id,
         selectedDiseases: newScenario.selectedDiseases,
         diseaseResultsMapKeys: newScenario.diseaseResultsMap ? Object.keys(newScenario.diseaseResultsMap) : [],
-        hasMultiDiseaseResults: !!newScenario.diseaseResultsMap && Object.keys(newScenario.diseaseResultsMap).length > 0,
-        multiDiseaseCount: newScenario.diseaseResultsMap ? Object.keys(newScenario.diseaseResultsMap).length : 0
+        hasResultsMap: !!newScenario.diseaseResultsMap,
+        mapType: newScenario.diseaseResultsMap ? typeof newScenario.diseaseResultsMap : 'undefined',
+        isEmptyObject: newScenario.diseaseResultsMap && Object.keys(newScenario.diseaseResultsMap).length === 0
       });
       
       // VERY DETAILED inspection of the final saved data
@@ -827,7 +920,7 @@ export const updateScenarioAtom = atom(
                 parameters: { 
                   ...params, 
                   population,
-                  geography: s.parameters.geography,
+                  healthSystemStrength: s.parameters.healthSystemStrength,
                   disease: s.parameters.disease
                 }, 
                 aiInterventions: { ...aiInterventions },

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAtom } from 'jotai';
 import {
-  selectedGeographyAtom,
+  selectedHealthSystemStrengthAtom,
   selectedDiseaseAtom,
   selectedDiseasesAtom,
   populationSizeAtom,
@@ -12,11 +12,15 @@ import {
   scenariosAtom,
   selectedScenarioIdAtom,
   loadScenarioAtom,
-  simulationResultsAtom
+  simulationResultsAtom,
+  healthSystemMultipliersAtom,
+  HealthSystemMultipliers
 } from '../lib/store';
+import { healthSystemStrengthDefaults } from '../models/stockAndFlowModel';
 
 const Sidebar: React.FC = () => {
-  const [selectedGeography, setSelectedGeography] = useAtom(selectedGeographyAtom);
+  const [selectedHealthSystemStrength, setSelectedHealthSystemStrength] = useAtom(selectedHealthSystemStrengthAtom);
+  const [, setHealthSystemMultipliers] = useAtom(healthSystemMultipliersAtom);
   const [selectedDisease, setSelectedDisease] = useAtom(selectedDiseaseAtom);
   const [selectedDiseases, setSelectedDiseases] = useAtom(selectedDiseasesAtom);
   const [population, setPopulation] = useAtom(populationSizeAtom);
@@ -66,8 +70,31 @@ const Sidebar: React.FC = () => {
     setDiseaseOptions(options);
   }, [selectedDiseases]);
 
-  const handleGeographyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedGeography(e.target.value);
+  const handleHealthSystemChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newScenarioKey = e.target.value as keyof typeof healthSystemStrengthDefaults | 'custom';
+    setSelectedHealthSystemStrength(newScenarioKey);
+
+    if (newScenarioKey !== 'custom' && healthSystemStrengthDefaults[newScenarioKey as keyof typeof healthSystemStrengthDefaults]) {
+      const scenario = healthSystemStrengthDefaults[newScenarioKey as keyof typeof healthSystemStrengthDefaults];
+      const newMultipliers: HealthSystemMultipliers = {
+        mu_multiplier_I: scenario.mu_multiplier_I ?? 1.0,
+        mu_multiplier_L0: scenario.mu_multiplier_L0 ?? 1.0,
+        mu_multiplier_L1: scenario.mu_multiplier_L1 ?? 1.0,
+        mu_multiplier_L2: scenario.mu_multiplier_L2 ?? 1.0,
+        mu_multiplier_L3: scenario.mu_multiplier_L3 ?? 1.0,
+        delta_multiplier_U: scenario.delta_multiplier_U ?? 1.0,
+        delta_multiplier_I: scenario.delta_multiplier_I ?? 1.0,
+        delta_multiplier_L0: scenario.delta_multiplier_L0 ?? 1.0,
+        delta_multiplier_L1: scenario.delta_multiplier_L1 ?? 1.0,
+        delta_multiplier_L2: scenario.delta_multiplier_L2 ?? 1.0,
+        delta_multiplier_L3: scenario.delta_multiplier_L3 ?? 1.0,
+        rho_multiplier_L0: scenario.rho_multiplier_L0 ?? 1.0,
+        rho_multiplier_L1: scenario.rho_multiplier_L1 ?? 1.0,
+        rho_multiplier_L2: scenario.rho_multiplier_L2 ?? 1.0,
+      };
+      setHealthSystemMultipliers(newMultipliers);
+    }
+    // If 'custom', multipliers are managed by ParametersPanel.tsx
   };
 
   const handleDiseaseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -193,23 +220,18 @@ const Sidebar: React.FC = () => {
 
       <div className="mb-6">
         <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Geography
+          Health System Scenario
         </label>
         <select
-          value={selectedGeography}
-          onChange={handleGeographyChange}
+          value={selectedHealthSystemStrength}
+          onChange={handleHealthSystemChange}
           className="input w-full"
         >
-          <option value="ethiopia">Ethiopia</option>
-          <option value="kenya">Kenya</option>
-          <option value="malawi">Malawi</option>
-          <option value="nigeria">Nigeria</option>
-          <option value="tanzania">Tanzania</option>
-          <option value="uganda">Uganda</option>
-          <option value="bangladesh">Bangladesh</option>
-          <option value="bihar">Rural Bihar, India</option>
-          <option value="uttar_pradesh">Uttar Pradesh, India</option>
-          <option value="pakistan">Pakistan</option>
+          {Object.keys(healthSystemStrengthDefaults).map(key => (
+            <option key={key} value={key}>
+              {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </option>
+          ))}
         </select>
       </div>
 

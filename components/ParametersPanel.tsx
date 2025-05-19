@@ -3,21 +3,23 @@ import { useAtom } from 'jotai';
 import {
   baseParametersAtom,
   derivedParametersAtom,
-  selectedGeographyAtom,
+  selectedHealthSystemStrengthAtom,
   selectedDiseaseAtom,
   populationSizeAtom,
   runSimulationAtom,
-  simulationResultsAtom
+  simulationResultsAtom,
+  healthSystemMultipliersAtom,
+  HealthSystemMultipliers
 } from '../lib/store';
 import { formatDecimal } from '../lib/utils';
 import { 
-  geographyDefaults, 
+  healthSystemStrengthDefaults,
   diseaseProfiles, 
   getDefaultParameters,
   ModelParameters
 } from '../models/stockAndFlowModel';
 
-// Parameter groupings for better organization
+// Parameter groupings for better organization - Disease Characteristics first
 const parameterGroups = [
   {
     title: 'Disease Characteristics',
@@ -35,7 +37,22 @@ const parameterGroups = [
       { key: 'sigmaI', label: 'Informal to Formal (σI)', description: 'Weekly probability of transition from informal to formal care' },
       { key: 'informalCareRatio', label: 'Untreated Ratio', description: 'Proportion of patients remaining untreated (vs. informal care)' }
     ],
-    isLocationSpecific: true,
+    isHealthSystemSpecific: true,
+  },
+  {
+    title: 'Economic Parameters', // Moved up to group with other health system params
+    params: [
+      { key: 'perDiemCosts.I', label: 'Informal Care Cost', description: 'Cost per day in informal care (USD)' },
+      { key: 'perDiemCosts.L0', label: 'CHW Cost', description: 'Cost per day with community health workers (USD)' },
+      { key: 'perDiemCosts.L1', label: 'Primary Care Cost', description: 'Cost per day at primary care (USD)' },
+      { key: 'perDiemCosts.L2', label: 'District Hospital Cost', description: 'Cost per day at district hospital (USD)' },
+      { key: 'perDiemCosts.L3', label: 'Tertiary Hospital Cost', description: 'Cost per day at tertiary hospital (USD)' },
+      // Note: aiFixedCost and aiVariableCost are handled by AI panel now, but kept for model integrity.
+      // We will display them as general parameters for now.
+      { key: 'regionalLifeExpectancy', label: 'Life Expectancy', description: 'Regional life expectancy (years)' },
+      { key: 'discountRate', label: 'Discount Rate', description: 'Annual discount rate for economic calculations' },
+    ],
+    isHealthSystemSpecific: true,
   },
   {
     title: 'Informal Care',
@@ -44,6 +61,7 @@ const parameterGroups = [
       { key: 'deltaI', label: 'Informal Death (δI)', description: 'Weekly probability of death in informal care' },
       { key: 'deltaU', label: 'Untreated Death (δU)', description: 'Weekly probability of death if untreated' },
     ],
+    // These are affected by multipliers, so indirectly health system specific
   },
   {
     title: 'Community Health Workers (L0)',
@@ -52,6 +70,7 @@ const parameterGroups = [
       { key: 'delta0', label: 'L0 Death (δ₀)', description: 'Weekly probability of death with CHWs' },
       { key: 'rho0', label: 'L0 Referral (ρ₀)', description: 'Weekly probability of referral from CHW to primary care' },
     ],
+    // These are affected by multipliers, so indirectly health system specific
   },
   {
     title: 'Primary Care (L1)',
@@ -60,6 +79,7 @@ const parameterGroups = [
       { key: 'delta1', label: 'L1 Death (δ₁)', description: 'Weekly probability of death at primary care' },
       { key: 'rho1', label: 'L1 Referral (ρ₁)', description: 'Weekly probability of referral from primary to district hospital' },
     ],
+    // These are affected by multipliers, so indirectly health system specific
   },
   {
     title: 'District Hospital (L2)',
@@ -68,6 +88,7 @@ const parameterGroups = [
       { key: 'delta2', label: 'L2 Death (δ₂)', description: 'Weekly probability of death at district hospital' },
       { key: 'rho2', label: 'L2 Referral (ρ₂)', description: 'Weekly probability of referral from district to tertiary hospital' },
     ],
+    // These are affected by multipliers, so indirectly health system specific
   },
   {
     title: 'Tertiary Hospital (L3)',
@@ -75,28 +96,17 @@ const parameterGroups = [
       { key: 'mu3', label: 'L3 Resolution (μ₃)', description: 'Weekly probability of resolution at tertiary hospital' },
       { key: 'delta3', label: 'L3 Death (δ₃)', description: 'Weekly probability of death at tertiary hospital' },
     ],
+    // These are affected by multipliers, so indirectly health system specific
   },
   {
-    title: 'AI Effectiveness Parameters',
+    title: 'AI Related Parameters', // Grouping AI specific economic and effectiveness params
     params: [
       { key: 'selfCareAIEffectMuI', label: 'Self-Care Resolution Effect', description: 'Improvement in resolution rate from self-care AI' },
       { key: 'selfCareAIEffectDeltaI', label: 'Self-Care Death Effect', description: 'Multiplier for death rate with self-care AI (lower is better)' },
-    ],
-  },
-  {
-    title: 'Economic Parameters',
-    params: [
-      { key: 'perDiemCosts.I', label: 'Informal Care Cost', description: 'Cost per day in informal care (USD)' },
-      { key: 'perDiemCosts.L0', label: 'CHW Cost', description: 'Cost per day with community health workers (USD)' },
-      { key: 'perDiemCosts.L1', label: 'Primary Care Cost', description: 'Cost per day at primary care (USD)' },
-      { key: 'perDiemCosts.L2', label: 'District Hospital Cost', description: 'Cost per day at district hospital (USD)' },
-      { key: 'perDiemCosts.L3', label: 'Tertiary Hospital Cost', description: 'Cost per day at tertiary hospital (USD)' },
       { key: 'aiFixedCost', label: 'AI Fixed Cost', description: 'Fixed cost for AI implementation (USD)' },
       { key: 'aiVariableCost', label: 'AI Variable Cost', description: 'Variable cost per episode touched by AI (USD)' },
-      { key: 'regionalLifeExpectancy', label: 'Life Expectancy', description: 'Regional life expectancy (years)' },
-      { key: 'discountRate', label: 'Discount Rate', description: 'Annual discount rate for economic calculations' },
     ],
-    isLocationSpecific: true,
+    isAISpecific: true, // New flag for AI specific parameters
   },
 ];
 
@@ -105,7 +115,7 @@ interface ParameterConfig {
   id: string;
   name: string;
   description: string;
-  geography: string;
+  healthSystemStrength: string;
   disease: string;
   population: number;
   parameters: ModelParameters;
@@ -114,17 +124,18 @@ interface ParameterConfig {
 const ParametersPanel: React.FC = () => {
   const [baseParams, setBaseParams] = useAtom(baseParametersAtom);
   const [derivedParams] = useAtom(derivedParametersAtom);
-  const [selectedGeography, setSelectedGeography] = useAtom(selectedGeographyAtom);
+  const [selectedHealthSystemStrength, setSelectedHealthSystemStrength] = useAtom(selectedHealthSystemStrengthAtom);
   const [selectedDisease, setSelectedDisease] = useAtom(selectedDiseaseAtom);
   const [populationSize, setPopulationSize] = useAtom(populationSizeAtom);
   const [, runSimulation] = useAtom(runSimulationAtom);
   const [results] = useAtom(simulationResultsAtom);
+  const [activeMultipliers, setActiveMultipliers] = useAtom(healthSystemMultipliersAtom);
   
   // editMode is now true by default if there are no simulation results yet
   const [editMode, setEditMode] = useState(!results);
   const [editableParams, setEditableParams] = useState(baseParams);
   const [editablePopulation, setEditablePopulation] = useState(populationSize);
-  const [customGeography, setCustomGeography] = useState<boolean>(false);
+  const [customHealthSystem, setCustomHealthSystem] = useState<boolean>(false);
   const [customDisease, setCustomDisease] = useState<boolean>(false);
   
   // Ref for file input
@@ -145,19 +156,19 @@ const ParametersPanel: React.FC = () => {
     }
   }, [results]);
   
-  // Update editable params when geography or disease changes
+  // Update editable params when health system strength or disease changes
   useEffect(() => {
-    // Get derived parameters that incorporate geography and disease specific values
+    // Get derived parameters that incorporate health system and disease specific values
     const updatedParams = { ...derivedParams };
     
     // Only update if not in custom mode
-    if (!customGeography && !customDisease) {
+    if (!customHealthSystem && !customDisease) {
       setEditableParams(updatedParams);
     }
-  }, [selectedGeography, selectedDisease, derivedParams, customGeography, customDisease]);
+  }, [selectedHealthSystemStrength, selectedDisease, derivedParams, customHealthSystem, customDisease]);
   
-  // Available geographies and diseases from the model
-  const geographies = Object.keys(geographyDefaults);
+  // Available health system scenarios and diseases from the model
+  const healthSystemScenarios = Object.keys(healthSystemStrengthDefaults);
   const diseases = Object.keys(diseaseProfiles);
   
   const handleParamChange = (path: string, value: string) => {
@@ -175,18 +186,33 @@ const ParametersPanel: React.FC = () => {
     setEditableParams(newParams);
   };
   
-  const handleGeographyChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleHealthSystemChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
     if (value === 'custom') {
-      setCustomGeography(true);
+      setCustomHealthSystem(true);
+      // When going custom, retain current multipliers for further tweaking
     } else {
-      setCustomGeography(false);
-      setSelectedGeography(value);
-      
-      // If we switched from custom to a predefined geography,
-      // immediately get geography-specific parameters
-      if (customGeography) {
-        // We'll use the useEffect to update the parameters
+      setCustomHealthSystem(false);
+      setSelectedHealthSystemStrength(value);
+      // When a predefined scenario is selected, reset multipliers to its defaults
+      const scenario = healthSystemStrengthDefaults[value as keyof typeof healthSystemStrengthDefaults];
+      if (scenario) {
+        setActiveMultipliers({
+          mu_multiplier_I: scenario.mu_multiplier_I,
+          mu_multiplier_L0: scenario.mu_multiplier_L0,
+          mu_multiplier_L1: scenario.mu_multiplier_L1,
+          mu_multiplier_L2: scenario.mu_multiplier_L2,
+          mu_multiplier_L3: scenario.mu_multiplier_L3,
+          delta_multiplier_U: scenario.delta_multiplier_U,
+          delta_multiplier_I: scenario.delta_multiplier_I,
+          delta_multiplier_L0: scenario.delta_multiplier_L0,
+          delta_multiplier_L1: scenario.delta_multiplier_L1,
+          delta_multiplier_L2: scenario.delta_multiplier_L2,
+          delta_multiplier_L3: scenario.delta_multiplier_L3,
+          rho_multiplier_L0: scenario.rho_multiplier_L0,
+          rho_multiplier_L1: scenario.rho_multiplier_L1,
+          rho_multiplier_L2: scenario.rho_multiplier_L2,
+        });
       }
     }
   };
@@ -208,7 +234,7 @@ const ParametersPanel: React.FC = () => {
   };
   
   const saveChanges = () => {
-    // Apply current geography and disease settings
+    // Apply current health system and disease settings
     let finalParams = { ...editableParams };
     
     // Save parameters to the atom
@@ -227,9 +253,59 @@ const ParametersPanel: React.FC = () => {
   const cancelChanges = () => {
     setEditableParams(baseParams);
     setEditablePopulation(populationSize);
+    // Also reset multipliers if cancelling changes and a scenario is selected
+    if (!customHealthSystem) {
+      const scenario = healthSystemStrengthDefaults[selectedHealthSystemStrength as keyof typeof healthSystemStrengthDefaults];
+      if (scenario) {
+        setActiveMultipliers({
+          mu_multiplier_I: scenario.mu_multiplier_I,
+          mu_multiplier_L0: scenario.mu_multiplier_L0,
+          mu_multiplier_L1: scenario.mu_multiplier_L1,
+          mu_multiplier_L2: scenario.mu_multiplier_L2,
+          mu_multiplier_L3: scenario.mu_multiplier_L3,
+          delta_multiplier_U: scenario.delta_multiplier_U,
+          delta_multiplier_I: scenario.delta_multiplier_I,
+          delta_multiplier_L0: scenario.delta_multiplier_L0,
+          delta_multiplier_L1: scenario.delta_multiplier_L1,
+          delta_multiplier_L2: scenario.delta_multiplier_L2,
+          delta_multiplier_L3: scenario.delta_multiplier_L3,
+          rho_multiplier_L0: scenario.rho_multiplier_L0,
+          rho_multiplier_L1: scenario.rho_multiplier_L1,
+          rho_multiplier_L2: scenario.rho_multiplier_L2,
+        });
+      }
+    }
     if (results) {
       // Only close edit mode if there are simulation results
       setEditMode(false);
+    }
+  };
+  
+  const handleMultiplierChange = (key: keyof HealthSystemMultipliers, value: string) => {
+    setActiveMultipliers(prev => ({ ...prev, [key]: Number(value) }));
+  };
+  
+  const resetMultipliersToScenarioDefaults = () => {
+    if (!customHealthSystem) {
+      const scenario = healthSystemStrengthDefaults[selectedHealthSystemStrength as keyof typeof healthSystemStrengthDefaults];
+      if (scenario) {
+        setActiveMultipliers({
+          mu_multiplier_I: scenario.mu_multiplier_I,
+          mu_multiplier_L0: scenario.mu_multiplier_L0,
+          mu_multiplier_L1: scenario.mu_multiplier_L1,
+          mu_multiplier_L2: scenario.mu_multiplier_L2,
+          mu_multiplier_L3: scenario.mu_multiplier_L3,
+          delta_multiplier_U: scenario.delta_multiplier_U,
+          delta_multiplier_I: scenario.delta_multiplier_I,
+          delta_multiplier_L0: scenario.delta_multiplier_L0,
+          delta_multiplier_L1: scenario.delta_multiplier_L1,
+          delta_multiplier_L2: scenario.delta_multiplier_L2,
+          delta_multiplier_L3: scenario.delta_multiplier_L3,
+          rho_multiplier_L0: scenario.rho_multiplier_L0,
+          rho_multiplier_L1: scenario.rho_multiplier_L1,
+          rho_multiplier_L2: scenario.rho_multiplier_L2,
+        });
+      }
     }
   };
   
@@ -242,15 +318,20 @@ const ParametersPanel: React.FC = () => {
     return params[path as keyof ModelParameters] as number;
   };
   
-  // Check if a parameter is affected by geography selection
-  const isGeographySpecific = (paramKey: string): boolean => {
-    if (customGeography) return false;
+  // Check if a parameter is affected by health system scenario selection
+  const isHealthSystemSpecific = (paramKey: string): boolean => {
+    if (customHealthSystem) return false;
     
-    const defaultValue = getParamValue(defaultParams, paramKey);
-    const geoParams = geographyDefaults[selectedGeography as keyof typeof geographyDefaults] || {};
+    const scenarioParams = healthSystemStrengthDefaults[selectedHealthSystemStrength as keyof typeof healthSystemStrengthDefaults] || {};
     
-    // Check if this parameter exists in the geography defaults
-    return paramKey in geoParams;
+    // Check if this parameter exists directly in the health system scenario defaults (e.g. phi0, perDiemCosts)
+    // For multipliers, this logic might need adjustment if we want to highlight disease params that are *affected* by multipliers.
+    // For now, this checks for direct params from the scenario object.
+    if (paramKey.includes('.')) {
+        const [parentKey] = paramKey.split('.');
+        return parentKey in scenarioParams;
+    }
+    return paramKey in scenarioParams;
   };
   
   // Check if a parameter is affected by disease selection
@@ -277,7 +358,7 @@ const ParametersPanel: React.FC = () => {
   const resetToDefaults = () => {
     setEditableParams(getDefaultParameters());
     setEditablePopulation(300000);
-    setCustomGeography(false);
+    setCustomHealthSystem(false);
     setCustomDisease(false);
   };
 
@@ -292,7 +373,7 @@ const ParametersPanel: React.FC = () => {
       id: `params-${Date.now()}`,
       name: configName,
       description: configDescription || "",
-      geography: customGeography ? "custom" : selectedGeography,
+      healthSystemStrength: customHealthSystem ? "custom" : selectedHealthSystemStrength,
       disease: customDisease ? "custom" : selectedDisease,
       population: editablePopulation,
       parameters: { ...editableParams }
@@ -329,12 +410,12 @@ const ParametersPanel: React.FC = () => {
         // Apply the imported parameters
         setEditableParams(config.parameters);
         
-        // Handle geography, disease, and population settings
-        if (config.geography === "custom") {
-          setCustomGeography(true);
+        // Handle health system, disease, and population settings
+        if (config.healthSystemStrength === "custom") {
+          setCustomHealthSystem(true);
         } else {
-          setCustomGeography(false);
-          setSelectedGeography(config.geography);
+          setCustomHealthSystem(false);
+          setSelectedHealthSystemStrength(config.healthSystemStrength);
         }
         
         if (config.disease === "custom") {
@@ -445,44 +526,39 @@ const ParametersPanel: React.FC = () => {
           All probabilities are weekly unless otherwise specified.
         </p>
         
-        {/* Geographic and Disease Settings */}
+        {/* Health System and Disease Settings */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
           <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">Settings</h4>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Geography Selection */}
+            {/* Health System Scenario Selection */}
             <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Geography
+                Health System Scenario
               </label>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                Predefined settings for different regions
+                Predefined settings for different health system strengths
               </p>
               {editMode ? (
                 <select 
-                  value={customGeography ? 'custom' : selectedGeography}
-                  onChange={handleGeographyChange}
+                  value={customHealthSystem ? 'custom' : selectedHealthSystemStrength}
+                  onChange={handleHealthSystemChange}
                   className="w-full rounded-md border border-gray-300 p-2 text-sm"
                 >
-                  <option value="ethiopia">Ethiopia</option>
-                  <option value="kenya">Kenya</option>
-                  <option value="malawi">Malawi</option>
-                  <option value="nigeria">Nigeria</option>
-                  <option value="tanzania">Tanzania</option>
-                  <option value="uganda">Uganda</option>
-                  <option value="bangladesh">Bangladesh</option>
-                  <option value="bihar">Rural Bihar, India</option>
-                  <option value="uttar_pradesh">Uttar Pradesh, India</option>
-                  <option value="pakistan">Pakistan</option>
+                  {healthSystemScenarios.map(scenarioKey => (
+                    <option key={scenarioKey} value={scenarioKey}>
+                      {scenarioKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </option>
+                  ))}
                   <option value="custom">Custom</option>
                 </select>
               ) : (
-                <div className="text-sm py-2">{selectedGeography.charAt(0).toUpperCase() + selectedGeography.slice(1)}</div>
+                <div className="text-sm py-2">{selectedHealthSystemStrength.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
               )}
-              {!customGeography && (
+              {!customHealthSystem && (
                 <div className="mt-2">
                   <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md bg-green-100 text-green-800">
-                    Using {selectedGeography.charAt(0).toUpperCase() + selectedGeography.slice(1)} parameters
+                    Using {selectedHealthSystemStrength.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} parameters
                   </span>
                 </div>
               )}
@@ -562,198 +638,182 @@ const ParametersPanel: React.FC = () => {
           </div>
         </div>
         
-        {/* Show Disease Characteristics group immediately after settings */}
-        {parameterGroups.filter(group => group.isDiseaseSpecific).map((group) => (
-          <div key={group.title} className="border-t border-gray-200 dark:border-gray-700 pt-4">
-            <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">
-              {group.title} <span className="text-xs text-blue-500">(Disease-Specific)</span>
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {group.params.map((param) => {
-                const derivedValue = getParamValue(derivedParams, param.key);
-                
-                return (
-                  <div key={param.key} className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {param.label}
-                        </label>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {param.description}
-                        </p>
-                      </div>
-                      {editMode ? (
-                        <input
-                          type="number"
-                          value={getParamValue(editableParams, param.key)}
-                          onChange={(e) => handleParamChange(param.key, e.target.value)}
-                          step={param.key.startsWith('delta') ? '0.001' : '0.01'}
-                          min="0"
-                          max={param.key.startsWith('phi') || param.key.startsWith('rho') ? '1' : undefined}
-                          className={`w-24 text-right px-2 py-1 border rounded-md text-sm ${
-                            isDiseaseSpecific(param.key)
-                              ? 'border-blue-300 bg-blue-50' 
-                              : 'border-gray-300'
-                          }`}
-                        />
-                      ) : (
-                        <div className="text-right">
-                          <span className={`font-mono text-sm ${
-                            isDiseaseSpecific(param.key)
-                              ? 'text-blue-600 dark:text-blue-400' 
-                              : 'text-gray-700 dark:text-gray-300'
-                          }`}>
-                            {formatParamValue(param.key, derivedValue)}
-                          </span>
-                          {/* Region-adjusted lambda message removed */}
+        {/* Simplified Loop for Parameter Groups based on the new order */}
+        {parameterGroups.map((group) => {
+          // Determine if the group contains any parameter that is disease-specific
+          const groupContainsDiseaseSpecificParam = !customDisease && group.params.some(p => isDiseaseSpecific(p.key));
+          
+          return (
+            <div key={group.title} className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">
+                {group.title}
+                {/* Original tag for purely disease-specific groups like "Disease Characteristics" */}
+                {group.isDiseaseSpecific && !customDisease && (
+                  <span className="text-xs text-blue-500 ml-2">(Disease-Specific)</span>
+                )}
+                {/* New tag for other groups if they contain any disease-specific parameters */}
+                {!group.isDiseaseSpecific && groupContainsDiseaseSpecificParam && (
+                  <span className="text-xs text-blue-500 ml-2">(Contains Disease-Specific Params)</span>
+                )}
+                {group.isHealthSystemSpecific && !customHealthSystem && (
+                  <span className="text-xs text-green-500 ml-2">(Health System Specific)</span>
+                )}
+                {group.isAISpecific && ( // New condition for AI specific tag
+                  <span className="text-xs text-purple-500 ml-2">(AI Related)</span>
+                )}
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {group.params.map((param) => {
+                  const derivedValue = getParamValue(derivedParams, param.key);
+                  const defaultValue = getParamValue(defaultParams, param.key); // For showing default
+                  // Determine if the parameter is highlighted as disease or health system specific
+                  const highlightAsDisease = group.isDiseaseSpecific && isDiseaseSpecific(param.key) && !customDisease;
+                  const highlightAsHealthSystem = group.isHealthSystemSpecific && isHealthSystemSpecific(param.key) && !customHealthSystem;
+                                  
+                  // Base styling for the input field
+                  let inputClasses = 'w-24 text-right px-2 py-1 border rounded-md text-sm';
+                  let paramBoxClasses = 'bg-gray-50 dark:bg-gray-700 p-3 rounded-md border';
+
+                  if (highlightAsDisease) {
+                    inputClasses += ' border-blue-300 bg-blue-50 dark:bg-gray-800 dark:border-blue-500';
+                    paramBoxClasses += ' border-blue-300 bg-blue-50 dark:!bg-gray-700';
+                  } else if (highlightAsHealthSystem) {
+                    inputClasses += ' border-green-300 bg-green-50 dark:bg-gray-800 dark:border-green-500';
+                    paramBoxClasses += ' border-green-300 bg-green-50 dark:!bg-gray-700';
+                  } else if (group.isAISpecific) {
+                    inputClasses += ' border-purple-300 bg-purple-50 dark:bg-gray-800 dark:border-purple-500';
+                    paramBoxClasses += ' border-purple-300 bg-purple-50 dark:!bg-gray-700';
+                  }
+                  else {
+                    inputClasses += ' border-gray-300 dark:border-gray-600';
+                    paramBoxClasses += ' border-gray-200 dark:border-gray-700';
+                  }
+
+                  return (
+                    <div key={param.key} className={paramBoxClasses}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {param.label}
+                          </label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {param.description}
+                          </p>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-        
-        {/* Location-specific parameters */}
-        {parameterGroups.filter(group => group.isLocationSpecific && !group.isDiseaseSpecific).map((group) => (
-          <div key={group.title} className="border-t border-gray-200 dark:border-gray-700 pt-4">
-            <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">
-              {group.title} <span className="text-xs text-green-500">(Location-Specific)</span>
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {group.params.map((param) => {
-                const baseValue = getParamValue(baseParams, param.key);
-                const derivedValue = getParamValue(derivedParams, param.key);
-                const isModified = baseValue !== derivedValue;
-                
-                return (
-                  <div key={param.key} className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {param.label}
-                        </label>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {param.description}
-                        </p>
-                      </div>
-                      {editMode ? (
-                        <input
-                          type="number"
-                          value={getParamValue(editableParams, param.key)}
-                          onChange={(e) => handleParamChange(param.key, e.target.value)}
-                          step={param.key.startsWith('delta') ? '0.001' : '0.01'}
-                          min="0"
-                          max={param.key.startsWith('phi') || param.key.startsWith('rho') ? '1' : undefined}
-                          className={`w-24 text-right px-2 py-1 border rounded-md text-sm ${
-                            isGeographySpecific(param.key)
-                              ? 'border-green-300 bg-green-50'
-                              : 'border-gray-300'
-                          }`}
-                        />
-                      ) : (
-                        <div className="text-right">
-                          <span className={`font-mono text-sm ${
-                            isGeographySpecific(param.key)
-                              ? 'text-green-600 dark:text-green-400'
-                              : 'text-gray-700 dark:text-gray-300'
-                          }`}>
-                            {formatParamValue(param.key, derivedValue)}
-                          </span>
-                          {isModified && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Base: {formatParamValue(param.key, baseValue)}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-        
-        {/* Display the effect of AI interventions separately */}
-        <div className="bg-blue-50 dark:bg-blue-900 p-3 rounded-md">
-          <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-            Current Values (Including AI Effects)
-          </h4>
-          <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
-            The values below reflect both base parameters and the effects of any selected AI interventions.
-          </p>
-        </div>
-        
-        {/* Other general parameters */}
-        {parameterGroups.filter(group => !group.isDiseaseSpecific && !group.isLocationSpecific).map((group) => (
-          <div key={group.title} className="border-t border-gray-200 dark:border-gray-700 pt-4">
-            <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">{group.title}</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {group.params.map((param) => {
-                const baseValue = getParamValue(baseParams, param.key);
-                const derivedValue = getParamValue(derivedParams, param.key);
-                const defaultValue = getParamValue(defaultParams, param.key);
-                const isModified = baseValue !== derivedValue;
-                
-                return (
-                  <div key={param.key} className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {param.label}
-                        </label>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {param.description}
-                        </p>
-                      </div>
-                      {editMode ? (
-                        <input
-                          type="number"
-                          value={getParamValue(editableParams, param.key)}
-                          onChange={(e) => handleParamChange(param.key, e.target.value)}
-                          step={param.key.startsWith('delta') ? '0.001' : '0.01'}
-                          min="0"
-                          max={param.key.startsWith('phi') || param.key.startsWith('rho') ? '1' : undefined}
-                          className={`w-24 text-right px-2 py-1 border rounded-md text-sm ${
-                            isDiseaseSpecific(param.key)
-                              ? 'border-blue-300 bg-blue-50' 
-                              : isGeographySpecific(param.key)
-                                ? 'border-green-300 bg-green-50'
-                                : 'border-gray-300'
-                          }`}
-                        />
-                      ) : (
-                        <div className="text-right">
-                          <span className={`font-mono text-sm ${
-                            isDiseaseSpecific(param.key)
-                              ? 'text-blue-600 dark:text-blue-400' 
-                              : isGeographySpecific(param.key)
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-gray-700 dark:text-gray-300'
-                          }`}>
-                            {formatParamValue(param.key, derivedValue)}
-                          </span>
-                          {isModified && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Base: {formatParamValue(param.key, baseValue)}
-                            </div>
-                          )}
-                          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                            Default: {formatParamValue(param.key, defaultValue)}
+                        {editMode ? (
+                          <input
+                            type="number"
+                            value={getParamValue(editableParams, param.key)}
+                            onChange={(e) => handleParamChange(param.key, e.target.value)}
+                            step={param.key.startsWith('delta') || param.key.includes('Rate') || param.key === 'disabilityWeight' ? '0.001' : '0.01'}
+                            min="0"
+                            max={param.key.startsWith('phi') || param.key.startsWith('rho') || param.key === 'disabilityWeight' ? '1' : undefined}
+                            className={inputClasses}
+                          />
+                        ) : (
+                          <div className="text-right">
+                            <span className={`font-mono text-sm ${
+                              highlightAsDisease 
+                                ? 'text-blue-600 dark:text-blue-400' 
+                                : highlightAsHealthSystem
+                                  ? 'text-green-600 dark:text-green-400'
+                                  : group.isAISpecific
+                                    ? 'text-purple-600 dark:text-purple-400'
+                                    : 'text-gray-700 dark:text-gray-300'
+                            }`}>
+                              {formatParamValue(param.key, derivedValue)}
+                            </span>
+                             {/* Show default value only if it's different from derived and not custom */}
+                             {defaultValue !== derivedValue && !customDisease && !customHealthSystem && (
+                              <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                Default: {formatParamValue(param.key, defaultValue)}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+        {/* Health System Outcome Multipliers Section - MOVED HERE, AFTER aLL OTHER PARAMETER GROUPS */}
+        {editMode && (
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+            <div className="flex justify-between items-center mb-3">
+                <h4 className="text-md font-medium text-gray-700 dark:text-gray-300">
+                Health System Outcome Multipliers
+                {!customHealthSystem && (
+                  <span className="text-xs text-green-500 ml-2">(Health System Specific)</span>
+                )}
+                </h4>
+                {!customHealthSystem && (
+                    <button 
+                        onClick={resetMultipliersToScenarioDefaults}
+                        className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                    >
+                        Reset to Scenario Defaults
+                    </button>
+                )}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              These multipliers adjust disease-specific base rates for resolution (μ), mortality (δ), and referral (ρ).
+              A value of 1.0 means no change from the disease's baseline for the current health system scenario.
+              Values &lt; 1.0 generally mean better outcomes (for mortality/referral) or lower effectiveness (for resolution), and &gt; 1.0 the opposite.
+              Modify these to conduct sensitivity analysis on health system strength.
+            </p>
+
+            {(Object.keys(activeMultipliers) as Array<keyof HealthSystemMultipliers>).length > 0 && (
+              <div className="space-y-4">
+                {[ 
+                  { groupTitle: 'Resolution Rate Multipliers (α) (Base: μ)', keys: ['mu_multiplier_I', 'mu_multiplier_L0', 'mu_multiplier_L1', 'mu_multiplier_L2', 'mu_multiplier_L3'], symbol: 'α' },
+                  { groupTitle: 'Mortality Rate Multipliers (β) (Base: δ)', keys: ['delta_multiplier_U', 'delta_multiplier_I', 'delta_multiplier_L0', 'delta_multiplier_L1', 'delta_multiplier_L2', 'delta_multiplier_L3'], symbol: 'β' },
+                  { groupTitle: 'Referral Rate Multipliers (γ) (Base: ρ)', keys: ['rho_multiplier_L0', 'rho_multiplier_L1', 'rho_multiplier_L2'], symbol: 'γ' },
+                ].map(group => (
+                  <div key={group.groupTitle}>
+                    <h5 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{group.groupTitle}</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
+                      {group.keys.map(key => {
+                        // Derive a user-friendly label from the key using the new Greek symbols
+                        const parts = key.split('_'); // e.g., ['mu', 'multiplier', 'L0'] or ['delta', 'multiplier', 'U']
+                        const level = parts[2]; // L0, L1, I, U etc.
+                        let type = '';
+                        if (parts[0] === 'mu') type = 'Resolution';
+                        else if (parts[0] === 'delta') type = 'Mortality';
+                        else if (parts[0] === 'rho') type = 'Referral';
+
+                        const label = `${group.symbol}${level === 'I' ? 'ᵢ' : level === 'U' ? 'ᵤ' : level ? `₍${level}₎` : ''} (${level}-Level ${type})`;
+                        
+                        return (
+                          <div key={key} className={`bg-gray-50 dark:bg-gray-700 p-3 rounded-md ${!customHealthSystem ? 'border border-green-300 dark:border-green-600 bg-green-50 dark:!bg-gray-700' : 'border border-gray-300 dark:border-gray-600'}`}>
+                            <label htmlFor={key} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              {label}
+                            </label>
+                            <input
+                              id={key}
+                              type="number"
+                              value={activeMultipliers[key as keyof HealthSystemMultipliers]}
+                              onChange={(e) => handleMultiplierChange(key as keyof HealthSystemMultipliers, e.target.value)}
+                              step="0.05"
+                              min="0"
+                              className={`w-full text-right px-2 py-1 border rounded-md text-sm ${
+                                !customHealthSystem 
+                                  ? 'border-green-400 bg-white dark:bg-gray-800 dark:border-green-500' 
+                                  : 'border-gray-300 dark:border-gray-600'
+                              }`}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

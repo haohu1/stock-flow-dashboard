@@ -13,9 +13,15 @@ import {
   selectedScenarioIdAtom,
   loadScenarioAtom,
   deleteScenarioAtom,
-  updateScenarioAtom
+  updateScenarioAtom,
+  selectedHealthSystemStrengthAtom,
+  baseParametersAtom,
+  aiInterventionsAtom,
+  effectMagnitudesAtom,
+  healthSystemMultipliersAtom
 } from '../lib/store';
 import SimulationChart from './SimulationChart';
+import CumulativeOutcomesChart from './CumulativeOutcomesChart';
 import ResultsTable from './ResultsTable';
 import { formatNumber } from '../lib/utils';
 import { SimulationResults } from '../models/stockAndFlowModel';
@@ -583,6 +589,18 @@ const Dashboard: React.FC = () => {
                 <li className="flex items-center"><span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span> Primary Care (L1)</li>
                 <li className="flex items-center"><span className="w-3 h-3 bg-blue-500 rounded-full mr-2"></span> District Hospital (L2)</li>
                 <li className="flex items-center"><span className="w-3 h-3 bg-indigo-500 rounded-full mr-2"></span> Tertiary Hospital (L3)</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Cumulative Outcomes</h3>
+            <div className="h-80">
+              <CumulativeOutcomesChart data={weeklyData} baseline={baseline ? baseline.weeklyStates : undefined} />
+            </div>
+            <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+              <p className="mb-2">This chart shows the cumulative number of resolved cases and deaths over time.</p>
+              <ul className="flex flex-wrap gap-4">
                 <li className="flex items-center"><span className="w-3 h-3 bg-green-700 rounded-full mr-2"></span> Resolved (R)</li>
                 <li className="flex items-center"><span className="w-3 h-3 bg-gray-800 rounded-full mr-2"></span> Deaths (D)</li>
               </ul>

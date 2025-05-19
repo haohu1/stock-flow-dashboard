@@ -313,7 +313,15 @@ export const runSimulation = (
   const weeklyStates: StockAndFlowState[] = [];
   let currentState = initializeState(config.population, params.lambda, config.initialState);
   
-  // Run simulation for specified number of weeks
+  // Add burn-in period (52 weeks = 1 year) to reach steady state
+  const burnInWeeks = 52;
+  
+  // Run burn-in period without collecting states
+  for (let week = 0; week < burnInWeeks; week++) {
+    currentState = runWeek(currentState, params, config.population);
+  }
+  
+  // Run simulation for specified number of weeks, collecting results
   for (let week = 0; week < config.numWeeks; week++) {
     weeklyStates.push(currentState);
     currentState = runWeek(currentState, params, config.population);

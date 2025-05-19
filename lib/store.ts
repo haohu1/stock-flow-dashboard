@@ -83,7 +83,8 @@ export const getDerivedParamsForDisease = (
   disease: string,
   aiInterventions: AIInterventions,
   effectMagnitudes: {[key: string]: number},
-  activeMultipliers: HealthSystemMultipliers
+  activeMultipliers: HealthSystemMultipliers,
+  aiCostParams?: AICostParameters
 ): ModelParameters => {
   // Start with base parameters
   let params = { ...baseParams };
@@ -153,7 +154,7 @@ export const getDerivedParamsForDisease = (
   }
 
   // Apply AI interventions
-  return applyAIInterventions(params, aiInterventions, effectMagnitudes);
+  return applyAIInterventions(params, aiInterventions, effectMagnitudes, aiCostParams);
 };
 
 // Update parameters when health system strength or disease changes
@@ -165,8 +166,9 @@ export const derivedParametersAtom = atom(
     const aiInterventions = get(aiInterventionsAtom);
     const effectMagnitudes = get(effectMagnitudesAtom);
     const activeMultipliers = get(healthSystemMultipliersAtom);
+    const aiCostParams = get(aiCostParametersAtom);
     
-    return getDerivedParamsForDisease(baseParams, healthSystemStrength, disease, aiInterventions, effectMagnitudes, activeMultipliers);
+    return getDerivedParamsForDisease(baseParams, healthSystemStrength, disease, aiInterventions, effectMagnitudes, activeMultipliers, aiCostParams);
   }
 );
 
@@ -178,6 +180,26 @@ export const aiInterventionsAtom = atom<AIInterventions>({
   bedManagementAI: false,
   hospitalDecisionAI: false,
   selfCareAI: false
+});
+
+// AI cost parameters
+export interface AICostParameters {
+  triageAI: { fixed: number, variable: number };
+  chwAI: { fixed: number, variable: number };
+  diagnosticAI: { fixed: number, variable: number };
+  bedManagementAI: { fixed: number, variable: number };
+  hospitalDecisionAI: { fixed: number, variable: number };
+  selfCareAI: { fixed: number, variable: number };
+}
+
+// Default values match the hardcoded values in stockAndFlowModel.ts
+export const aiCostParametersAtom = atom<AICostParameters>({
+  triageAI: { fixed: 35000, variable: 2 },
+  chwAI: { fixed: 25000, variable: 1.5 },
+  diagnosticAI: { fixed: 40000, variable: 3.5 },
+  bedManagementAI: { fixed: 45000, variable: 1 },
+  hospitalDecisionAI: { fixed: 50000, variable: 4.5 },
+  selfCareAI: { fixed: 20000, variable: 0.8 }
 });
 
 // AI intervention effect magnitudes

@@ -4,7 +4,9 @@ import {
   aiInterventionsAtom,
   effectMagnitudesAtom,
   runSimulationAtom,
-  selectedAIScenarioAtom
+  selectedAIScenarioAtom,
+  aiCostParametersAtom,
+  AICostParameters
 } from '../lib/store';
 import { AIInterventions } from '../models/stockAndFlowModel';
 
@@ -247,9 +249,11 @@ const AIInterventionManager: React.FC = () => {
   
   // Use global atom for effect magnitudes instead of local state
   const [effectMagnitudes, setEffectMagnitudes] = useAtom(effectMagnitudesAtom);
+  const [selectedPreset, setSelectedPreset] = useAtom(selectedAIScenarioAtom);
   
-  // Use global atom for selected AI scenario
-  const [selectedAIScenario, setSelectedAIScenario] = useAtom(selectedAIScenarioAtom);
+  // Add AI cost parameters state
+  const [aiCostParams, setAICostParams] = useAtom(aiCostParametersAtom);
+  const [showCostSettings, setShowCostSettings] = useState(false);
   
   // State for saved configurations
   const [savedConfigs, setSavedConfigs] = useState<AIInterventionConfig[]>([]);
@@ -267,8 +271,8 @@ const AIInterventionManager: React.FC = () => {
   
   // Initialize local selected scenario from global atom
   useEffect(() => {
-    setLocalSelectedScenario(selectedAIScenario);
-  }, [selectedAIScenario]);
+    setLocalSelectedScenario(selectedPreset);
+  }, [selectedPreset]);
   
   // Load saved configurations from localStorage on component mount
   useEffect(() => {
@@ -298,7 +302,7 @@ const AIInterventionManager: React.FC = () => {
     setAIInterventions(newInterventions);
     // When manually toggling, unset the selected scenario
     setLocalSelectedScenario(null);
-    setSelectedAIScenario(null);
+    setSelectedPreset(null);
   };
   
   const loadConfig = (config: AIInterventionConfig) => {
@@ -320,7 +324,7 @@ const AIInterventionManager: React.FC = () => {
     setEffectMagnitudes(config.effectMagnitudes);
     setLocalSelectedScenario(config.id);
     // Also update the global atom
-    setSelectedAIScenario(config.id);
+    setSelectedPreset(config.id);
   };
   
   // Handle parameter effect adjustment
@@ -333,7 +337,7 @@ const AIInterventionManager: React.FC = () => {
     // When manually adjusting, unset the selected scenario if it's a preset
     if (localSelectedScenario && AIScenarioPresets.some(preset => preset.id === localSelectedScenario)) {
       setLocalSelectedScenario(null);
-      setSelectedAIScenario(null);
+      setSelectedPreset(null);
     }
   };
   
@@ -540,149 +544,260 @@ const AIInterventionManager: React.FC = () => {
     return selectedPreset ? selectedPreset.name : null;
   };
   
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-white">AI Interventions</h3>
-        <div className="flex flex-wrap gap-2 justify-end">
-          <button
-            onClick={exportConfig}
-            className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm"
+  // Add handler for AI cost parameter changes
+  const handleCostChange = (
+    intervention: keyof AIInterventions,
+    costType: 'fixed' | 'variable',
+    value: number
+  ) => {
+    setAICostParams(prev => ({
+      ...prev,
+      [intervention]: {
+        ...prev[intervention],
+        [costType]: value
+      }
+    }));
+  };
+  
+  // Add this section where appropriate in the render function
+  const renderCostSettings = () => {
+    if (!showCostSettings) return null;
+    
+    return (
+      <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">AI Cost Settings</h3>
+          <button 
+            onClick={() => setShowCostSettings(false)}
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            aria-label="Close cost settings"
           >
-            Export JSON
-          </button>
-          <label className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm cursor-pointer">
-            Import JSON
-            <input
-              type="file"
-              accept=".json"
-              className="hidden"
-              onChange={importConfig}
-              ref={fileInputRef}
-            />
-          </label>
-          {hasCustomMagnitudes && (
-            <button
-              onClick={resetAllEffectMagnitudes}
-              className="btn bg-blue-50 hover:bg-blue-100 text-blue-600 text-sm"
-            >
-              Reset All Magnitudes
-            </button>
-          )}
-          {hasActiveInterventions && (
-            <button
-              onClick={() => {
-                setAIInterventions({
-                  triageAI: false,
-                  chwAI: false,
-                  diagnosticAI: false,
-                  bedManagementAI: false,
-                  hospitalDecisionAI: false,
-                  selfCareAI: false
-                });
-                setLocalSelectedScenario(null);
-                setSelectedAIScenario(null);
-              }}
-              className="btn bg-red-50 hover:bg-red-100 text-red-600 text-sm"
-            >
-              Clear All
-            </button>
-          )}
-        </div>
-      </div>
-      
-      <div className="mb-6 bg-blue-50 dark:bg-blue-900 rounded-md">
-        <div 
-          className="p-4 flex justify-between items-center cursor-pointer" 
-          onClick={() => setShowPresetScenarios(!showPresetScenarios)}
-        >
-          <h4 className="text-md font-medium text-blue-800 dark:text-blue-300">AI Effectiveness Scenarios (2025)</h4>
-          <button className="text-blue-700 dark:text-blue-400">
-            {showPresetScenarios ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            )}
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
         
-        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showPresetScenarios ? 'max-h-[32rem]' : 'max-h-0'}`}>
-          <div className="p-4 pt-0">
-            <p className="text-sm text-blue-700 dark:text-blue-400 mb-3">
-              Select from predefined scenarios representing different potential AI effectiveness outcomes in healthcare over the next 1-3 years:
-            </p>
+        <div className="space-y-4">
+          {Object.entries(aiInterventions).map(([key, isEnabled]) => {
+            const intervention = key as keyof AIInterventions;
+            if (!isEnabled) return null;
             
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {AIScenarioPresets.map((preset) => (
-                <div 
-                  key={preset.id}
-                  onClick={() => applyConfig(preset)}
-                  className={`border ${
-                    preset.id.includes('best') 
-                      ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950' 
-                      : preset.id.includes('worst')
-                        ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950'
-                        : 'border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900'
-                  } ${localSelectedScenario === preset.id ? 'ring-2 ring-offset-1 ring-blue-500 dark:ring-blue-400' : ''} 
-                  rounded-md p-3 hover:bg-opacity-80 dark:hover:bg-opacity-80 transition-colors cursor-pointer`}
-                >
-                  <h5 className={`font-medium text-sm mb-1 ${
-                    preset.id.includes('best') 
-                      ? 'text-green-800 dark:text-green-300' 
-                      : preset.id.includes('worst')
-                        ? 'text-red-800 dark:text-red-300'
-                        : 'text-blue-800 dark:text-blue-300'
-                  }`}>{preset.name}</h5>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">{preset.description}</p>
+            return (
+              <div key={`cost-${key}`} className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-2">
+                  {getInterventionName(intervention)}
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                      Fixed Cost (USD)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      value={aiCostParams[intervention].fixed}
+                      onChange={(e) => handleCostChange(intervention, 'fixed', Number(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                      Variable Cost (USD per patient)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={aiCostParams[intervention].variable}
+                      onChange={(e) => handleCostChange(intervention, 'variable', Number(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white text-sm"
+                    />
+                  </div>
                 </div>
-              ))}
-            </div>
-            
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-3 italic">
-              Click on any scenario to apply it to your simulation.
-            </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+  
+  // Add a helper function to get the intervention name
+  const getInterventionName = (key: keyof AIInterventions): string => {
+    // Map intervention keys to their display names
+    const nameMap: Record<keyof AIInterventions, string> = {
+      triageAI: 'Patient Triage AI',
+      chwAI: 'CHW Support AI', 
+      diagnosticAI: 'Diagnostic AI',
+      bedManagementAI: 'Bed Management AI',
+      hospitalDecisionAI: 'Hospital Decision Support AI',
+      selfCareAI: 'Self-Care AI'
+    };
+    return nameMap[key] || key;
+  };
+  
+  // Add a button to toggle cost settings visibility in the appropriate section of your render function
+  const renderCostSettingsButton = () => {
+    const anyInterventionActive = Object.values(aiInterventions).some(Boolean);
+    if (!anyInterventionActive) return null;
+    
+    return (
+      <button
+        onClick={() => setShowCostSettings(!showCostSettings)}
+        className="mt-4 px-4 py-2 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900 dark:hover:bg-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-md text-sm font-medium"
+      >
+        {showCostSettings ? 'Hide Cost Settings' : 'Configure AI Costs'}
+      </button>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white">AI Interventions</h3>
+          <div className="flex flex-wrap gap-2 justify-end">
+            <button
+              onClick={exportConfig}
+              className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm"
+            >
+              Export JSON
+            </button>
+            <label className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm cursor-pointer">
+              Import JSON
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={importConfig}
+                ref={fileInputRef}
+              />
+            </label>
+            {hasCustomMagnitudes && (
+              <button
+                onClick={resetAllEffectMagnitudes}
+                className="btn bg-blue-50 hover:bg-blue-100 text-blue-600 text-sm"
+              >
+                Reset All Magnitudes
+              </button>
+            )}
+            {hasActiveInterventions && (
+              <button
+                onClick={() => {
+                  setAIInterventions({
+                    triageAI: false,
+                    chwAI: false,
+                    diagnosticAI: false,
+                    bedManagementAI: false,
+                    hospitalDecisionAI: false,
+                    selfCareAI: false
+                  });
+                  setLocalSelectedScenario(null);
+                  setSelectedPreset(null);
+                }}
+                className="btn bg-red-50 hover:bg-red-100 text-red-600 text-sm"
+              >
+                Clear All
+              </button>
+            )}
           </div>
         </div>
-      </div>
-      
-      <div className="mb-6 bg-blue-50 dark:bg-blue-900 rounded-md">
-        <div 
-          className="p-4 flex justify-between items-center cursor-pointer" 
-          onClick={() => setShowParameterEffects(!showParameterEffects)}
-        >
-          <h4 className="text-md font-medium text-blue-800 dark:text-blue-300">Understanding Parameter Effects</h4>
-          <button className="text-blue-700 dark:text-blue-400">
-            {showParameterEffects ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            )}
-          </button>
+        
+        <div className="mb-6 bg-blue-50 dark:bg-blue-900 rounded-md">
+          <div 
+            className="p-4 flex justify-between items-center cursor-pointer" 
+            onClick={() => setShowPresetScenarios(!showPresetScenarios)}
+          >
+            <h4 className="text-md font-medium text-blue-800 dark:text-blue-300">AI Effectiveness Scenarios (2025)</h4>
+            <button className="text-blue-700 dark:text-blue-400">
+              {showPresetScenarios ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
+          </div>
+          
+          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showPresetScenarios ? 'max-h-[32rem]' : 'max-h-0'}`}>
+            <div className="p-4 pt-0">
+              <p className="text-sm text-blue-700 dark:text-blue-400 mb-3">
+                Select from predefined scenarios representing different potential AI effectiveness outcomes in healthcare over the next 1-3 years:
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {AIScenarioPresets.map((preset) => (
+                  <div 
+                    key={preset.id}
+                    onClick={() => applyConfig(preset)}
+                    className={`border ${
+                      preset.id.includes('best') 
+                        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950' 
+                        : preset.id.includes('worst')
+                          ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950'
+                          : 'border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900'
+                    } ${localSelectedScenario === preset.id ? 'ring-2 ring-offset-1 ring-blue-500 dark:ring-blue-400' : ''} 
+                    rounded-md p-3 hover:bg-opacity-80 dark:hover:bg-opacity-80 transition-colors cursor-pointer`}
+                  >
+                    <h5 className={`font-medium text-sm mb-1 ${
+                      preset.id.includes('best') 
+                        ? 'text-green-800 dark:text-green-300' 
+                        : preset.id.includes('worst')
+                          ? 'text-red-800 dark:text-red-300'
+                          : 'text-blue-800 dark:text-blue-300'
+                    }`}>{preset.name}</h5>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">{preset.description}</p>
+                  </div>
+                ))}
+              </div>
+              
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-3 italic">
+                Click on any scenario to apply it to your simulation.
+              </p>
+            </div>
+          </div>
         </div>
         
-        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showParameterEffects ? 'max-h-96' : 'max-h-0'}`}>
-          <div className="p-4 pt-0">
-            <p className="text-sm text-blue-700 dark:text-blue-400 mb-2">
-              Each AI intervention modifies specific model parameters that affect how patients move through the healthcare system:
-            </p>
-            <ul className="text-sm text-blue-700 dark:text-blue-400 list-disc pl-5 space-y-1">
-              <li><strong>μ (mu)</strong>: Recovery/resolution rates at different levels of care (higher is better)</li>
-              <li><strong>δ (delta)</strong>: Mortality rates at different levels of care (lower is better)</li>
-              <li><strong>ρ (rho)</strong>: Referral rates between care levels (optimized based on need)</li>
-              <li><strong>φ (phi)</strong>: Initial care-seeking behavior parameters (higher formal care entry is better)</li>
-              <li><strong>σ (sigma)</strong>: Transition rates between care pathways (faster transitions to appropriate care is better)</li>
-            </ul>
-            <p className="text-sm text-blue-700 dark:text-blue-400 mt-2">
-              Subscripts indicate care level: I=informal, 0=CHW, 1=primary care, 2=district hospital, 3=tertiary hospital
-            </p>
+        <div className="mb-6 bg-blue-50 dark:bg-blue-900 rounded-md">
+          <div 
+            className="p-4 flex justify-between items-center cursor-pointer" 
+            onClick={() => setShowParameterEffects(!showParameterEffects)}
+          >
+            <h4 className="text-md font-medium text-blue-800 dark:text-blue-300">Understanding Parameter Effects</h4>
+            <button className="text-blue-700 dark:text-blue-400">
+              {showParameterEffects ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
+          </div>
+          
+          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showParameterEffects ? 'max-h-96' : 'max-h-0'}`}>
+            <div className="p-4 pt-0">
+              <p className="text-sm text-blue-700 dark:text-blue-400 mb-2">
+                Each AI intervention modifies specific model parameters that affect how patients move through the healthcare system:
+              </p>
+              <ul className="text-sm text-blue-700 dark:text-blue-400 list-disc pl-5 space-y-1">
+                <li><strong>μ (mu)</strong>: Recovery/resolution rates at different levels of care (higher is better)</li>
+                <li><strong>δ (delta)</strong>: Mortality rates at different levels of care (lower is better)</li>
+                <li><strong>ρ (rho)</strong>: Referral rates between care levels (optimized based on need)</li>
+                <li><strong>φ (phi)</strong>: Initial care-seeking behavior parameters (higher formal care entry is better)</li>
+                <li><strong>σ (sigma)</strong>: Transition rates between care pathways (faster transitions to appropriate care is better)</li>
+              </ul>
+              <p className="text-sm text-blue-700 dark:text-blue-400 mt-2">
+                Subscripts indicate care level: I=informal, 0=CHW, 1=primary care, 2=district hospital, 3=tertiary hospital
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -779,6 +894,9 @@ const AIInterventionManager: React.FC = () => {
           );
         })}
       </div>
+      
+      {renderCostSettingsButton()}
+      {renderCostSettings()}
     </div>
   );
 };

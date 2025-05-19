@@ -723,11 +723,32 @@ export interface AIInterventions {
   selfCareAI: boolean;        // Enhanced self-care apps
 }
 
+// AI cost parameters interface
+export interface AICostParameters {
+  triageAI: { fixed: number, variable: number };
+  chwAI: { fixed: number, variable: number };
+  diagnosticAI: { fixed: number, variable: number };
+  bedManagementAI: { fixed: number, variable: number };
+  hospitalDecisionAI: { fixed: number, variable: number };
+  selfCareAI: { fixed: number, variable: number };
+}
+
+// Default AI cost parameters
+export const defaultAICostParameters: AICostParameters = {
+  triageAI: { fixed: 35000, variable: 2 },
+  chwAI: { fixed: 25000, variable: 1.5 },
+  diagnosticAI: { fixed: 40000, variable: 3.5 },
+  bedManagementAI: { fixed: 45000, variable: 1 },
+  hospitalDecisionAI: { fixed: 50000, variable: 4.5 },
+  selfCareAI: { fixed: 20000, variable: 0.8 }
+};
+
 // Apply AI intervention effects to parameters
 export const applyAIInterventions = (
   baseParams: ModelParameters,
   interventions: AIInterventions,
-  effectMagnitudes: {[key: string]: number} = {}
+  effectMagnitudes: {[key: string]: number} = {},
+  costParams: AICostParameters = defaultAICostParameters
 ): ModelParameters => {
   const modifiedParams = { ...baseParams };
   
@@ -761,49 +782,49 @@ export const applyAIInterventions = (
   };
 
   if (interventions.triageAI) {
-    // Triage AI improves formal care seeking and transitions from informal care
-    modifiedParams.phi0 += applyMagnitude('triageAI_φ₀', 0.15);
-    modifiedParams.sigmaI *= applyMagnitude('triageAI_σI', 1.25, true);
-    modifiedParams.aiFixedCost += 20000;
-    modifiedParams.aiVariableCost += 1;
+    // Triage AI improves formal care seeking and transitions from informal care - modest effects
+    modifiedParams.phi0 += applyMagnitude('triageAI_φ₀', 0.08); // 8% increase in formal care seeking
+    modifiedParams.sigmaI *= applyMagnitude('triageAI_σI', 1.15, true); // 15% increase in transitions from informal to formal
+    modifiedParams.aiFixedCost += costParams.triageAI.fixed;
+    modifiedParams.aiVariableCost += costParams.triageAI.variable;
   }
   
   if (interventions.chwAI) {
-    modifiedParams.mu0 += applyMagnitude('chwAI_μ₀', 0.10);
-    modifiedParams.delta0 *= applyMagnitude('chwAI_δ₀', 0.85, true);
-    modifiedParams.rho0 *= applyMagnitude('chwAI_ρ₀', 0.85, true);
-    modifiedParams.aiFixedCost += 15000;
-    modifiedParams.aiVariableCost += 0.5;
+    modifiedParams.mu0 += applyMagnitude('chwAI_μ₀', 0.05); // 5% increase in resolution at CHW level
+    modifiedParams.delta0 *= applyMagnitude('chwAI_δ₀', 0.92, true); // 8% reduction in mortality at CHW level
+    modifiedParams.rho0 *= applyMagnitude('chwAI_ρ₀', 0.92, true); // 8% reduction in referrals from CHW level
+    modifiedParams.aiFixedCost += costParams.chwAI.fixed;
+    modifiedParams.aiVariableCost += costParams.chwAI.variable;
   }
   
   if (interventions.diagnosticAI) {
-    modifiedParams.mu1 += applyMagnitude('diagnosticAI_μ₁', 0.10);
-    modifiedParams.delta1 *= applyMagnitude('diagnosticAI_δ₁', 0.85, true);
-    modifiedParams.rho1 *= applyMagnitude('diagnosticAI_ρ₁', 0.85, true);
-    modifiedParams.aiFixedCost += 25000;
-    modifiedParams.aiVariableCost += 2.5;
+    modifiedParams.mu1 += applyMagnitude('diagnosticAI_μ₁', 0.06); // 6% increase in resolution at primary care
+    modifiedParams.delta1 *= applyMagnitude('diagnosticAI_δ₁', 0.92, true); // 8% reduction in mortality at primary care
+    modifiedParams.rho1 *= applyMagnitude('diagnosticAI_ρ₁', 0.92, true); // 8% reduction in referrals from primary care
+    modifiedParams.aiFixedCost += costParams.diagnosticAI.fixed;
+    modifiedParams.aiVariableCost += costParams.diagnosticAI.variable;
   }
   
   if (interventions.bedManagementAI) {
-    modifiedParams.mu2 += applyMagnitude('bedManagementAI_μ₂', 0.05);
-    modifiedParams.mu3 += applyMagnitude('bedManagementAI_μ₃', 0.05);
-    modifiedParams.aiFixedCost += 30000;
-    modifiedParams.aiVariableCost += 0;
+    modifiedParams.mu2 += applyMagnitude('bedManagementAI_μ₂', 0.03); // 3% increase in resolution at district hospitals
+    modifiedParams.mu3 += applyMagnitude('bedManagementAI_μ₃', 0.03); // 3% increase in resolution at tertiary hospitals
+    modifiedParams.aiFixedCost += costParams.bedManagementAI.fixed;
+    modifiedParams.aiVariableCost += costParams.bedManagementAI.variable;
   }
   
   if (interventions.hospitalDecisionAI) {
-    modifiedParams.delta2 *= applyMagnitude('hospitalDecisionAI_δ₂', 0.80, true);
-    modifiedParams.delta3 *= applyMagnitude('hospitalDecisionAI_δ₃', 0.80, true);
-    modifiedParams.aiFixedCost += 35000;
-    modifiedParams.aiVariableCost += 3;
+    modifiedParams.delta2 *= applyMagnitude('hospitalDecisionAI_δ₂', 0.90, true); // 10% reduction in mortality at district hospitals
+    modifiedParams.delta3 *= applyMagnitude('hospitalDecisionAI_δ₃', 0.90, true); // 10% reduction in mortality at tertiary hospitals
+    modifiedParams.aiFixedCost += costParams.hospitalDecisionAI.fixed;
+    modifiedParams.aiVariableCost += costParams.hospitalDecisionAI.variable;
   }
   
   if (interventions.selfCareAI) {
     // Use configurable parameters for self-care AI effects
-    modifiedParams.muI += applyMagnitude('selfCareAI_μI', modifiedParams.selfCareAIEffectMuI);
-    modifiedParams.deltaI *= applyMagnitude('selfCareAI_δI', modifiedParams.selfCareAIEffectDeltaI, true);
-    modifiedParams.aiFixedCost += 10000;
-    modifiedParams.aiVariableCost += 0.2;
+    modifiedParams.muI += applyMagnitude('selfCareAI_μI', modifiedParams.selfCareAIEffectMuI); // Improved informal care resolution
+    modifiedParams.deltaI *= applyMagnitude('selfCareAI_δI', modifiedParams.selfCareAIEffectDeltaI, true); // Reduced mortality in informal care
+    modifiedParams.aiFixedCost += costParams.selfCareAI.fixed;
+    modifiedParams.aiVariableCost += costParams.selfCareAI.variable;
   }
   
   return modifiedParams;
@@ -841,9 +862,9 @@ export const getDefaultParameters = (): ModelParameters => ({
   mu3: 0.80,
   delta3: 0.08,
   
-  // AI effectiveness parameters
-  selfCareAIEffectMuI: 0.15,   // improvement in resolution from self-care AI  
-  selfCareAIEffectDeltaI: 0.70, // multiplier for death rate reduction from self-care AI
+  // AI effectiveness parameters - conservative estimates
+  selfCareAIEffectMuI: 0.08,   // 8% improvement in resolution from self-care AI (reduced from 15%)
+  selfCareAIEffectDeltaI: 0.85, // 15% reduction in mortality from self-care AI (reduced from 30%)
   
   // Economic parameters
   perDiemCosts: {

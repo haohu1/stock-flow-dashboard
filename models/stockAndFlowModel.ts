@@ -271,7 +271,7 @@ const calculateEconomics = (
 // Calculate average time to resolution
 const calculateTimeToResolution = (
   weeklyStates: StockAndFlowState[],
-  params: ModelParameters  // Add params parameter to use the actual simulation parameters
+  params: ModelParameters  
 ): number => {
   // If we have no data, return 0
   if (weeklyStates.length === 0) return 0;
@@ -312,69 +312,37 @@ const calculateTimeToResolution = (
   }
   
   // If we have tracked resolutions, use that for more accurate measure
-  if (casesWithResolutionTracked > 0) {
+  if (casesWithResolutionTracked > 0 && casesWithResolutionTracked >= 0.01 * cumulativeNewCases) {
     return avgWeeks / casesWithResolutionTracked;
   }
   
-  // Method 2 (Fallback): Calculate expected time based on actual flow between care levels
-  // Get the final distribution of patients to determine weights
-  const finalPatients = finalState.U + finalState.I + finalState.F + 
-                      finalState.L0 + finalState.L1 + finalState.L2 + finalState.L3;
+  // MAJOR FIX: Use the direct pathway probability calculation as fallback
+  // This is more accurate for fast-resolving conditions like diarrhea
   
-  if (finalPatients === 0) {
-    // If there are no patients left in the system, use the flow parameters directly
-    // Calculate weighted resolution rates based on patient flow through the system
-    
-    // Calculate the probability of reaching each level based on referral rates
-    const pInformal = 1 - params.phi0; // Probability of going to informal care
-    const pFormal = params.phi0;       // Probability of going to formal care
-    
-    // Probability of being at different formal care levels
-    const pL0 = pFormal;
-    const pL1 = pL0 * params.rho0;
-    const pL2 = pL1 * params.rho1;
-    const pL3 = pL2 * params.rho2;
-    
-    // Calculate weighted average resolution rate
-    // Weighted by probability of reaching each level
-    const weightedResolutionRate = 
-      pInformal * params.muI + 
-      pL0 * params.mu0 + 
-      pL1 * params.mu1 + 
-      pL2 * params.mu2 + 
-      pL3 * params.mu3;
-    
-    // Expected weeks to resolution is inverse of weighted resolution rate
-    // Add a minimum rate to prevent division by zero or unrealistic results
-    const minResolutionRate = 0.01; // 1% weekly resolution rate minimum (100 weeks maximum)
-    const effectiveRate = Math.max(weightedResolutionRate, minResolutionRate);
-    
-    return 1 / effectiveRate;
-  } else {
-    // Calculate the current distribution of patients as weights
-    const weights = {
-      I: finalState.I / finalPatients,
-      L0: finalState.L0 / finalPatients,
-      L1: finalState.L1 / finalPatients,
-      L2: finalState.L2 / finalPatients,
-      L3: finalState.L3 / finalPatients
-    };
-    
-    // Calculate weighted resolution rate based on actual patient distribution
-    const weightedResolutionRate = 
-      weights.I * params.muI + 
-      weights.L0 * params.mu0 + 
-      weights.L1 * params.mu1 + 
-      weights.L2 * params.mu2 + 
-      weights.L3 * params.mu3;
-    
-    // Expected weeks to resolution is inverse of weighted resolution rate
-    // Add a minimum rate to prevent division by zero
-    const minResolutionRate = 0.01; // 1% weekly resolution rate minimum (100 weeks maximum)
-    const effectiveRate = Math.max(weightedResolutionRate, minResolutionRate);
-    
-    return 1 / effectiveRate;
-  }
+  // Calculate probability of reaching each level based on referral rates
+  const pInformal = 1 - params.phi0; // Probability of going to informal care
+  const pFormal = params.phi0;       // Probability of going to formal care
+  
+  // Probability of being at different formal care levels
+  const pL0 = pFormal;
+  const pL1 = pL0 * params.rho0;
+  const pL2 = pL1 * params.rho1;
+  const pL3 = pL2 * params.rho2;
+  
+  // Calculate weighted average resolution rate based on pathway probabilities
+  const weightedResolutionRate = 
+    pInformal * params.muI + 
+    pL0 * params.mu0 + 
+    pL1 * params.mu1 + 
+    pL2 * params.mu2 + 
+    pL3 * params.mu3;
+  
+  // Expected weeks to resolution is inverse of weighted resolution rate
+  // Add a minimum rate to prevent division by zero or unrealistic results
+  const minResolutionRate = 0.01; // 1% weekly resolution rate minimum (100 weeks maximum)
+  const effectiveRate = Math.max(weightedResolutionRate, minResolutionRate);
+  
+  return 1 / effectiveRate;
 };
 
 // Main simulation function
@@ -961,4 +929,107 @@ export const getDefaultParameters = (): ModelParameters => ({
   discountRate: 0,
   yearsOfLifeLost: 30,
   regionalLifeExpectancy: 70,
-}); 
+});
+
+// Add a debug function to diagnose the diarrhea resolution time issue
+export const debugDiarrheaResolutionTime = (): void => {
+  // Get diarrhea parameters
+  const diarrheaProfile = diseaseProfiles.diarrhea;
+  
+  // Apply health system parameters (using moderate urban as default)
+  const healthSystem = healthSystemStrengthDefaults.moderate_urban_system;
+  
+  // Create a complete set of parameters conforming to ModelParameters interface
+  const diarrheaParams: ModelParameters = {
+    // Copy disease-specific parameters
+    lambda: diarrheaProfile.lambda,
+    disabilityWeight: diarrheaProfile.disabilityWeight,
+    meanAgeOfInfection: diarrheaProfile.meanAgeOfInfection,
+    muI: diarrheaProfile.muI,
+    mu0: diarrheaProfile.mu0,
+    mu1: diarrheaProfile.mu1,
+    mu2: diarrheaProfile.mu2,
+    mu3: diarrheaProfile.mu3,
+    deltaI: diarrheaProfile.deltaI,
+    deltaU: diarrheaProfile.deltaU,
+    delta0: diarrheaProfile.delta0,
+    delta1: diarrheaProfile.delta1,
+    delta2: diarrheaProfile.delta2,
+    delta3: diarrheaProfile.delta3,
+    rho0: diarrheaProfile.rho0,
+    rho1: diarrheaProfile.rho1,
+    rho2: diarrheaProfile.rho2,
+    
+    // Apply health system parameters
+    phi0: healthSystem.phi0,
+    sigmaI: healthSystem.sigmaI,
+    informalCareRatio: healthSystem.informalCareRatio,
+    regionalLifeExpectancy: healthSystem.regionalLifeExpectancy,
+    perDiemCosts: healthSystem.perDiemCosts,
+    
+    // Set other required parameters
+    selfCareAIEffectMuI: 0.15,
+    selfCareAIEffectDeltaI: 0.70,
+    aiFixedCost: 0,
+    aiVariableCost: 0,
+    discountRate: 0,
+    yearsOfLifeLost: 30
+  };
+  
+  // Log the resolution parameters
+  console.log('Diarrhea Resolution Parameters:');
+  console.log(`muI (Informal): ${diarrheaParams.muI} -> Expected: ${1/diarrheaParams.muI} weeks`);
+  console.log(`mu0 (CHW): ${diarrheaParams.mu0} -> Expected: ${1/diarrheaParams.mu0} weeks`);
+  console.log(`mu1 (Primary): ${diarrheaParams.mu1} -> Expected: ${1/diarrheaParams.mu1} weeks`);
+  console.log(`mu2 (District): ${diarrheaParams.mu2} -> Expected: ${1/diarrheaParams.mu2} weeks`);
+  console.log(`mu3 (Tertiary): ${diarrheaParams.mu3} -> Expected: ${1/diarrheaParams.mu3} weeks`);
+  
+  // Test with a 52-week simulation
+  const results = runSimulation(diarrheaParams, { 
+    numWeeks: 52, 
+    population: 100000 
+  });
+  
+  // Log the calculated resolution time
+  console.log(`\nCalculated Time to Resolution: ${results.averageTimeToResolution} weeks`);
+  
+  // Generate a simple weekly flow summary
+  console.log('\nWeekly Resolution Flow:');
+  let cumulativeResolved = 0;
+  for (let i = 0; i < Math.min(20, results.weeklyStates.length); i++) {
+    const state = results.weeklyStates[i];
+    const prevState = i > 0 ? results.weeklyStates[i-1] : null;
+    const resolvedThisWeek = prevState ? state.R - prevState.R : 0;
+    cumulativeResolved += resolvedThisWeek;
+    console.log(`Week ${i}: Resolved ${resolvedThisWeek.toFixed(2)}, Total Resolved: ${cumulativeResolved.toFixed(2)}`);
+  }
+    
+  // Fix issue with diarrhea calculation (if needed)
+  console.log('\nPotential Fix Calculation:');
+  
+  // Calculate weighted resolution rate based on pathway probabilities
+  const pInformal = 1 - diarrheaParams.phi0;
+  const pFormal = diarrheaParams.phi0;
+  const pL0 = pFormal;
+  const pL1 = pL0 * diarrheaParams.rho0;
+  const pL2 = pL1 * diarrheaParams.rho1;
+  const pL3 = pL2 * diarrheaParams.rho2;
+  
+  // Calculate weighted average based on probability of reaching each level
+  const weightedResolutionRate = 
+    pInformal * diarrheaParams.muI + 
+    pL0 * diarrheaParams.mu0 + 
+    pL1 * diarrheaParams.mu1 + 
+    pL2 * diarrheaParams.mu2 + 
+    pL3 * diarrheaParams.mu3;
+  
+  const correctedTimeToResolution = 1 / weightedResolutionRate;
+  console.log(`Corrected Time to Resolution: ${correctedTimeToResolution.toFixed(2)} weeks`);
+  
+  // Simple calculation based on the primary treatment paths for diarrhea
+  const simpleWeightedAverage = 
+    0.35 * (1/diarrheaParams.muI) +  // 35% resolve through self-care
+    0.65 * (1/diarrheaParams.mu0);   // 65% go through CHW path
+  
+  console.log(`Simple Weighted Average: ${simpleWeightedAverage.toFixed(2)} weeks`);
+} 

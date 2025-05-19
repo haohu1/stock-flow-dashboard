@@ -276,49 +276,9 @@ const calculateTimeToResolution = (
   // If we have no data, return 0
   if (weeklyStates.length === 0) return 0;
   
-  const finalState = weeklyStates[weeklyStates.length - 1];
-  let cumulativeNewCases = 0;
-  let totalResolved = finalState.R;
-  
-  // First, count total patients that entered the system during the simulation
-  for (let i = 0; i < weeklyStates.length; i++) {
-    cumulativeNewCases += weeklyStates[i].newCases;
-  }
-  
-  // Calculate how many patients were actually processed to resolution
-  const resolvedPatients = Math.min(totalResolved, cumulativeNewCases);
-  
-  if (resolvedPatients === 0) return 0;
-  
-  // Track patient resolution
-  let avgWeeks = 0;
-  let casesWithResolutionTracked = 0;
-  
-  // Method 1: Track resolved cases by week and calculate weighted average resolution time
-  for (let i = 0; i < weeklyStates.length; i++) {
-    const state = weeklyStates[i];
-    
-    // Estimate the number of resolved cases this week
-    const resolvedThisWeek = i > 0 ? 
-      state.R - weeklyStates[i-1].R : 0;
-    
-    // Add their resolution time to the average
-    if (resolvedThisWeek > 0) {
-      // More accurate estimation: these patients resolved after approximately i weeks
-      // We add a small correction factor (0.5) to account for resolution occurring throughout the week
-      avgWeeks += resolvedThisWeek * (i + 0.5);
-      casesWithResolutionTracked += resolvedThisWeek;
-    }
-  }
-  
-  // If we have tracked resolutions, use that for more accurate measure
-  if (casesWithResolutionTracked > 0 && casesWithResolutionTracked >= 0.01 * cumulativeNewCases) {
-    return avgWeeks / casesWithResolutionTracked;
-  }
-  
-  // MAJOR FIX: Use the direct pathway probability calculation as fallback
-  // This is more accurate for fast-resolving conditions like diarrhea
-  
+  // SIMPLIFY THE CALCULATION: Use the direct calculation for all disease cases
+  // This is the most reliable approach that works for all diseases including fast-resolving ones
+
   // Calculate probability of reaching each level based on referral rates
   const pInformal = 1 - params.phi0; // Probability of going to informal care
   const pFormal = params.phi0;       // Probability of going to formal care

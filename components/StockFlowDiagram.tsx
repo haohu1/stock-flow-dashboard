@@ -95,9 +95,9 @@ const StockFlowDiagram: React.FC = () => {
 
     const nodes: Node[] = [
       { id: 'new', name: 'New Cases', description: 'New cases per week', type: 'stock', x: 50, y: 325, width: nodeWidth, height: nodeHeight },
-      { id: 'untreated', name: 'Untreated', description: 'No care received', type: 'stock', x: 350, y: 150, width: nodeWidth, height: nodeHeight },
+      { id: 'formal', name: 'Formal Care', description: 'Entry to health system', type: 'formal', x: 350, y: 150, width: nodeWidth, height: nodeHeight },
       { id: 'informal', name: 'Informal Care', description: 'Self-care/traditional healers', type: 'informal', x: 350, y: 325, width: nodeWidth, height: nodeHeight },
-      { id: 'formal', name: 'Formal Care', description: 'Entry to health system', type: 'formal', x: 350, y: 500, width: nodeWidth, height: nodeHeight },
+      { id: 'untreated', name: 'Untreated', description: 'No care received', type: 'stock', x: 350, y: 500, width: nodeWidth, height: nodeHeight },
       { id: 'l0', name: 'CHW (L0)', description: 'Community Health Workers', type: 'level0', x: 750, y: 100, width: nodeWidth, height: nodeHeight },
       { id: 'l1', name: 'Primary (L1)', description: 'Primary Care Facilities', type: 'level1', x: 750, y: 250, width: nodeWidth, height: nodeHeight },
       { id: 'l2', name: 'District (L2)', description: 'District Hospitals', type: 'level2', x: 750, y: 400, width: nodeWidth, height: nodeHeight },
@@ -110,20 +110,20 @@ const StockFlowDiagram: React.FC = () => {
 
     const links: Link[] = [
       // From New Cases
-      { id: 'link_new_untreated', source: 'new', target: 'untreated', label: `(1 - ${getUnicodeBaseSymbol('phi', '0')}) = ${fmt(1 - params.phi0)}`, value: (1 - params.phi0) * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 200, y1: 150 }, labelOffset: {dy: -10} },
+      { id: 'link_new_untreated', source: 'new', target: 'untreated', label: `(1 - ${getUnicodeBaseSymbol('phi', '0')}) = ${fmt(1 - params.phi0)}`, value: (1 - params.phi0) * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 200, y1: 500 }, labelOffset: {dy: -10} },
       { id: 'link_new_informal', source: 'new', target: 'informal', label: `${getUnicodeBaseSymbol('phi', '0')}(1-r) = ${fmt((1 - params.phi0) * (1 - params.informalCareRatio))}`, value: (1 - params.phi0) * (1 - params.informalCareRatio) * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 200, y1: 325 } },
-      { id: 'link_new_formal', source: 'new', target: 'formal', label: `${getUnicodeBaseSymbol('phi', '0')} = ${fmt(params.phi0)}`, value: params.phi0 * weeklyIncidence, aiIntervention: null, parameter: 'phi0', controlPoints: { x1: 200, y1: 500 } },
+      { id: 'link_new_formal', source: 'new', target: 'formal', label: `${getUnicodeBaseSymbol('phi', '0')} = ${fmt(params.phi0)}`, value: params.phi0 * weeklyIncidence, aiIntervention: null, parameter: 'phi0', controlPoints: { x1: 200, y1: 150 } },
       
       // From Untreated to Deaths
-      { id: 'link_untreated_deaths', source: 'untreated', target: 'deaths', label: `${getUnicodeMultiplierSymbol('delta', 'U')}${getUnicodeBaseSymbol('delta', 'U')}: ${fmt(params.deltaU)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 675, y1: 200 }, labelOffset: {dx: 20, dy: 20} },
+      { id: 'link_untreated_deaths', source: 'untreated', target: 'deaths', label: `${getUnicodeMultiplierSymbol('delta', 'U')}${getUnicodeBaseSymbol('delta', 'U')}: ${fmt(params.deltaU)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 675, y1: 500 }, labelOffset: {dx: 20, dy: 20} },
       
       // From Informal Care
-      { id: 'link_informal_formal', source: 'informal', target: 'formal', label: `${getUnicodeBaseSymbol('sigma', 'I')}: ${fmt(params.sigmaI)}`, value: null, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: 'sigmaI', controlPoints: { x1: 350, y1: 425 } },
-      { id: 'link_informal_resolved', source: 'informal', target: 'resolved', label: `${getUnicodeMultiplierSymbol('mu', 'I')}${getUnicodeBaseSymbol('mu', 'I')}: ${fmt(params.muI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'muI', controlPoints: { x1: 675, y1: 200 }, labelOffset: {dy: -10} },
+      { id: 'link_informal_formal', source: 'informal', target: 'formal', label: `${getUnicodeBaseSymbol('sigma', 'I')}: ${fmt(params.sigmaI)}`, value: null, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: 'sigmaI', controlPoints: { x1: 350, y1: 225 } },
+      { id: 'link_informal_resolved', source: 'informal', target: 'resolved', label: `${getUnicodeMultiplierSymbol('mu', 'I')}${getUnicodeBaseSymbol('mu', 'I')}: ${fmt(params.muI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'muI', controlPoints: { x1: 675, y1: 225 }, labelOffset: {dy: -10} },
       { id: 'link_informal_deaths', source: 'informal', target: 'deaths', label: `${getUnicodeMultiplierSymbol('delta', 'I')}${getUnicodeBaseSymbol('delta', 'I')}: ${fmt(params.deltaI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'deltaI', controlPoints: { x1: 675, y1: 375 }, labelOffset: {dy: 10} },
       
       // From Formal Care to L0 only
-      { id: 'link_formal_l0', source: 'formal', target: 'l0', label: `(to L0): ${fmt(1.0)}`, value: null, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: null, controlPoints: { x1: 550, y1: 150 } },
+      { id: 'link_formal_l0', source: 'formal', target: 'l0', label: `(to L0): ${fmt(1.0)}`, value: null, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: null, controlPoints: { x1: 550, y1: 125 } },
       
       // From L0 (CHW)
       { id: 'link_l0_l1', source: 'l0', target: 'l1', label: `${getUnicodeMultiplierSymbol('rho', 'L0')}${getUnicodeBaseSymbol('rho', '0')}: ${fmt(params.rho0)}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: 'rho0', controlPoints: { x1: 750, y1: 175 } },

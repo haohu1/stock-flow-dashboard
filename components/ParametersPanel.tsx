@@ -563,8 +563,25 @@ const ParametersPanel: React.FC = () => {
                 </div>
               )}
               <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 p-2 rounded-md">
-                <p className="font-semibold mb-1">Health System Parameters Summary:</p>
-                <p>The health system parameters model patient flow through different levels of care (community health workers, primary care, district hospitals, and tertiary hospitals). They include care-seeking behaviors, referral patterns, resolution rates, and mortality rates at each level. Strong health systems have higher resolution rates, lower mortality, and more efficient referral patterns, while weak systems have limited resources, higher mortality rates, and suboptimal patient flows. Different scenarios represent varying healthcare infrastructure quality across different regions.</p>
+                <p className="font-semibold mb-1">Health System Description:</p>
+                {selectedHealthSystemStrength === 'moderate_urban_system' && (
+                  <p>A middle-tier healthcare system in urban settings with reasonable infrastructure. Features 65% initial formal care seeking and 25% transition from informal to formal care. Has standard mortality rates across all levels of care, with balanced referral patterns. Per diem costs range from $7 (informal) to $350 (tertiary). Represents typical urban healthcare in middle-income countries.</p>
+                )}
+                {selectedHealthSystemStrength === 'weak_rural_system' && (
+                  <p>Limited healthcare capacity in rural areas with poor access. Only 30% of patients initially seek formal care, and just 10% transition from informal to formal care later. Features 40% higher untreated rates, significantly reduced resolution rates (40-50% below standard), and 50-100% higher mortality rates. Referral rates are 30-50% lower due to transportation and capacity issues.</p>
+                )}
+                {selectedHealthSystemStrength === 'strong_urban_system_lmic' && (
+                  <p>An aspirational high-quality system in lower/middle-income urban areas. High initial formal care seeking (80%) and good transition from informal care (35%). Features 20-30% better resolution rates and 20-40% lower mortality compared to baseline. Has efficient referral pathways and higher quality infrastructure, representing best-in-class urban healthcare in developing countries.</p>
+                )}
+                {selectedHealthSystemStrength === 'fragile_conflict_system' && (
+                  <p>Severely compromised healthcare in humanitarian crisis or conflict zones. Extremely limited access (only 20% seek formal care) with 60% remaining completely untreated. Resolution effectiveness is reduced by 40-70% with mortality 50-150% higher than normal. Referral pathways are broken (60-80% reduced), with severe discontinuity of care.</p>
+                )}
+                {selectedHealthSystemStrength === 'high_income_system' && (
+                  <p>World-class healthcare in wealthy nations with nearly universal access (90% formal care seeking). Features 50-70% better resolution rates and 50-70% lower mortality compared to standard. Has very efficient referral patterns but substantially higher costs ($15-1200 per day). Represents healthcare systems in developed countries with advanced technology, training, and infrastructure.</p>
+                )}
+                {customHealthSystem && (
+                  <p>Custom health system parameters with user-defined values for care-seeking behavior, resolution rates, mortality rates, and referral patterns.</p>
+                )}
               </div>
             </div>
             
@@ -611,8 +628,43 @@ const ParametersPanel: React.FC = () => {
                 </div>
               )}
               <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 p-2 rounded-md">
-                <p className="font-semibold mb-1">Disease Parameters Summary:</p>
-                <p>Disease profiles define the characteristics of different health conditions, including annual incidence rates, disability weights for DALY calculations, and mean age of infection. Each disease has specific resolution and mortality rates at different levels of care. For example, some conditions like tuberculosis have lengthy resolution times, while others like URTI typically resolve quickly. The disease parameters also influence how effectively AI interventions can improve outcomes for each specific condition.</p>
+                <p className="font-semibold mb-1">Disease Description:</p>
+                {selectedDisease === 'congestive_heart_failure' && (
+                  <p>A chronic cardiac condition affecting primarily older adults (mean age 67), with 1.2% annual incidence. Has negligible home resolution (1% weekly) but good hospital-based care outcomes (55-75% weekly resolution). Carries significant mortality risk if untreated (9% weekly) or managed informally (6% weekly). Requires substantial hospital-level care with high referral rates from community and primary levels.</p>
+                )}
+                {selectedDisease === 'tuberculosis' && (
+                  <p>A serious infectious disease with 0.2% annual incidence in high-burden countries. Features very slow resolution (2-6% weekly) requiring 25+ weeks of treatment. Has low but persistent mortality (0.05-0.3% weekly) and high disability impact (0.333 weight). Community health workers primarily support ongoing treatment adherence rather than providing definitive care, with high referral rates (85%) to formal healthcare.</p>
+                )}
+                {selectedDisease === 'pneumonia' && (
+                  <p>A respiratory infection with very high incidence in children under five (0.9 episodes per child-year). Features good resolution rates with appropriate antibiotics (70-80% weekly) but significant mortality if untreated (5% weekly). Community health workers can effectively treat non-severe cases, while severe cases require hospital management with higher mortality rates (1-2% weekly).</p>
+                )}
+                {selectedDisease === 'malaria' && (
+                  <p>A parasitic disease with moderate-high incidence (0.4 episodes per person-year) in endemic areas. Shows some spontaneous resolution for uncomplicated cases (15% weekly) and excellent response to appropriate treatment at CHW/primary levels (80-85% weekly). Severe malaria requires hospital management with significant mortality risk (2-3% weekly) but good outcomes with proper care.</p>
+                )}
+                {selectedDisease === 'fever' && (
+                  <p>A symptomatic presentation with diverse underlying causes, affecting all ages. Features moderate spontaneous resolution (30% weekly) and good response to healthcare interventions (55-90% weekly resolution depending on level). Generally low mortality (0.1-1.5% weekly) but requires diagnostic capability for proper classification and treatment.</p>
+                )}
+                {selectedDisease === 'diarrhea' && (
+                  <p>An acute gastrointestinal condition with very high incidence especially in children (1.5 episodes per child-year). Features moderate spontaneous resolution (35% weekly) and excellent response to ORS/Zinc (85-90% weekly resolution). Carries significant mortality risk through dehydration if untreated (2.5% weekly) but can be effectively managed at community level in non-severe cases.</p>
+                )}
+                {selectedDisease === 'infant_pneumonia' && (
+                  <p>A more severe form of pneumonia in infants under 1 year, with high incidence (1.2 episodes per infant-year). Features lower spontaneous resolution (10% weekly) and requires more intensive management than standard pneumonia. Has significantly higher mortality rates (4-6% weekly if not appropriately treated) and high referral rates to hospital care.</p>
+                )}
+                {selectedDisease === 'anemia' && (
+                  <p>A nutritional condition with 20% annual incidence of symptomatic cases requiring care. Features slow resolution even with treatment (5-30% weekly improvement), affecting primarily women and children. Very low mortality (0.03-0.1% weekly) but causes persistent disability until resolved. Community and primary care management are effective for uncomplicated cases.</p>
+                )}
+                {selectedDisease === 'hiv_management_chronic' && (
+                  <p>Focuses on stable HIV patients on antiretroviral therapy with low new diagnosis rate (0.1% annually). Features very low "resolution" rates without formal care (1% weekly) but good stabilization with appropriate ART (10-15% weekly progress to stable status). Mortality is high without treatment (0.5-0.7% weekly) but quite low with proper management (0.04-0.06% weekly).</p>
+                )}
+                {selectedDisease === 'high_risk_pregnancy_low_anc' && (
+                  <p>Pregnancy complications without adequate prenatal monitoring, affecting 2% of reproductive-age women annually. Features very poor outcomes without formal care (1-2% weekly mortality/morbidity risk) but good resolution with hospital management (50-60% weekly). Requires intensive hospital resources with very high referral rates from community health workers (90%) and primary care (70%).</p>
+                )}
+                {selectedDisease === 'urti' && (
+                  <p>Common viral respiratory infection with very high incidence (2 episodes per person-year). Features excellent spontaneous resolution (70% weekly) and minimal additional benefit from healthcare intervention. Extremely low mortality (&lt;0.002% weekly) and minimal referral requirements. Represents a high-volume, low-severity condition that rarely requires advanced care.</p>
+                )}
+                {customDisease && (
+                  <p>Custom disease parameters with user-defined values for incidence, resolution rates, mortality rates, and referral patterns.</p>
+                )}
               </div>
             </div>
             

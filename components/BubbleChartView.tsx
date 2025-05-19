@@ -242,9 +242,12 @@ const BubbleChartView: React.FC = () => {
     const sizeValues = validScenarios.map(s => getSizeValue(s));
     const maxSize = Math.max(...sizeValues);
     
+    // Use a fixed scale for bubble sizes to ensure consistency
+    // This ensures 1,000 is very small, 100,000 is medium, 10,000,000 is very large
     const sizeScale = d3.scaleSqrt()
-      .domain([0, maxSize])
-      .range([5, 50]);
+      .domain([0, 1000, 100000, 10000000])
+      .range([0, 5, 25, 50])
+      .clamp(true);
     
     // Create color scale based on disease - using a more accessible color scheme
     const diseaseTypes = Array.from(new Set(validScenarios.map(s => s.parameters.disease || 'Other')));
@@ -546,11 +549,11 @@ const BubbleChartView: React.FC = () => {
       .attr("fill", "currentColor")
       .text(legendTitle);
     
-    // Create better size distribution for the legend
+    // Use fixed size values for the legend to ensure consistency
     const legendSizes = [
-      maxSize * 0.05,  // Small bubble
-      maxSize * 0.25,  // Medium bubble
-      maxSize         // Large bubble
+      1000,        // Small bubble (1,000)
+      100000,      // Medium bubble (100,000)
+      10000000     // Large bubble (10,000,000)
     ];
     
     // Add legend subtitle

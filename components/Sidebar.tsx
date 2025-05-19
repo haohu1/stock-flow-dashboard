@@ -54,10 +54,8 @@ const Sidebar: React.FC = () => {
       { id: 'hiv_opportunistic', name: 'HIV Opportunistic Infections', group: 'Infectious Diseases', checked: selectedDiseases.includes('hiv_opportunistic') },
       { id: 'urti', name: 'Upper Respiratory Tract Infection (URTI)', group: 'Infectious Diseases', checked: selectedDiseases.includes('urti') },
       
-      // Maternal & Neonatal
-      { id: 'high_risk_pregnancy_low_anc', name: 'High-Risk Pregnancy (Low ANC)', group: 'Maternal & Neonatal', checked: selectedDiseases.includes('high_risk_pregnancy_low_anc') },
-      
-      // General & Chronic Conditions
+      // General & Chronic Conditions (merged with Maternal & Neonatal)
+      { id: 'high_risk_pregnancy_low_anc', name: 'High-Risk Pregnancy (Low ANC)', group: 'General & Chronic Conditions', checked: selectedDiseases.includes('high_risk_pregnancy_low_anc') },
       { id: 'anemia', name: 'Anemia', group: 'General & Chronic Conditions', checked: selectedDiseases.includes('anemia') },
       { id: 'hiv_management_chronic', name: 'HIV Management (Chronic)', group: 'General & Chronic Conditions', checked: selectedDiseases.includes('hiv_management_chronic') },
       { id: 'congestive_heart_failure', name: 'Congestive Heart Failure', group: 'General & Chronic Conditions', checked: selectedDiseases.includes('congestive_heart_failure') },
@@ -250,10 +248,8 @@ const Sidebar: React.FC = () => {
             <option value="hiv_opportunistic">HIV Opportunistic Infections</option>
             <option value="urti">Upper Respiratory Tract Infection (URTI)</option>
           </optgroup>
-          <optgroup label="Maternal & Neonatal">
-            <option value="high_risk_pregnancy_low_anc">High-Risk Pregnancy (Low ANC)</option>
-          </optgroup>
           <optgroup label="General & Chronic Conditions">
+            <option value="high_risk_pregnancy_low_anc">High-Risk Pregnancy (Low ANC)</option>
             <option value="anemia">Anemia</option>
             <option value="hiv_management_chronic">HIV Management (Chronic)</option>
             <option value="congestive_heart_failure">Congestive Heart Failure</option>

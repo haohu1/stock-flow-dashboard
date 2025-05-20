@@ -97,27 +97,17 @@ const Sidebar: React.FC = () => {
     // Set the primary disease
     setSelectedDisease(newPrimaryDisease);
     
-    // Update the selectedDiseases array
-    if (!selectedDiseases.includes(newPrimaryDisease)) {
-      // If not already included, add it to the array
-      setSelectedDiseases([newPrimaryDisease, ...selectedDiseases]);
-      
-      // Update checkboxes state to reflect the new disease
-      setDiseaseOptions(
-        diseaseOptions.map(option => 
-          option.id === newPrimaryDisease
-            ? { ...option, checked: true }
-            : option
-        )
-      );
-    } else {
-      // If already in the array, reorder it to be first (make it primary)
-      const reorderedDiseases = [
-        newPrimaryDisease,
-        ...selectedDiseases.filter(d => d !== newPrimaryDisease)
-      ];
-      setSelectedDiseases(reorderedDiseases);
-    }
+    // Update the selectedDiseases array to ONLY include the new primary disease
+    setSelectedDiseases([newPrimaryDisease]);
+    
+    // Update checkboxes state to reflect only the new disease is checked
+    setDiseaseOptions(
+      diseaseOptions.map(option => 
+        option.id === newPrimaryDisease
+          ? { ...option, checked: true }
+          : { ...option, checked: false }
+      )
+    );
     
     // Force display to switch to this disease in the dashboard
     window.dispatchEvent(new CustomEvent('primary-disease-changed', { detail: { disease: newPrimaryDisease } }));

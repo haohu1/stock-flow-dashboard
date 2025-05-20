@@ -418,6 +418,10 @@ const BubbleChartView: React.FC = () => {
     tooltipDiv.style.fontSize = "14px";
     tooltipDiv.style.fontWeight = "400";
     tooltipDiv.style.minWidth = "220px";
+    tooltipDiv.style.maxWidth = "300px";
+    tooltipDiv.style.transition = "opacity 0.2s";
+    tooltipDiv.style.opacity = "0";
+    tooltipDiv.id = "bubble-chart-tooltip"; // Add ID for easy reference
     
     // Check if dark mode is enabled
     const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -429,6 +433,12 @@ const BubbleChartView: React.FC = () => {
       tooltipDiv.style.backgroundColor = "#1F2937"; // dark gray
       tooltipDiv.style.color = "#F9FAFB"; // light gray
       tooltipDiv.style.border = "1px solid #374151"; // darker border
+    }
+    
+    // Remove existing tooltip if one exists
+    const existingTooltip = document.getElementById("bubble-chart-tooltip");
+    if (existingTooltip && existingTooltip.parentNode) {
+      existingTooltip.parentNode.removeChild(existingTooltip);
     }
     
     document.body.appendChild(tooltipDiv);
@@ -444,15 +454,33 @@ const BubbleChartView: React.FC = () => {
           .style("stroke-width", 2)
           .style("fill-opacity", 1);
         
-        // Show and position the tooltip
+        // Show tooltip
         tooltipDiv.style.display = "block";
-        tooltipDiv.style.left = (event.pageX + 15) + "px";
-        tooltipDiv.style.top = (event.pageY - 30) + "px";
+        
+        // Calculate position to ensure tooltip is visible within viewport
+        const tooltipWidth = 250; // Approximate width
+        const tooltipHeight = 200; // Approximate height
+        
+        // Check if tooltip would go off right edge
+        let leftPos = event.clientX + 15;
+        if (leftPos + tooltipWidth > window.innerWidth) {
+          leftPos = event.clientX - tooltipWidth - 10;
+        }
+        
+        // Check if tooltip would go off bottom edge
+        let topPos = event.clientY - 10;
+        if (topPos + tooltipHeight > window.innerHeight) {
+          topPos = event.clientY - tooltipHeight - 10;
+        }
+        
+        // Position tooltip using client coordinates which are relative to the viewport
+        tooltipDiv.style.left = leftPos + "px";
+        tooltipDiv.style.top = topPos + "px";
         
         // Set content
         tooltipDiv.innerHTML = `
           <div>
-            <div style="font-weight: bold; font-size: 16px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #eee;">${data.name}</div>
+            <div style="font-weight: bold; font-size: 16px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid ${prefersDarkMode || bodyHasDarkClass ? '#374151' : '#eee'};">${data.name}</div>
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 4px 8px 4px 0; color: ${prefersDarkMode || bodyHasDarkClass ? '#9CA3AF' : '#6B7280'};">Feasibility:</td>
@@ -491,6 +519,11 @@ const BubbleChartView: React.FC = () => {
             </table>
           </div>
         `;
+        
+        // Fade in tooltip
+        setTimeout(() => {
+          tooltipDiv.style.opacity = "1";
+        }, 10);
       });
       
       node.addEventListener("mouseout", function(this: HTMLElement) {
@@ -500,14 +533,37 @@ const BubbleChartView: React.FC = () => {
           .style("stroke-width", 1)
           .style("fill-opacity", 0.8);
         
-        // Hide tooltip
-        tooltipDiv.style.display = "none";
+        // Fade out tooltip
+        tooltipDiv.style.opacity = "0";
+        
+        // Wait for fade out before hiding completely
+        setTimeout(() => {
+          if (tooltipDiv.style.opacity === "0") {
+            tooltipDiv.style.display = "none";
+          }
+        }, 200);
       });
       
       node.addEventListener("mousemove", function(this: HTMLElement, event: MouseEvent) {
-        // Update tooltip position
-        tooltipDiv.style.left = (event.pageX + 15) + "px";
-        tooltipDiv.style.top = (event.pageY - 30) + "px";
+        // Calculate position to ensure tooltip is visible within viewport
+        const tooltipWidth = 250; // Approximate width
+        const tooltipHeight = 200; // Approximate height
+        
+        // Check if tooltip would go off right edge
+        let leftPos = event.clientX + 15;
+        if (leftPos + tooltipWidth > window.innerWidth) {
+          leftPos = event.clientX - tooltipWidth - 10;
+        }
+        
+        // Check if tooltip would go off bottom edge
+        let topPos = event.clientY - 10;
+        if (topPos + tooltipHeight > window.innerHeight) {
+          topPos = event.clientY - tooltipHeight - 10;
+        }
+        
+        // Update tooltip position using client coordinates
+        tooltipDiv.style.left = leftPos + "px";
+        tooltipDiv.style.top = topPos + "px";
       });
     });
     
@@ -633,8 +689,10 @@ const BubbleChartView: React.FC = () => {
     
     // Clean up function for component unmount
     return () => {
-      if (document.body.contains(tooltipDiv)) {
-        document.body.removeChild(tooltipDiv);
+      // Clean up tooltip div
+      const tooltip = document.getElementById("bubble-chart-tooltip");
+      if (tooltip && document.body.contains(tooltip)) {
+        document.body.removeChild(tooltip);
       }
     };
   }, [scenarios, editableScenarios, sizeMetric, selectedDiseases]);

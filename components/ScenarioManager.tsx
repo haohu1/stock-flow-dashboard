@@ -165,12 +165,32 @@ const ScenarioManager: React.FC = () => {
           return;
         }
         
+        // Helper function to calculate suggested feasibility based on interventions
+        const calculateSuggestedFeasibility = (interventionsCount: number): number => {
+          // More interventions generally means lower feasibility (earlier stage)
+          // Scale from 0.2 (many interventions, early stage) to 0.9 (few interventions, late stage)
+          const maxInterventions = 6; // Total possible interventions
+          return Math.max(0.2, Math.min(0.9, 0.9 - (interventionsCount / maxInterventions) * 0.7));
+        };
+        
         // Generate new IDs for imported scenarios to avoid conflicts
+        // Also ensure feasibility values are properly initialized
         const timestampBase = Date.now();
-        const updatedScenarios = validScenarios.map((s, index) => ({
-          ...s,
-          id: `imported-${timestampBase + index}`
-        }));
+        const updatedScenarios = validScenarios.map((s, index) => {
+          // Count active interventions for feasibility calculation
+          const activeInterventions = Object.values(s.aiInterventions).filter(Boolean).length;
+          
+          // Use existing feasibility if available, otherwise calculate a suggested value
+          const feasibility = s.feasibility !== undefined ? 
+            s.feasibility : 
+            calculateSuggestedFeasibility(activeInterventions);
+            
+          return {
+            ...s,
+            id: `imported-${timestampBase + index}`,
+            feasibility: feasibility
+          };
+        });
         
         // Ask user whether to replace or append
         const replaceExisting = scenarios.length > 0 && 

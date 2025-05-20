@@ -243,9 +243,11 @@ const BubbleChartView: React.FC = () => {
     const maxSize = Math.max(...sizeValues);
     
     // Use a fixed scale for bubble sizes to ensure consistency
-    // This ensures 1,000 is very small, 100,000 is medium, 10,000,000 is very large
+    // This ensures different thresholds for deaths vs DALYs
     const sizeScale = d3.scaleSqrt()
-      .domain([0, 1000, 100000, 10000000])
+      .domain(sizeMetric === 'deaths' 
+        ? [0, 10, 1000, 100000]  // Deaths thresholds: 10 for small, 1000 for medium, 100,000 for large
+        : [0, 1000, 100000, 10000000])  // DALYs thresholds: 1,000 for small, 100,000 for medium, 10,000,000 for large
       .range([0, 5, 25, 50])
       .clamp(true);
     
@@ -562,11 +564,17 @@ const BubbleChartView: React.FC = () => {
       .text(legendTitle);
     
     // Use fixed size values for the legend to ensure consistency
-    const legendSizes = [
-      1000,        // Small bubble (1,000)
-      100000,      // Medium bubble (100,000)
-      10000000     // Large bubble (10,000,000)
-    ];
+    const legendSizes = sizeMetric === 'deaths'
+      ? [
+          10,         // Small bubble (10 deaths)
+          1000,       // Medium bubble (1,000 deaths)
+          100000      // Large bubble (100,000 deaths)
+        ]
+      : [
+          1000,        // Small bubble (1,000 DALYs)
+          100000,      // Medium bubble (100,000 DALYs)
+          10000000     // Large bubble (10,000,000 DALYs)
+        ];
     
     // Add legend subtitle
     legendSize.append("text")

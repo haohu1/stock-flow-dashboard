@@ -21,19 +21,51 @@ const BubbleChartView: React.FC = () => {
     const newEditableScenarios = new Map(editableScenarios);
     const diseaseSet = new Set<string>();
     
+    // First, count scenarios by disease to help with spacing
+    const scenariosByDisease: Record<string, number> = {};
+    
     scenarios.forEach(scenario => {
       // Extract disease information
       const disease = scenario.parameters.disease || 'Unknown';
       diseaseSet.add(disease);
       
+      // Count for distribution
+      scenariosByDisease[disease] = (scenariosByDisease[disease] || 0) + 1;
+    });
+    
+    // Now assign feasibility with better distribution
+    scenarios.forEach((scenario, index) => {
+      // Extract disease information
+      const disease = scenario.parameters.disease || 'Unknown';
+      
       // Handle feasibility settings
       if (!editableScenarios.has(scenario.id)) {
         // Count active interventions to suggest a feasibility value
         const activeInterventions = Object.values(scenario.aiInterventions).filter(Boolean).length;
-        const suggestedFeasibility = calculateSuggestedFeasibility(activeInterventions);
+        let suggestedFeasibility = calculateSuggestedFeasibility(activeInterventions);
+        
+        // If there are multiple scenarios of the same disease, distribute them
+        if (scenariosByDisease[disease] > 1) {
+          // Find all scenarios with this disease to get their index
+          const diseaseScenariosCount = scenariosByDisease[disease];
+          const diseaseScenarios = scenarios.filter(s => (s.parameters.disease || 'Unknown') === disease);
+          const diseaseIndex = diseaseScenarios.findIndex(s => s.id === scenario.id);
+          
+          // Calculate distribution - give more space for larger numbers of scenarios
+          const rangeMin = 0.15;
+          const rangeMax = 0.85;
+          const range = rangeMax - rangeMin;
+          const step = range / Math.max(1, (diseaseScenariosCount - 1));
+          
+          // Calculate a position based on index within this disease group
+          const position = rangeMin + (step * diseaseIndex);
+          
+          // Blend the suggested feasibility with the position to maintain some meaning
+          suggestedFeasibility = suggestedFeasibility * 0.5 + position * 0.5;
+        }
         
         newEditableScenarios.set(scenario.id, {
-          feasibility: scenario.feasibility || suggestedFeasibility
+          feasibility: scenario.feasibility !== undefined ? scenario.feasibility : suggestedFeasibility
         });
       }
     });
@@ -372,8 +404,7 @@ const BubbleChartView: React.FC = () => {
       .attr("d", "M" + (innerWidth - 60) + " " + 80 + " L" + (innerWidth - 40) + " " + 80 + " L" + (innerWidth - 50) + " " + 70 + " Z")
       .attr("fill", "#2a9d8f");
     
-    // Force simulation to prevent overlapping bubbles
-    // Create a typed version of the data for simulation
+    // Force simulation with improved settings for imported scenarios
     const simulationNodes = validScenarios.map(scenario => ({
       ...scenario,
       x: xScale(editableScenarios.get(scenario.id)?.feasibility || 0.5),
@@ -384,11 +415,12 @@ const BubbleChartView: React.FC = () => {
     const simulation = d3.forceSimulation(simulationNodes as d3.SimulationNodeDatum[])
       .force("x", d3.forceX<d3.SimulationNodeDatum>(d => (d as any).x).strength(0.25)) // Balanced x force
       .force("y", d3.forceY<d3.SimulationNodeDatum>(d => (d as any).y).strength(0.75)) // Keep stronger y force for vertical accuracy
-      .force("collide", d3.forceCollide<d3.SimulationNodeDatum>(d => (d as any).r + 1.5).strength(0.5)) // Moderate collision strength
+      .force("collide", d3.forceCollide<d3.SimulationNodeDatum>(d => (d as any).r + 1.5).strength(0.65)) // Stronger collision prevention
+      .force("charge", d3.forceManyBody().strength(-5)) // Add slight repulsion between nodes
       .stop();
     
     // Run the simulation for a fixed number of iterations
-    for (let i = 0; i < 150; i++) simulation.tick(); // Increase iterations for better settling
+    for (let i = 0; i < 200; i++) simulation.tick(); // More iterations for better settling
     
     // Add bubbles
     const bubbles = svg.selectAll("circle")

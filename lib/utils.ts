@@ -3,8 +3,22 @@
  * @param value The number to format
  * @returns A formatted string
  */
-export const formatNumber = (value: number): string => {
-  return new Intl.NumberFormat().format(Math.round(value));
+export const formatNumber = (num: number | undefined | null, precision: number = 0): string => {
+  if (num === undefined || num === null) return 'N/A';
+  if (isNaN(num)) return 'Invalid Number';
+
+  if (Math.abs(num) < 1 && num !== 0) {
+    // For very small numbers, use more precision or scientific notation if needed
+    if (Math.abs(num) < 0.001) {
+      return num.toExponential(2);
+    }
+    return num.toFixed(Math.max(precision, 2)); // Show at least 2 decimal places for small numbers
+  }
+  
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+  });
 };
 
 /**
@@ -51,4 +65,11 @@ export const formatDecimal = (value: number, decimalPlaces: number = 2): string 
     minimumFractionDigits: decimalPlaces,
     maximumFractionDigits: decimalPlaces,
   }).format(value);
+};
+
+export const calculateSuggestedFeasibility = (interventionsCount: number): number => {
+  // More interventions generally means lower feasibility (earlier stage)
+  // Scale from 0.2 (many interventions, early stage) to 0.9 (few interventions, late stage)
+  const maxInterventions = 6; // Total possible interventions (adjust if this number changes elsewhere)
+  return Math.max(0.2, Math.min(0.9, 0.9 - (interventionsCount / maxInterventions) * 0.7));
 }; 

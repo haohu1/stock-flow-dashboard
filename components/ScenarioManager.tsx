@@ -9,7 +9,7 @@ import {
   updateScenarioAtom,
   Scenario
 } from '../lib/store';
-import { formatNumber } from '../lib/utils';
+import { formatNumber, calculateSuggestedFeasibility } from '../lib/utils';
 import BubbleChartView from './BubbleChartView';
 
 const ScenarioManager: React.FC = () => {
@@ -147,43 +147,26 @@ const ScenarioManager: React.FC = () => {
         const content = e.target?.result as string;
         const importedData = JSON.parse(content);
         
-        // Check if it's an array of scenarios or a single scenario
-        const importedScenarios: Scenario[] = Array.isArray(importedData) 
+        const importedScenariosInput: Scenario[] = Array.isArray(importedData) 
           ? importedData 
           : [importedData];
         
-        // Validate that these are actual scenario objects
-        const validScenarios = importedScenarios.filter(s => {
-          return s && typeof s === 'object' && 
-                s.parameters && 
-                s.aiInterventions && 
-                typeof s.name === 'string';
-        });
+        const validScenarios = importedScenariosInput.filter(s =>
+          s && typeof s === 'object' && s.parameters && s.aiInterventions && typeof s.name === 'string'
+        );
         
         if (validScenarios.length === 0) {
           alert('No valid scenarios found in the imported file.');
           return;
         }
         
-        // Helper function to calculate suggested feasibility based on interventions
-        const calculateSuggestedFeasibility = (interventionsCount: number): number => {
-          // More interventions generally means lower feasibility (earlier stage)
-          // Scale from 0.2 (many interventions, early stage) to 0.9 (few interventions, late stage)
-          const maxInterventions = 6; // Total possible interventions
-          return Math.max(0.2, Math.min(0.9, 0.9 - (interventionsCount / maxInterventions) * 0.7));
-        };
-        
-        // Generate new IDs for imported scenarios to avoid conflicts
-        // Also ensure feasibility values are properly initialized
         const timestampBase = Date.now();
         const updatedScenarios = validScenarios.map((s, index) => {
-          // Count active interventions for feasibility calculation
           const activeInterventions = Object.values(s.aiInterventions).filter(Boolean).length;
-          
-          // Use existing feasibility if available, otherwise calculate a suggested value
-          const feasibility = s.feasibility !== undefined ? 
-            s.feasibility : 
-            calculateSuggestedFeasibility(activeInterventions);
+          // Use imported feasibility if present, otherwise calculate it.
+          const feasibility = s.feasibility !== undefined 
+            ? s.feasibility 
+            : calculateSuggestedFeasibility(activeInterventions); // Using the imported utility
             
           return {
             ...s,
@@ -192,7 +175,6 @@ const ScenarioManager: React.FC = () => {
           };
         });
         
-        // Ask user whether to replace or append
         const replaceExisting = scenarios.length > 0 && 
           window.confirm('Do you want to replace existing scenarios? Click OK to replace, or Cancel to append imported scenarios.');
         
@@ -202,7 +184,6 @@ const ScenarioManager: React.FC = () => {
           setScenarios([...scenarios, ...updatedScenarios]);
         }
         
-        // Select the first imported scenario
         if (updatedScenarios.length > 0) {
           setSelectedScenarioId(updatedScenarios[0].id);
           loadScenario(updatedScenarios[0].id);

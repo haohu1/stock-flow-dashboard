@@ -219,7 +219,7 @@ const Sidebar: React.FC = () => {
         </select>
 
         {/* Add health system scenario descriptions */}
-        <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
+        <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-left">
           {selectedHealthSystemStrength === 'moderate_urban_system' && (
             <p>A typical urban health system with moderate resources. Balanced care-seeking behavior and healthcare quality.</p>
           )}

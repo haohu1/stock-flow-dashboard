@@ -382,13 +382,13 @@ const BubbleChartView: React.FC = () => {
     }));
     
     const simulation = d3.forceSimulation(simulationNodes as d3.SimulationNodeDatum[])
-      .force("x", d3.forceX<d3.SimulationNodeDatum>(d => (d as any).x).strength(0.3))
-      .force("y", d3.forceY<d3.SimulationNodeDatum>(d => (d as any).y).strength(0.8))
-      .force("collide", d3.forceCollide<d3.SimulationNodeDatum>(d => (d as any).r + 1).strength(0.3))
+      .force("x", d3.forceX<d3.SimulationNodeDatum>(d => (d as any).x).strength(0.25)) // Balanced x force
+      .force("y", d3.forceY<d3.SimulationNodeDatum>(d => (d as any).y).strength(0.75)) // Keep stronger y force for vertical accuracy
+      .force("collide", d3.forceCollide<d3.SimulationNodeDatum>(d => (d as any).r + 1.5).strength(0.5)) // Moderate collision strength
       .stop();
     
     // Run the simulation for a fixed number of iterations
-    for (let i = 0; i < 120; i++) simulation.tick();
+    for (let i = 0; i < 150; i++) simulation.tick(); // Increase iterations for better settling
     
     // Add bubbles
     const bubbles = svg.selectAll("circle")
@@ -543,8 +543,8 @@ const BubbleChartView: React.FC = () => {
       .attr("font-weight", "700")
       .attr("fill", "#333") // Dark text
       .attr("stroke", "white") // White text outline for better contrast on dark backgrounds
-      .attr("stroke-width", "0.7px")
-      .attr("stroke-opacity", "0.8") // Semi-transparent stroke
+      .attr("stroke-width", "1.2px") // Increased stroke width
+      .attr("stroke-opacity", "0.9") // More opaque stroke
       .attr("paint-order", "stroke") // Ensures the stroke is behind the text
       .attr("pointer-events", "none");
     

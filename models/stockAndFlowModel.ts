@@ -523,7 +523,7 @@ export const diseaseProfiles = {
     rho2: 0.35                // moderate referral to tertiary for advanced care (35%)
   },
   tuberculosis: {
-    lambda: 0.002,            // 0.2% annual incidence (200 per 100,000), reflecting high-burden LMIC
+    lambda: 0.00615,          // 0.615% annual incidence (615 per 100,000), reflecting South African TB burden
     disabilityWeight: 0.333,  // moderate disability weight for active TB
     meanAgeOfInfection: 35,   // typical age of TB diagnosis
     muI: 0.02,                // very low spontaneous resolution for active TB (2% per week)
@@ -531,15 +531,15 @@ export const diseaseProfiles = {
     mu1: 0.04,                // weekly resolution rate on standard 6-month primary care treatment (4% per week, implies ~25wks)
     mu2: 0.05,                // slightly better/faster for complex cases at district hospital (5% per week)
     mu3: 0.06,                // for severe/MDR-TB cases at tertiary care (6% per week)
-    deltaI: 0.0025,           // untreated/informal care TB mortality (0.25% per week)
-    deltaU: 0.003,            // completely untreated TB mortality (0.3% per week)
-    delta0: 0.002,            // mortality at CHW level (0.2% per week, with DOTS support)
-    delta1: 0.001,            // mortality on treatment at primary care (0.1% per week)
-    delta2: 0.0008,           // mortality on treatment at district hospital (0.08% per week)
-    delta3: 0.0005,           // mortality for complex/MDR-TB at tertiary (0.05% per week)
+    deltaI: 0.0035,           // untreated/informal care TB mortality (0.35% per week) - higher in South Africa
+    deltaU: 0.004,            // completely untreated TB mortality (0.4% per week) - higher in South Africa
+    delta0: 0.0025,           // mortality at CHW level (0.25% per week, with DOTS support)
+    delta1: 0.0015,           // mortality on treatment at primary care (0.15% per week)
+    delta2: 0.001,            // mortality on treatment at district hospital (0.1% per week)
+    delta3: 0.0008,           // mortality for complex/MDR-TB at tertiary (0.08% per week)
     rho0: 0.85,               // high referral CHW to primary for diagnosis/treatment (85%)
-    rho1: 0.40,               // moderate referral primary to district for complications/MDR suspicion (40%)
-    rho2: 0.25                // lower referral district to tertiary for specialized MDR/complex care (25%)
+    rho1: 0.45,               // moderate referral primary to district for complications/MDR suspicion (45%)
+    rho2: 0.30                // referral district to tertiary for specialized MDR/complex care (30%)
   },
   pneumonia: { // Primarily non-severe childhood pneumonia
     lambda: 0.90,             // very high incidence in under-fives (episodes per child-year)
@@ -656,7 +656,7 @@ export const diseaseProfiles = {
     rho2: 0.15                // lower district referral for highly specialized investigation (15%)
   },
   hiv_management_chronic: { // Chronic care for stable HIV on ART
-    lambda: 0.001,            // 0.1% annual new diagnoses needing linkage to chronic ART care
+    lambda: 0.005,            // 0.5% annual new diagnoses needing linkage to chronic ART care (South Africa)
     disabilityWeight: 0.078,  // low for stable HIV on ART
     meanAgeOfInfection: 30,   // typical age of diagnosis
     muI: 0.01,                // "Self-management" pre-linkage - very low success in viral suppression (1% weekly to stable)
@@ -664,15 +664,15 @@ export const diseaseProfiles = {
     mu1: 0.10,                // primary care initiating ART, counseling, monitoring (10% weekly to stable initial phase)
     mu2: 0.12,                // district hospital for complex starts or managing side effects (12% weekly to stable)
     mu3: 0.15,                // tertiary for very complex cases, salvage regimens (15% weekly to stable)
-    deltaI: 0.005,            // high mortality if diagnosed but not linked (progression) (0.5% weekly)
-    deltaU: 0.007,            // higher mortality for undiagnosed/untreated (0.7% weekly)
-    delta0: 0.002,            // mortality during CHW linkage/support (0.2% weekly)
-    delta1: 0.0005,           // mortality on ART at primary care (treatment failure, NCDs) (0.05% weekly)
-    delta2: 0.0006,           // similar to L1, maybe slightly higher if sicker patients (0.06% weekly)
-    delta3: 0.0004,           // mortality for very complex/failing patients at tertiary (0.04% weekly)
+    deltaI: 0.006,            // high mortality if diagnosed but not linked (progression) (0.6% weekly)
+    deltaU: 0.008,            // higher mortality for undiagnosed/untreated (0.8% weekly)
+    delta0: 0.003,            // mortality during CHW linkage/support (0.3% weekly)
+    delta1: 0.0008,           // mortality on ART at primary care (treatment failure, NCDs) (0.08% weekly)
+    delta2: 0.001,            // similar to L1, maybe slightly higher if sicker patients (0.1% weekly)
+    delta3: 0.0006,           // mortality for very complex/failing patients at tertiary (0.06% weekly)
     rho0: 0.90,               // high CHW referral for ART initiation (90%)
-    rho1: 0.15,               // low primary referral if stable, higher if complications (15%)
-    rho2: 0.10                // low district referral to tertiary (10%)
+    rho1: 0.18,               // low primary referral if stable, higher if complications (18%)
+    rho2: 0.12                // low district referral to tertiary (12%)
   },
   high_risk_pregnancy_low_anc: { // High-risk pregnancy with limited/no antenatal care
     lambda: 0.02,             // 2% of women of reproductive age annually experience this (very rough estimate)
@@ -711,6 +711,25 @@ export const diseaseProfiles = {
     rho0: 0.05,               // low CHW referral, only if danger signs or prolonged (5%)
     rho1: 0.02,               // very low primary referral, only if atypical/severe (2%)
     rho2: 0.01                // very low district referral (1%)
+  },
+  hiv_opportunistic: { // HIV-related opportunistic infections (South African context)
+    lambda: 0.04,             // 4% annual incidence among PLHIV (higher in South Africa with ~13.5% HIV prevalence)
+    disabilityWeight: 0.582,  // high disability during acute OI episode
+    meanAgeOfInfection: 32,   // typical age for HIV-related OIs
+    muI: 0.05,                // low spontaneous resolution without proper treatment (5% per week)
+    mu0: 0.08,                // limited CHW role in OI management (8% per week)
+    mu1: 0.30,                // primary care with antibiotics/antifungals for some OIs (30% per week)
+    mu2: 0.55,                // district hospital with IV treatment, diagnostics (55% per week)
+    mu3: 0.70,                // tertiary with advanced diagnostics/treatment (70% per week)
+    deltaI: 0.04,             // high mortality with informal care only (4% per week)
+    deltaU: 0.06,             // very high mortality if completely untreated (6% per week)
+    delta0: 0.03,             // high mortality at CHW level (3% per week)
+    delta1: 0.02,             // moderate mortality at primary care (2% per week)
+    delta2: 0.01,             // lower mortality at district hospital (1% per week)
+    delta3: 0.005,            // lowest mortality at tertiary (0.5% per week)
+    rho0: 0.90,               // very high CHW referral for OIs (90%)
+    rho1: 0.60,               // high primary referral for severe/complex OIs (60%)
+    rho2: 0.30                // moderate district to tertiary for most severe/resistant cases (30%)
   }
 };
 

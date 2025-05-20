@@ -382,9 +382,9 @@ const BubbleChartView: React.FC = () => {
     }));
     
     const simulation = d3.forceSimulation(simulationNodes as d3.SimulationNodeDatum[])
-      .force("x", d3.forceX<d3.SimulationNodeDatum>(d => (d as any).x).strength(0.2))
-      .force("y", d3.forceY<d3.SimulationNodeDatum>(d => (d as any).y).strength(0.7))
-      .force("collide", d3.forceCollide<d3.SimulationNodeDatum>(d => (d as any).r + 2).strength(0.7))
+      .force("x", d3.forceX<d3.SimulationNodeDatum>(d => (d as any).x).strength(0.3))
+      .force("y", d3.forceY<d3.SimulationNodeDatum>(d => (d as any).y).strength(0.8))
+      .force("collide", d3.forceCollide<d3.SimulationNodeDatum>(d => (d as any).r + 1).strength(0.3))
       .stop();
     
     // Run the simulation for a fixed number of iterations

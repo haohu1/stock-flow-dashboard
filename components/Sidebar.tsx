@@ -217,6 +217,25 @@ const Sidebar: React.FC = () => {
             </option>
           ))}
         </select>
+
+        {/* Add health system scenario descriptions */}
+        <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded-md">
+          {selectedHealthSystemStrength === 'moderate_urban_system' && (
+            <p>A typical urban health system with moderate resources. Balanced care-seeking behavior and healthcare quality.</p>
+          )}
+          {selectedHealthSystemStrength === 'weak_rural_system' && (
+            <p>Limited healthcare capacity in rural settings. Lower initial care-seeking, harder transitions between levels, higher mortality rates.</p>
+          )}
+          {selectedHealthSystemStrength === 'strong_urban_system_lmic' && (
+            <p>Well-functioning urban system in a lower/middle income country. Higher healthcare access, improved outcomes, and efficient referrals.</p>
+          )}
+          {selectedHealthSystemStrength === 'fragile_conflict_system' && (
+            <p>Healthcare system in a humanitarian crisis or conflict zone. Severely limited access, compromised care quality, and disrupted referral pathways.</p>
+          )}
+          {selectedHealthSystemStrength === 'high_income_system' && (
+            <p>Advanced healthcare system in a high-income country. Very high treatment quality and access, low mortality, with higher costs of care.</p>
+          )}
+        </div>
       </div>
 
       <div className="mb-6">

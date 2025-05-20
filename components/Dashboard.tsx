@@ -260,7 +260,7 @@ const Dashboard: React.FC = () => {
         )}
         
         {/* Welcome information */}
-        <div className="text-center">
+        <div className="text-left">
           <div className="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg border border-blue-200 dark:border-blue-700 max-w-2xl">
             <h3 className="text-lg font-medium text-blue-800 dark:text-blue-200 mb-2">How to use this dashboard</h3>
             <ol className="list-decimal list-inside text-left text-gray-700 dark:text-gray-300 space-y-2">

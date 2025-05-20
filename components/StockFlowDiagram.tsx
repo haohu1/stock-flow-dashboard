@@ -116,7 +116,7 @@ const StockFlowDiagram: React.FC = () => {
     const links: Link[] = [
       // From New Cases
       { id: 'link_new_untreated', source: 'new', target: 'untreated', label: `(1-${getUnicodeBaseSymbol('phi', '0')})r: ${fmt((1 - params.phi0) * params.informalCareRatio)}`, value: (1 - params.phi0) * params.informalCareRatio * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 150, y1: 475 }, labelOffset: {dy: -15} },
-      { id: 'link_new_informal', source: 'new', target: 'informal', label: `${getUnicodeBaseSymbol('phi', '0')}(1-r): ${fmt(params.phi0 * (1 - params.informalCareRatio))}`, value: params.phi0 * (1 - params.informalCareRatio) * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 150, y1: 325 } },
+      { id: 'link_new_informal', source: 'new', target: 'informal', label: `(1-${getUnicodeBaseSymbol('phi', '0')})(1-r): ${fmt((1 - params.phi0) * (1 - params.informalCareRatio))}`, value: (1 - params.phi0) * (1 - params.informalCareRatio) * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 150, y1: 325 } },
       { id: 'link_new_formal', source: 'new', target: 'formal', label: `${getUnicodeBaseSymbol('phi', '0')}: ${fmt(params.phi0)}`, value: params.phi0 * weeklyIncidence, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: 'phi0', controlPoints: { x1: 150, y1: 175 }, labelOffset: {dy: -15} },
       
       // From Untreated to Deaths

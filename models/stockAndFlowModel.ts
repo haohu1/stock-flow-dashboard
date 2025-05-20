@@ -54,6 +54,7 @@ export interface ModelParameters {
   // AI effectiveness parameters
   selfCareAIEffectMuI: number;   // improvement in resolution from self-care AI  
   selfCareAIEffectDeltaI: number; // multiplier for death rate reduction from self-care AI
+  selfCareAIActive: boolean;     // flag to indicate if selfCareAI intervention is active
   
   // Economic parameters
   perDiemCosts: {
@@ -211,7 +212,7 @@ const runWeek = (
   };
   
   // Calculate episodes touched by AI
-  const selfCareActive = params.muI > getDefaultParameters().muI;
+  const selfCareActive = params.selfCareAIActive;
   const episodesTouched = state.episodesTouched + 
                           directToFormal + 
                           informalToFormal + 
@@ -755,6 +756,9 @@ export const applyAIInterventions = (
   // Reset aiFixedCost and aiVariableCost to 0 before applying interventions
   modifiedParams.aiFixedCost = 0;
   modifiedParams.aiVariableCost = 0;
+  
+  // Initialize all AI activation flags to false
+  modifiedParams.selfCareAIActive = false;
 
   // Helper function to apply magnitude to an effect
   const applyMagnitude = (key: string, baseEffect: number, isMultiplier: boolean = false): number => {
@@ -825,6 +829,7 @@ export const applyAIInterventions = (
     modifiedParams.deltaI *= applyMagnitude('selfCareAI_δI', modifiedParams.selfCareAIEffectDeltaI, true); // Reduced mortality in informal care
     modifiedParams.aiFixedCost += costParams.selfCareAI.fixed;
     modifiedParams.aiVariableCost += costParams.selfCareAI.variable;
+    modifiedParams.selfCareAIActive = true; // Set the flag indicating self-care AI is active
   }
   
   return modifiedParams;
@@ -865,6 +870,7 @@ export const getDefaultParameters = (): ModelParameters => ({
   // AI effectiveness parameters - conservative estimates
   selfCareAIEffectMuI: 0.08,   // 8% improvement in resolution from self-care AI (reduced from 15%)
   selfCareAIEffectDeltaI: 0.85, // 15% reduction in mortality from self-care AI (reduced from 30%)
+  selfCareAIActive: false,      // Default to inactive
   
   // Economic parameters
   perDiemCosts: {

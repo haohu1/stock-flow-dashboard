@@ -405,7 +405,7 @@ const BubbleChartView: React.FC = () => {
       
     // Create a completely basic tooltip div directly in the DOM
     const tooltipDiv = document.createElement("div");
-    tooltipDiv.style.position = "fixed";
+    tooltipDiv.style.position = "absolute"; // Changed from fixed to absolute for better positioning
     tooltipDiv.style.backgroundColor = "white";
     tooltipDiv.style.color = "#111";
     tooltipDiv.style.border = "1px solid #ccc";
@@ -419,8 +419,6 @@ const BubbleChartView: React.FC = () => {
     tooltipDiv.style.fontWeight = "400";
     tooltipDiv.style.minWidth = "220px";
     tooltipDiv.style.maxWidth = "300px";
-    tooltipDiv.style.transition = "opacity 0.2s";
-    tooltipDiv.style.opacity = "0";
     tooltipDiv.id = "bubble-chart-tooltip"; // Add ID for easy reference
     
     // Check if dark mode is enabled
@@ -454,30 +452,7 @@ const BubbleChartView: React.FC = () => {
           .style("stroke-width", 2)
           .style("fill-opacity", 1);
         
-        // Show tooltip
-        tooltipDiv.style.display = "block";
-        
-        // Calculate position to ensure tooltip is visible within viewport
-        const tooltipWidth = 250; // Approximate width
-        const tooltipHeight = 200; // Approximate height
-        
-        // Check if tooltip would go off right edge
-        let leftPos = event.clientX + 15;
-        if (leftPos + tooltipWidth > window.innerWidth) {
-          leftPos = event.clientX - tooltipWidth - 10;
-        }
-        
-        // Check if tooltip would go off bottom edge
-        let topPos = event.clientY - 10;
-        if (topPos + tooltipHeight > window.innerHeight) {
-          topPos = event.clientY - tooltipHeight - 10;
-        }
-        
-        // Position tooltip using client coordinates which are relative to the viewport
-        tooltipDiv.style.left = leftPos + "px";
-        tooltipDiv.style.top = topPos + "px";
-        
-        // Set content
+        // Set content first
         tooltipDiv.innerHTML = `
           <div>
             <div style="font-weight: bold; font-size: 16px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid ${prefersDarkMode || bodyHasDarkClass ? '#374151' : '#eee'};">${data.name}</div>
@@ -520,10 +495,13 @@ const BubbleChartView: React.FC = () => {
           </div>
         `;
         
-        // Fade in tooltip
-        setTimeout(() => {
-          tooltipDiv.style.opacity = "1";
-        }, 10);
+        // Simple positioning directly with pageX/pageY
+        const offset = 10;
+        tooltipDiv.style.left = (event.pageX + offset) + "px";
+        tooltipDiv.style.top = (event.pageY + offset) + "px";
+        
+        // Show tooltip
+        tooltipDiv.style.display = "block";
       });
       
       node.addEventListener("mouseout", function(this: HTMLElement) {
@@ -533,37 +511,15 @@ const BubbleChartView: React.FC = () => {
           .style("stroke-width", 1)
           .style("fill-opacity", 0.8);
         
-        // Fade out tooltip
-        tooltipDiv.style.opacity = "0";
-        
-        // Wait for fade out before hiding completely
-        setTimeout(() => {
-          if (tooltipDiv.style.opacity === "0") {
-            tooltipDiv.style.display = "none";
-          }
-        }, 200);
+        // Hide tooltip immediately
+        tooltipDiv.style.display = "none";
       });
       
       node.addEventListener("mousemove", function(this: HTMLElement, event: MouseEvent) {
-        // Calculate position to ensure tooltip is visible within viewport
-        const tooltipWidth = 250; // Approximate width
-        const tooltipHeight = 200; // Approximate height
-        
-        // Check if tooltip would go off right edge
-        let leftPos = event.clientX + 15;
-        if (leftPos + tooltipWidth > window.innerWidth) {
-          leftPos = event.clientX - tooltipWidth - 10;
-        }
-        
-        // Check if tooltip would go off bottom edge
-        let topPos = event.clientY - 10;
-        if (topPos + tooltipHeight > window.innerHeight) {
-          topPos = event.clientY - tooltipHeight - 10;
-        }
-        
-        // Update tooltip position using client coordinates
-        tooltipDiv.style.left = leftPos + "px";
-        tooltipDiv.style.top = topPos + "px";
+        // Simple positioning directly with pageX/pageY
+        const offset = 10;
+        tooltipDiv.style.left = (event.pageX + offset) + "px";
+        tooltipDiv.style.top = (event.pageY + offset) + "px";
       });
     });
     

@@ -52,10 +52,10 @@ const EquationExplainer: React.FC = () => {
     },
     {
       title: 'Untreated Patients',
-      equation: 'U_{deaths} = \\delta_U \\cdot U \\\\ U_{remaining} = U - U_{deaths} \\\\ U_{new} = r \\cdot (1 - \\phi_0) \\cdot New \\\\ U_{t+1} = U_{remaining} + U_{new}',
+      equation: 'U_{deaths} = \\delta_U \\cdot U_t \\\\ U_{remaining} = U_t - U_{deaths} \\\\ U_{new} = r \\cdot (1 - \\phi_0) \\cdot New \\\\ U_{t+1} = U_{remaining} + U_{new}',
       explanation: 'Weekly transitions for patients who remain completely untreated. Note: The health system multipliers for δ_U have already been applied to the parameter. Each week, new untreated patients (U_new) join those who remained untreated from the previous week.',
       variables: [
-        { symbol: 'U', name: 'Untreated Cases', value: 'Dynamic' },
+        { symbol: 'U_t', name: 'Current Untreated Cases', value: 'Dynamic' },
         { symbol: 'U_{t+1}', name: 'Untreated Cases Next Week', value: 'Dynamic' },
         { symbol: '\\delta_U', name: 'Untreated Death Rate (including multiplier)', value: params.deltaU },
         { symbol: getLatexMultiplierSymbol('delta', 'U'), name: 'Untreated Death Multiplier (pre-applied)', value: activeMultipliers.delta_multiplier_U },
@@ -65,10 +65,10 @@ const EquationExplainer: React.FC = () => {
     },
     {
       title: 'Informal Care Transitions',
-      equation: 'I_{formal} = \\sigma_I \\cdot I \\\\ I_{resolved} = \\mu_I \\cdot I \\\\ I_{deaths} = \\delta_I \\cdot I \\\\ I_{remaining} = I - I_{formal} - I_{resolved} - I_{deaths} \\\\ I_{new} = (1 - r) \\cdot (1 - \\phi_0) \\cdot New \\\\ I_{t+1} = I_{remaining} + I_{new}',
+      equation: 'I_{formal} = \\sigma_I \\cdot I_t \\\\ I_{resolved} = \\mu_I \\cdot I_t \\\\ I_{deaths} = \\delta_I \\cdot I_t \\\\ I_{remaining} = I_t - I_{formal} - I_{resolved} - I_{deaths} \\\\ I_{new} = (1 - r) \\cdot (1 - \\phi_0) \\cdot New \\\\ I_{t+1} = I_{remaining} + I_{new}',
       explanation: 'Weekly transitions for patients in informal care (self-care or traditional healers). Note: Health system multipliers for μ_I and δ_I have already been applied to these parameters. Each week, new informal care patients (I_new) join those who remained in informal care from the previous week.',
       variables: [
-        { symbol: 'I', name: 'Cases in Informal Care', value: 'Dynamic' },
+        { symbol: 'I_t', name: 'Current Cases in Informal Care', value: 'Dynamic' },
         { symbol: 'I_{t+1}', name: 'Informal Care Cases Next Week', value: 'Dynamic' },
         { symbol: '\\sigma_I', name: 'Informal to Formal Transfer Rate', value: params.sigmaI },
         { symbol: '\\mu_I', name: 'Informal Care Resolution Rate (including multiplier)', value: params.muI },
@@ -81,13 +81,13 @@ const EquationExplainer: React.FC = () => {
     },
     {
       title: 'Formal Care Entry',
-      equation: 'Formal_{new} = \\phi_0 \\cdot New + \\sigma_I \\cdot I',
+      equation: 'Formal_{new} = \\phi_0 \\cdot New + \\sigma_I \\cdot I_t',
       explanation: 'Total number of people entering formal care pathways each week, combining new cases directly seeking formal care and transfers from informal care.',
       variables: [
         { symbol: '\\phi_0', name: 'Initial Formal Care Seeking', value: params.phi0 },
         { symbol: 'New', name: 'New Weekly Cases', value: 'Dynamic' },
         { symbol: '\\sigma_I', name: 'Informal to Formal Transfer Rate', value: params.sigmaI },
-        { symbol: 'I', name: 'Cases in Informal Care', value: 'Dynamic' },
+        { symbol: 'I_t', name: 'Current Cases in Informal Care', value: 'Dynamic' },
       ],
       example: 'With φ_0 = ' + formatDecimal(params.phi0, 2) + ' and σ_I = ' + formatDecimal(params.sigmaI, 2) + ', about ' + formatDecimal(params.phi0 * 100, 0) + '% of new patients and ' + formatDecimal(params.sigmaI * 100, 0) + '% of informal care patients enter formal care weekly.'
     },
@@ -106,10 +106,10 @@ const EquationExplainer: React.FC = () => {
     },
     {
       title: 'CHW Level (L0) Transitions',
-      equation: 'L0_{resolved} = \\mu_{L0} \\cdot L0 \\\\ L0_{deaths} = \\delta_{L0} \\cdot L0 \\\\ L0_{referrals} = \\rho_{L0} \\cdot L0 \\\\ L0_{remaining} = L0 - L0_{resolved} - L0_{deaths} - L0_{referrals} \\\\ L0_{t+1} = L0_{remaining} + L0_{new}',
+      equation: 'L0_{resolved} = \\mu_{L0} \\cdot L0_t \\\\ L0_{deaths} = \\delta_{L0} \\cdot L0_t \\\\ L0_{referrals} = \\rho_{L0} \\cdot L0_t \\\\ L0_{remaining} = L0_t - L0_{resolved} - L0_{deaths} - L0_{referrals} \\\\ L0_{t+1} = L0_{remaining} + L0_{new}',
       explanation: 'Weekly transitions for patients at the community health worker level. Note: Health system multipliers for μ_L0, δ_L0, and ρ_L0 have already been applied to these parameters. Each week, new CHW patients (L0_new) join those remaining from the previous week.',
       variables: [
-        { symbol: 'L0', name: 'Cases at CHW Level', value: 'Dynamic' },
+        { symbol: 'L0_t', name: 'Current Cases at CHW Level', value: 'Dynamic' },
         { symbol: 'L0_{t+1}', name: 'CHW Cases Next Week', value: 'Dynamic' },
         { symbol: '\\mu_{L0}', name: 'CHW Resolution Rate (including multiplier)', value: params.mu0 },
         { symbol: '\\delta_{L0}', name: 'CHW Death Rate (including multiplier)', value: params.delta0 },
@@ -122,10 +122,10 @@ const EquationExplainer: React.FC = () => {
     },
     {
       title: 'Primary Care (L1) Transitions',
-      equation: 'L1_{resolved} = \\mu_{L1} \\cdot L1 \\\\ L1_{deaths} = \\delta_{L1} \\cdot L1 \\\\ L1_{referrals} = \\rho_{L1} \\cdot L1 \\\\ L1_{remaining} = L1 - L1_{resolved} - L1_{deaths} - L1_{referrals} \\\\ L1_{new} = L0_{referrals} \\\\ L1_{t+1} = L1_{remaining} + L1_{new}',
+      equation: 'L1_{resolved} = \\mu_{L1} \\cdot L1_t \\\\ L1_{deaths} = \\delta_{L1} \\cdot L1_t \\\\ L1_{referrals} = \\rho_{L1} \\cdot L1_t \\\\ L1_{remaining} = L1_t - L1_{resolved} - L1_{deaths} - L1_{referrals} \\\\ L1_{new} = L0_{referrals} \\\\ L1_{t+1} = L1_{remaining} + L1_{new}',
       explanation: 'Weekly transitions for patients at the primary care level. Note: Health system multipliers for μ_L1, δ_L1, and ρ_L1 have already been applied to these parameters. New primary care patients (L1_new) come from CHW referrals.',
       variables: [
-        { symbol: 'L1', name: 'Cases at Primary Care', value: 'Dynamic' },
+        { symbol: 'L1_t', name: 'Current Cases at Primary Care', value: 'Dynamic' },
         { symbol: 'L1_{t+1}', name: 'Primary Care Cases Next Week', value: 'Dynamic' },
         { symbol: '\\mu_{L1}', name: 'Primary Care Resolution Rate (including multiplier)', value: params.mu1 },
         { symbol: '\\delta_{L1}', name: 'Primary Care Death Rate (including multiplier)', value: params.delta1 },
@@ -138,10 +138,10 @@ const EquationExplainer: React.FC = () => {
     },
     {
       title: 'District Hospital (L2) Transitions',
-      equation: 'L2_{resolved} = \\mu_{L2} \\cdot L2 \\\\ L2_{deaths} = \\delta_{L2} \\cdot L2 \\\\ L2_{referrals} = \\rho_{L2} \\cdot L2 \\\\ L2_{remaining} = L2 - L2_{resolved} - L2_{deaths} - L2_{referrals} \\\\ L2_{new} = L1_{referrals} \\\\ L2_{t+1} = L2_{remaining} + L2_{new}',
+      equation: 'L2_{resolved} = \\mu_{L2} \\cdot L2_t \\\\ L2_{deaths} = \\delta_{L2} \\cdot L2_t \\\\ L2_{referrals} = \\rho_{L2} \\cdot L2_t \\\\ L2_{remaining} = L2_t - L2_{resolved} - L2_{deaths} - L2_{referrals} \\\\ L2_{new} = L1_{referrals} \\\\ L2_{t+1} = L2_{remaining} + L2_{new}',
       explanation: 'Weekly transitions for patients at the district hospital level. Note: Health system multipliers for μ_L2, δ_L2, and ρ_L2 have already been applied to these parameters. New district hospital patients (L2_new) come from primary care referrals.',
       variables: [
-        { symbol: 'L2', name: 'Cases at District Hospitals', value: 'Dynamic' },
+        { symbol: 'L2_t', name: 'Current Cases at District Hospitals', value: 'Dynamic' },
         { symbol: 'L2_{t+1}', name: 'District Hospital Cases Next Week', value: 'Dynamic' },
         { symbol: '\\mu_{L2}', name: 'District Hospital Resolution Rate (including multiplier)', value: params.mu2 },
         { symbol: '\\delta_{L2}', name: 'District Hospital Death Rate (including multiplier)', value: params.delta2 },
@@ -154,10 +154,10 @@ const EquationExplainer: React.FC = () => {
     },
     {
       title: 'Tertiary Hospital (L3) Transitions',
-      equation: 'L3_{resolved} = \\mu_{L3} \\cdot L3 \\\\ L3_{deaths} = \\delta_{L3} \\cdot L3 \\\\ L3_{remaining} = L3 - L3_{resolved} - L3_{deaths} \\\\ L3_{new} = L2_{referrals} \\\\ L3_{t+1} = L3_{remaining} + L3_{new}',
+      equation: 'L3_{resolved} = \\mu_{L3} \\cdot L3_t \\\\ L3_{deaths} = \\delta_{L3} \\cdot L3_t \\\\ L3_{remaining} = L3_t - L3_{resolved} - L3_{deaths} \\\\ L3_{new} = L2_{referrals} \\\\ L3_{t+1} = L3_{remaining} + L3_{new}',
       explanation: 'Weekly transitions for patients at the tertiary hospital level. Note: Health system multipliers for μ_L3 and δ_L3 have already been applied to these parameters. New tertiary hospital patients (L3_new) come from district hospital referrals.',
       variables: [
-        { symbol: 'L3', name: 'Cases at Tertiary Hospitals', value: 'Dynamic' },
+        { symbol: 'L3_t', name: 'Current Cases at Tertiary Hospitals', value: 'Dynamic' },
         { symbol: 'L3_{t+1}', name: 'Tertiary Hospital Cases Next Week', value: 'Dynamic' },
         { symbol: '\\mu_{L3}', name: 'Tertiary Hospital Resolution Rate (including multiplier)', value: params.mu3 },
         { symbol: '\\delta_{L3}', name: 'Tertiary Hospital Death Rate (including multiplier)', value: params.delta3 },
@@ -168,7 +168,7 @@ const EquationExplainer: React.FC = () => {
     },
     {
       title: 'Cumulative Health Outcomes',
-      equation: 'R_{total} = R + (\\mu_I \\cdot I) + (\\mu_{L0} \\cdot L0) + (\\mu_{L1} \\cdot L1) + (\\mu_{L2} \\cdot L2) + (\\mu_{L3} \\cdot L3) \\\\\\\ D_{total} = D + (\\delta_U \\cdot U) + (\\delta_I \\cdot I) + (\\delta_{L0} \\cdot L0) + (\\delta_{L1} \\cdot L1) + (\\delta_{L2} \\cdot L2) + (\\delta_{L3} \\cdot L3)',
+      equation: 'R_{total} = R + (\\mu_I \\cdot I_t) + (\\mu_{L0} \\cdot L0_t) + (\\mu_{L1} \\cdot L1_t) + (\\mu_{L2} \\cdot L2_t) + (\\mu_{L3} \\cdot L3_t) \\\\\\\ D_{total} = D + (\\delta_U \\cdot U_t) + (\\delta_I \\cdot I_t) + (\\delta_{L0} \\cdot L0_t) + (\\delta_{L1} \\cdot L1_t) + (\\delta_{L2} \\cdot L2_t) + (\\delta_{L3} \\cdot L3_t)',
       explanation: 'Cumulative resolved cases and deaths across all pathways. Note: Health system multipliers have already been incorporated into the μ and δ parameters.',
       variables: [
         { symbol: 'R', name: 'Cumulative Resolved Cases', value: 'Dynamic' },
@@ -228,6 +228,20 @@ const EquationExplainer: React.FC = () => {
           This diagram illustrates the flow of patients through different levels of the healthcare system.
           Green highlighted paths show active AI interventions.
         </p>
+      </div>
+      
+      <div className="bg-blue-50 dark:bg-blue-900 p-4 rounded-md mb-6">
+        <h4 className="text-md font-medium text-gray-700 dark:text-blue-100 mb-2">Variable Naming Convention</h4>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+          This model uses discrete time steps (weekly intervals) with the following variable naming convention:
+        </p>
+        <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-300 space-y-1 ml-2">
+          <li><InlineMath math="X_t" /> (e.g., <InlineMath math="U_t, I_t, L0_t" />) - Current number of patients in compartment X at time t</li>
+          <li><InlineMath math="X_{new}" /> (e.g., <InlineMath math="U_{new}, I_{new}" />) - New patients entering compartment X during the current time step</li>
+          <li><InlineMath math="X_{t+1}" /> (e.g., <InlineMath math="U_{t+1}, I_{t+1}" />) - Updated number of patients in compartment X after all transitions, for the next time step</li>
+          <li><InlineMath math="X_{deaths}, X_{resolved}, X_{referrals}" /> - Patients leaving compartment X during the current time step due to specific outcomes</li>
+          <li><InlineMath math="X_{remaining}" /> - Patients who stay in compartment X after accounting for all exits during the current time step</li>
+        </ul>
       </div>
       
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">

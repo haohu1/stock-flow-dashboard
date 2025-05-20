@@ -298,46 +298,40 @@ const Sidebar: React.FC = () => {
         {/* Add disease descriptions */}
         <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-left">
           {selectedDisease === 'malaria' && (
-            <p>Malaria is a mosquito-borne disease with moderate incidence (0.2 episodes per person-year). Features modest spontaneous resolution (20% weekly) but high mortality if untreated (5% weekly). Significant benefit from healthcare intervention at all levels. Represents a common infectious disease with severe consequences if left untreated.</p>
+            <p>Malaria is a mosquito-borne disease with moderate-high incidence (0.4 episodes per person-year) in endemic areas. Features some spontaneous resolution of uncomplicated cases (15% weekly) but significant mortality if untreated (3% weekly) or with informal care (2% weekly). CHWs with RDTs and ACTs achieve high resolution rates (80% weekly). Affects children and adults, with children at higher risk.</p>
           )}
           {selectedDisease === 'tuberculosis' && (
-            <p>Tuberculosis is a slow-progressing bacterial infection with low incidence (0.002 episodes per person-year) but near-zero spontaneous resolution (0.1% weekly) and moderate untreated mortality (1% weekly). High disability weight (0.4) and requires sustained treatment. Represents a chronic infectious disease requiring significant healthcare intervention.</p>
-          )}
-          {selectedDisease === 'diabetes' && (
-            <p>Diabetes is a chronic metabolic disorder with low incidence (0.005 episodes per person-year) and extremely low spontaneous resolution (0.01% weekly). Features progressive deterioration if untreated (0.2% weekly mortality) and significant benefit from healthcare intervention. Represents a non-communicable chronic disease with lifelong management.</p>
+            <p>Tuberculosis is a slow-progressing bacterial infection with low incidence (0.002 episodes per person-year) and very low spontaneous resolution (2% weekly). Mortality ranges from 0.3% weekly if completely untreated to 0.05% weekly at tertiary care. Requires sustained treatment with resolution rates of 4-6% weekly depending on care level. CHW role focuses on DOTS support with high referral rate (85%).</p>
           )}
           {selectedDisease === 'pneumonia' && (
-            <p>Pneumonia is an acute respiratory infection with moderate incidence (0.05 episodes per person-year). Features moderate spontaneous resolution (15% weekly) but significant mortality if untreated (3% weekly). Strong benefit from healthcare intervention at all levels. Represents an acute infection requiring prompt medical attention.</p>
+            <p>Pneumonia is an acute respiratory infection with high incidence (0.9 episodes per child-year) primarily affecting young children. Features some spontaneous resolution (10% weekly) but significant mortality if untreated (5% weekly). CHWs providing antibiotics achieve high resolution rates (70% weekly) for non-severe cases. Hospital care needed for severe cases with mortality rates of 1.5-2% weekly despite treatment.</p>
           )}
           {selectedDisease === 'urti' && (
-            <p>Common viral respiratory infection with very high incidence (2 episodes per person-year). Features excellent spontaneous resolution (70% weekly) and minimal additional benefit from healthcare intervention. Extremely low mortality (&lt;0.002% weekly) and minimal referral requirements. Represents a high-volume, low-severity condition that rarely requires advanced care.</p>
+            <p>Upper Respiratory Tract Infection with very high incidence (2 episodes per person-year). Features excellent spontaneous resolution (70% weekly) with minimal additional benefit from healthcare intervention. Extremely low mortality (0.001-0.002% weekly) and minimal referral requirements (5% from CHW level). Represents a high-volume, low-severity condition affecting all ages.</p>
           )}
           {selectedDisease === 'infant_pneumonia' && (
-            <p>A severe respiratory infection affecting infants, with higher mortality rates than adult pneumonia. Requires prompt medical intervention and has a significant benefit from healthcare at all levels.</p>
+            <p>Severe respiratory infection affecting infants (&lt;1 year) with very high incidence (1.2 episodes per infant-year). Lower spontaneous resolution (10% weekly) and higher mortality (6% if untreated) than adult pneumonia. CHWs treating non-severe cases achieve 50% weekly resolution. Hospital care for severe cases still carries 2-2.5% weekly mortality despite treatment. Requires prompt medical intervention.</p>
           )}
           {selectedDisease === 'fever' && (
-            <p>Fever of unknown origin represents a symptom-based presentation with moderate spontaneous resolution but requiring diagnostic evaluation to rule out serious conditions.</p>
+            <p>Fever of unknown origin has moderate-high incidence (0.6 episodes per person-year) affecting all ages. Moderate spontaneous resolution (30% weekly) but requires diagnostic evaluation to rule out serious conditions. Mortality ranges from 1.5% weekly if untreated to 0.1% weekly at tertiary care. Primary care can diagnose and provide empiric treatment with good outcomes (70% weekly resolution).</p>
           )}
           {selectedDisease === 'diarrhea' && (
-            <p>Diarrheal disease with moderate to high incidence, featuring good spontaneous resolution with proper hydration but risk of severe dehydration if untreated, particularly in vulnerable populations.</p>
+            <p>Acute diarrheal disease with very high incidence (1.5 episodes per child-year), primarily affecting young children. Moderate spontaneous resolution with home fluids (35% weekly) but risk of severe dehydration if untreated (2.5% weekly mortality). CHWs with ORS/zinc achieve excellent outcomes (85% weekly resolution) for non-severe cases. Severe dehydration requires hospital management with 0.5-1% weekly mortality despite treatment.</p>
           )}
           {selectedDisease === 'hiv_opportunistic' && (
-            <p>Opportunistic infections in HIV patients require specialized management and have higher mortality rates without appropriate care.</p>
-          )}
-          {selectedDisease === 'urti' && (
-            <p>Upper Respiratory Tract Infections are common mild viral infections with excellent spontaneous resolution and low mortality.</p>
+            <p>Opportunistic infections in HIV patients require specialized management with significantly higher resolution rates at hospital levels. Limited data in model, but generally have high mortality rates without appropriate care. Antiretroviral therapy and prophylaxis at primary care level can significantly improve outcomes. Prompt referral to higher levels of care is essential for severe cases.</p>
           )}
           {selectedDisease === 'high_risk_pregnancy_low_anc' && (
-            <p>High-risk pregnancies with inadequate antenatal care have elevated risk of maternal and fetal complications requiring healthcare intervention.</p>
+            <p>High-risk pregnancies with inadequate antenatal care affect approximately 2% of women of reproductive age annually. Very low spontaneous favorable outcomes (1% weekly) and high mortality/morbidity if managed informally (1.5% weekly) or untreated (2% weekly). District hospitals with C-section capability and blood products achieve much better outcomes (50% weekly resolution of complications). Very high referral rates recommended (90% from CHW level).</p>
           )}
           {selectedDisease === 'anemia' && (
-            <p>Chronic anemia with varying severity requiring diagnosis and management of underlying causes.</p>
+            <p>Primarily iron deficiency anemia with moderate incidence (20% annual) affecting young children and women of reproductive age. Low spontaneous improvement (5% weekly) with dietary changes alone. CHW-provided iron supplements achieve moderate improvement (15% weekly). Severe anemia may require hospital investigation and transfusion. Very low mortality (0.05-0.1% weekly) unless severe underlying complications present.</p>
           )}
           {selectedDisease === 'hiv_management_chronic' && (
-            <p>Chronic management of HIV infection requires consistent medical care to maintain viral suppression and prevent complications.</p>
+            <p>Chronic HIV management with very low incidence of new diagnoses (0.1% annual) requiring linkage to care. Self-management pre-linkage has very low success in viral suppression (1% weekly). Primary care ART initiation and monitoring achieves good outcomes (10% weekly stabilization). Mortality is high if diagnosed but not linked to care (0.5% weekly) but very low on effective ART (0.05% weekly). High CHW referral essential (90%).</p>
           )}
           {selectedDisease === 'congestive_heart_failure' && (
-            <p>Chronic cardiac condition requiring ongoing medical management to prevent acute exacerbations and hospitalizations.</p>
+            <p>Chronic cardiac condition with low incidence (1.2% annual) primarily affecting older adults (mean age 67). Negligible spontaneous resolution (1% weekly) and high mortality if untreated (9% weekly) or with informal care only (6% weekly). Requires medication management at primary care (35% weekly resolution) with progressively better outcomes at higher levels. Even with tertiary care maintains 1% weekly mortality.</p>
           )}
         </div>
       </div>

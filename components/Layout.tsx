@@ -40,12 +40,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </svg>
       </button>
       
-      {/* Sidebar with responsive hiding */}
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 fixed md:static h-full z-40`}>
+      {/* Sidebar without fixed positioning for desktop */}
+      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 fixed md:relative md:translate-x-0 z-40`}>
         <Sidebar />
       </div>
       
-      <main className="flex-1 p-4 md:p-6 md:ml-64">
+      <main className="flex-1 p-4 md:p-6">
         {children}
       </main>
     </div>

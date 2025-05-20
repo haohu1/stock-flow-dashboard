@@ -112,7 +112,7 @@ const StockFlowDiagram: React.FC = () => {
       // From New Cases
       { id: 'link_new_untreated', source: 'new', target: 'untreated', label: `(1 - ${getUnicodeBaseSymbol('phi', '0')}) = ${fmt(1 - params.phi0)}`, value: (1 - params.phi0) * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 200, y1: 500 }, labelOffset: {dy: -10} },
       { id: 'link_new_informal', source: 'new', target: 'informal', label: `${getUnicodeBaseSymbol('phi', '0')}(1-r) = ${fmt((1 - params.phi0) * (1 - params.informalCareRatio))}`, value: (1 - params.phi0) * (1 - params.informalCareRatio) * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 200, y1: 325 } },
-      { id: 'link_new_formal', source: 'new', target: 'formal', label: `${getUnicodeBaseSymbol('phi', '0')} = ${fmt(params.phi0)}`, value: params.phi0 * weeklyIncidence, aiIntervention: null, parameter: 'phi0', controlPoints: { x1: 200, y1: 150 } },
+      { id: 'link_new_formal', source: 'new', target: 'formal', label: `${getUnicodeBaseSymbol('phi', '0')} = ${fmt(params.phi0)}`, value: params.phi0 * weeklyIncidence, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: 'phi0', controlPoints: { x1: 200, y1: 150 } },
       
       // From Untreated to Deaths
       { id: 'link_untreated_deaths', source: 'untreated', target: 'deaths', label: `${getUnicodeMultiplierSymbol('delta', 'U')}${getUnicodeBaseSymbol('delta', 'U')}: ${fmt(params.deltaU)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 675, y1: 500 }, labelOffset: {dx: 20, dy: 20} },

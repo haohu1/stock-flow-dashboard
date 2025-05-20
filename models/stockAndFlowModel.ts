@@ -905,4 +905,43 @@ export const getDefaultParameters = (): ModelParameters => ({
   discountRate: 0,
   yearsOfLifeLost: 30,
   regionalLifeExpectancy: 70,
-}); 
+});
+
+export const sanitizeModelParameters = (params: ModelParameters): ModelParameters => {
+  const sanitizedParams = { ...params };
+
+  for (const key in sanitizedParams) {
+    if (Object.prototype.hasOwnProperty.call(sanitizedParams, key)) {
+      const paramKey = key as keyof ModelParameters;
+      const value = sanitizedParams[paramKey];
+
+      if (typeof value === 'number') {
+        if (isNaN(value)) {
+          console.warn(`Sanitizing NaN for parameter ${paramKey}, defaulting to 0.`);
+          (sanitizedParams[paramKey] as any) = 0;
+        } else if (!isFinite(value)) {
+          console.warn(`Sanitizing Infinity for parameter ${paramKey}, clamping.`);
+          (sanitizedParams[paramKey] as any) = value > 0 ? Number.MAX_VALUE : -Number.MAX_VALUE;
+        }
+      } else if (typeof value === 'object' && value !== null && paramKey === 'perDiemCosts') {
+        // Sanitize nested perDiemCosts
+        const sanitizedPerDiemCosts = { ...(value as ModelParameters['perDiemCosts']) };
+        for (const costKey in sanitizedPerDiemCosts) {
+          if (Object.prototype.hasOwnProperty.call(sanitizedPerDiemCosts, costKey)) {
+            const perDiemKey = costKey as keyof ModelParameters['perDiemCosts'];
+            const costValue = sanitizedPerDiemCosts[perDiemKey];
+            if (isNaN(costValue)) {
+              console.warn(`Sanitizing NaN for perDiemCosts.${perDiemKey}, defaulting to 0.`);
+              sanitizedPerDiemCosts[perDiemKey] = 0;
+            } else if (!isFinite(costValue)) {
+              console.warn(`Sanitizing Infinity for perDiemCosts.${perDiemKey}, clamping.`);
+              sanitizedPerDiemCosts[perDiemKey] = costValue > 0 ? Number.MAX_VALUE : -Number.MAX_VALUE;
+            }
+          }
+        }
+        (sanitizedParams[paramKey] as any) = sanitizedPerDiemCosts;
+      }
+    }
+  }
+  return sanitizedParams;
+}; 

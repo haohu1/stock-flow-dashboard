@@ -8,7 +8,8 @@ import {
   runSimulation,
   calculateICER,
   healthSystemStrengthDefaults,
-  diseaseProfiles
+  diseaseProfiles,
+  sanitizeModelParameters
 } from '../models/stockAndFlowModel';
 import { calculateSuggestedFeasibility, formatNumber } from './utils';
 
@@ -87,7 +88,6 @@ export const getDerivedParamsForDisease = (
   activeMultipliers: HealthSystemMultipliers,
   aiCostParams?: AICostParameters
 ): ModelParameters => {
-  // Start with base parameters
   let params = { ...baseParams };
 
   // Get health system scenario defaults
@@ -155,7 +155,12 @@ export const getDerivedParamsForDisease = (
   }
 
   // Apply AI interventions
-  return applyAIInterventions(params, aiInterventions, effectMagnitudes, aiCostParams);
+  let modifiedParamsByAI = applyAIInterventions(params, aiInterventions, effectMagnitudes, aiCostParams);
+
+  // Sanitize all parameters before returning
+  const finalSanitizedParams = sanitizeModelParameters(modifiedParamsByAI);
+  
+  return finalSanitizedParams;
 };
 
 // Update parameters when health system strength or disease changes, but preserve custom user changes

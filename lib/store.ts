@@ -10,6 +10,7 @@ import {
   healthSystemStrengthDefaults,
   diseaseProfiles
 } from '../models/stockAndFlowModel';
+import { calculateSuggestedFeasibility, formatNumber } from './utils';
 
 // Selected health system strength and disease
 export const selectedHealthSystemStrengthAtom = atom<string>('moderate_urban_system');
@@ -393,8 +394,8 @@ export interface Scenario {
   effectMagnitudes: {[key: string]: number};
   results: SimulationResults | null;
   baselineResults?: SimulationResults | null;
+  savedBaselineResultsMap?: Record<string, SimulationResults | null>;
   feasibility?: number; // 0 to 1, where 1 is most feasible (closest to launch)
-  // Add multi-disease support
   selectedDiseases?: string[];
   diseaseResultsMap?: Record<string, SimulationResults | null>;
 }
@@ -414,6 +415,7 @@ export const addScenarioAtom = atom(
     const results = get(simulationResultsAtom);
     const resultsMap = get(simulationResultsMapAtom);
     const baseline = get(baselineResultsAtom);
+    const currentBaselineResultsMap = get(baselineResultsMapAtom);
     const scenarios = get(scenariosAtom);
     const healthSystemStrength = get(selectedHealthSystemStrengthAtom);
     const disease = get(selectedDiseaseAtom);
@@ -421,23 +423,14 @@ export const addScenarioAtom = atom(
     const population = get(populationSizeAtom);
     const selectedAIScenario = get(selectedAIScenarioAtom);
     
-    // Enhanced debug logs with full data inspection
-    console.log('DETAILED DEBUG - Adding scenario(s) for diseases:', selectedDiseases);
-    console.log('Raw resultsMap structure:', Object.keys(resultsMap));
-    console.log('Selected AI scenario:', selectedAIScenario);
-    
-    // Determine the base scenario name
     const scenarioNumber = scenarios.length + 1;
-    const activeAIInterventions = Object.entries(aiInterventions)
+    const activeAIInterventionsList = Object.entries(aiInterventions)
       .filter(([_, isActive]) => isActive)
       .map(([name]) => name);
-    
-    // Create scenario name based on AI scenario preset, AI interventions, or sequence number
+    const activeAIInterventionsCount = activeAIInterventionsList.length;
+
     let baseName = '';
-    
-    // If we have a selected AI scenario, use its name
     if (selectedAIScenario) {
-      // Find the preset name based on the selected scenario ID
       const presetNames: {[key: string]: string} = {
         'best-case-2025': 'Best Case',
         'worst-case-2025': 'Worst Case',
@@ -451,252 +444,91 @@ export const addScenarioAtom = atom(
       };
       
       baseName = presetNames[selectedAIScenario] || selectedAIScenario;
-    }
-    // Otherwise, fall back to AI interventions or sequence number
-    else if (activeAIInterventions.length > 0) {
-      if (activeAIInterventions.length === 1) {
-        // Use the specific AI intervention name
+    } else if (activeAIInterventionsCount > 0) {
+      if (activeAIInterventionsCount === 1) {
         const aiName = (() => {
-          switch(activeAIInterventions[0]) {
+          switch(activeAIInterventionsList[0]) {
             case 'triageAI': return 'AI Triage';
             case 'chwAI': return 'CHW Decision Support';
             case 'diagnosticAI': return 'Diagnostic AI';
             case 'bedManagementAI': return 'Bed Management AI';
             case 'hospitalDecisionAI': return 'Hospital Decision Support';
             case 'selfCareAI': return 'Self-Care Apps';
-            default: return activeAIInterventions[0];
+            default: return activeAIInterventionsList[0];
           }
         })();
         baseName = `${aiName}`;
-      } else if (activeAIInterventions.length > 1) {
-        // Multiple AI interventions
-        baseName = `Combined AI (${activeAIInterventions.length})`;
+      } else if (activeAIInterventionsCount > 1) {
+        baseName = `Combined AI (${activeAIInterventionsCount})`;
       }
     } else {
-      // No AI interventions - use sequence number
       baseName = `Scenario ${scenarioNumber}`;
     }
     
-    // Check if we should create separate scenarios for each disease
+    const initialFeasibility = calculateSuggestedFeasibility(activeAIInterventionsCount);
+
+    const deepCopyBaselineResultsMap = currentBaselineResultsMap 
+      ? JSON.parse(JSON.stringify(currentBaselineResultsMap)) 
+      : undefined;
+
     if (selectedDiseases.length > 1 && Object.keys(resultsMap).length > 1) {
-      console.log('Creating separate scenarios for each disease');
-      
-      // Track the newly created scenarios
-      const newScenarios = [...scenarios];
-      let lastScenarioId = null;
-      
-      // Create a scenario for each disease
-      selectedDiseases.forEach((diseaseName, index) => {
-        // Skip diseases with no results
-        if (!resultsMap[diseaseName]) {
-          console.log(`Skipping ${diseaseName} as it has no results`);
+      const newScenariosList = [...scenarios];
+      let lastScenarioIdForSelection = null;
+      selectedDiseases.forEach((currentDiseaseName, index) => {
+        if (!resultsMap[currentDiseaseName]) {
+          console.log(`Skipping scenario creation for ${currentDiseaseName} as it has no results in resultsMap`);
           return;
         }
         
-        console.log(`Creating scenario for disease: ${diseaseName}`);
-        
-        // Create a single-disease results map
-        const singleDiseaseMap: Record<string, SimulationResults | null> = {
-          [diseaseName]: resultsMap[diseaseName]
+        const singleDiseaseMapForThisScenario: Record<string, SimulationResults | null> = {
+          [currentDiseaseName]: resultsMap[currentDiseaseName] ? JSON.parse(JSON.stringify(resultsMap[currentDiseaseName])) : null
         };
-        
-        // Create a deep copy of the single result
-        const diseaseResultsCopy = (() => {
-          if (!resultsMap[diseaseName]) {
-            return undefined;
-          }
-          
-          // Make a proper deep copy of this disease's result
-          const diseaseResult = resultsMap[diseaseName];
-          
-          const resultCopy: SimulationResults = {
-            cumulativeDeaths: diseaseResult.cumulativeDeaths,
-            cumulativeResolved: diseaseResult.cumulativeResolved,
-            totalCost: diseaseResult.totalCost,
-            averageTimeToResolution: diseaseResult.averageTimeToResolution,
-            dalys: diseaseResult.dalys,
-            icer: diseaseResult.icer,
-            weeklyStates: diseaseResult.weeklyStates.map(state => ({...state})),
-          };
-          
-          return { [diseaseName]: resultCopy };
-        })();
-        
-        // Use just the base name without the disease name for multi-disease scenarios
-        const scenarioName = baseName;
-        
-        // Create the scenario with proper copies
-        const newScenario: Scenario = {
+
+        const newScenarioEntry: Scenario = {
           id: `scenario-${Date.now()}-${index}`,
-          name: scenarioName,
+          name: baseName,
           parameters: { 
             ...params,
             healthSystemStrength,
-            disease: diseaseName,  // Set the primary disease to this disease
+            disease: currentDiseaseName, 
             population
           },
           aiInterventions: { ...aiInterventions },
           effectMagnitudes: { ...effectMagnitudes },
-          // Set the primary result to this disease's result
-          results: resultsMap[diseaseName] ? { 
-            ...JSON.parse(JSON.stringify(resultsMap[diseaseName])),
-            weeklyStates: resultsMap[diseaseName].weeklyStates.map(state => ({...state}))
-          } : null,
-          baselineResults: baseline ? { 
-            ...JSON.parse(JSON.stringify(baseline)),
-            weeklyStates: baseline.weeklyStates.map(state => ({...state}))
-          } : null,
-          // Store just this disease
-          selectedDiseases: [diseaseName],
-          diseaseResultsMap: diseaseResultsCopy
+          results: resultsMap[currentDiseaseName] ? JSON.parse(JSON.stringify(resultsMap[currentDiseaseName])) : null,
+          baselineResults: baseline ? JSON.parse(JSON.stringify(baseline)) : null,
+          savedBaselineResultsMap: deepCopyBaselineResultsMap,
+          feasibility: initialFeasibility,
+          selectedDiseases: [currentDiseaseName],
+          diseaseResultsMap: singleDiseaseMapForThisScenario 
         };
-        
-        // Check the created scenario
-        console.log(`Created scenario for ${diseaseName}:`, {
-          id: newScenario.id,
-          name: newScenario.name,
-          disease: diseaseName,
-          deaths: resultsMap[diseaseName]?.cumulativeDeaths,
-          costs: resultsMap[diseaseName]?.totalCost,
-          icer: resultsMap[diseaseName]?.icer
-        });
-        
-        // Add to the list of new scenarios
-        newScenarios.push(newScenario);
-        lastScenarioId = newScenario.id;
+        newScenariosList.push(newScenarioEntry);
+        lastScenarioIdForSelection = newScenarioEntry.id;
       });
-      
-      // Save all the new scenarios
-      set(scenariosAtom, newScenarios);
-      
-      // Select the last created scenario
-      if (lastScenarioId) {
-        set(selectedScenarioIdAtom, lastScenarioId);
+      set(scenariosAtom, newScenariosList);
+      if (lastScenarioIdForSelection) {
+        set(selectedScenarioIdAtom, lastScenarioIdForSelection);
       }
-      
-      console.log(`Created ${newScenarios.length - scenarios.length} new scenarios`);
     } else {
-      // Original code for creating a single scenario
-      console.log('Creating single scenario with all diseases');
-      
-      // Use just the base name without appending disease information
       const scenarioName = baseName;
       
-      // CRITICAL FIX: Make sure we use selectedDiseases for the resultsMap if needed
-      let effectiveResultsMap = {...resultsMap};
-      
-      // If we have selectedDiseases but they're not all in the resultsMap,
-      // make sure the primary disease result is at least duplicated to all selected diseases
-      if (selectedDiseases.length > 1 && Object.keys(effectiveResultsMap).length < selectedDiseases.length) {
-        console.log('Warning: Selected diseases count does not match results map size.', 
-          'Attempting to use primary disease result for missing diseases.');
-        
-        if (results) {
-          // Use the main results for any missing diseases
-          selectedDiseases.forEach(disease => {
-            if (!effectiveResultsMap[disease] && disease !== selectedDiseases[0]) {
-              console.log(`Adding missing disease ${disease} to results map using primary disease results`);
-              effectiveResultsMap[disease] = JSON.parse(JSON.stringify(results));
-            }
-          });
-        }
-      }
-      
-      // Improved deep copy implementation for the results map
-      const diseaseResultsMapCopy = (() => {
-        if (Object.keys(effectiveResultsMap).length === 0) {
-          console.log('Results map is empty, returning undefined');
-          return undefined;
-        }
-        
-        // Create a new object to hold the deep copies
-        const deepCopy: Record<string, SimulationResults | null> = {};
-        
-        // Manually copy each disease's results with proper handling of complex properties
-        Object.entries(effectiveResultsMap).forEach(([disease, results]) => {
-          if (!results) {
-            deepCopy[disease] = null;
-            return;
-          }
-          
-          // Create a base copy of the result
-          const resultCopy: SimulationResults = {
-            // Copy all primitive values
-            cumulativeDeaths: results.cumulativeDeaths,
-            cumulativeResolved: results.cumulativeResolved,
-            totalCost: results.totalCost,
-            averageTimeToResolution: results.averageTimeToResolution,
-            dalys: results.dalys,
-            icer: results.icer,
-            
-            // Handle arrays by mapping to new objects
-            weeklyStates: results.weeklyStates.map(state => ({...state})),
-          };
-          
-          // Add to the deep copy map
-          deepCopy[disease] = resultCopy;
-        });
-        
-        console.log('Created manual deep copy of results map with keys:', Object.keys(deepCopy));
-        
-        // Verify the copy worked by checking a value
-        if (Object.keys(deepCopy).length > 0) {
-          const firstDisease = Object.keys(deepCopy)[0];
-          console.log(`First disease in copy (${firstDisease}) has ICER:`, deepCopy[firstDisease]?.icer);
-        }
-        
-        return deepCopy;
-      })();
-      
-      // Create the scenario with proper copies
-      const newScenario: Scenario = {
+      const deepCopiedResultsMap = resultsMap ? JSON.parse(JSON.stringify(resultsMap)) : undefined;
+
+      const newScenarioEntry: Scenario = {
         id: `scenario-${Date.now()}`,
         name: scenarioName,
-        parameters: { 
-          ...params,
-          healthSystemStrength,
-          disease,
-          population
-        },
+        parameters: { ...params, healthSystemStrength, disease, population },
         aiInterventions: { ...aiInterventions },
         effectMagnitudes: { ...effectMagnitudes },
-        results: results ? { 
-          ...JSON.parse(JSON.stringify(results)),
-          weeklyStates: results.weeklyStates.map(state => ({...state}))
-        } : null,
-        baselineResults: baseline ? { 
-          ...JSON.parse(JSON.stringify(baseline)),
-          weeklyStates: baseline.weeklyStates.map(state => ({...state}))
-        } : null,
-        // Store the multi-disease data
+        results: results ? JSON.parse(JSON.stringify(results)) : null,
+        baselineResults: baseline ? JSON.parse(JSON.stringify(baseline)) : null,
+        savedBaselineResultsMap: deepCopyBaselineResultsMap,
+        feasibility: initialFeasibility,
         selectedDiseases: [...selectedDiseases],
-        diseaseResultsMap: diseaseResultsMapCopy
+        diseaseResultsMap: deepCopiedResultsMap
       };
-      
-      // Check the created scenario
-      console.log('Created combined scenario:', {
-        id: newScenario.id,
-        selectedDiseases: newScenario.selectedDiseases,
-        diseaseResultsMapKeys: newScenario.diseaseResultsMap ? Object.keys(newScenario.diseaseResultsMap) : [],
-        hasResultsMap: !!newScenario.diseaseResultsMap,
-        mapType: newScenario.diseaseResultsMap ? typeof newScenario.diseaseResultsMap : 'undefined',
-        isEmptyObject: newScenario.diseaseResultsMap && Object.keys(newScenario.diseaseResultsMap).length === 0
-      });
-      
-      // VERY DETAILED inspection of the final saved data
-      if (newScenario.diseaseResultsMap) {
-        console.log('Verification of disease results in combined scenario:');
-        Object.entries(newScenario.diseaseResultsMap).forEach(([disease, diseaseResults]) => {
-          console.log(`  ${disease}: ${diseaseResults ? 
-            `deaths=${diseaseResults.cumulativeDeaths}, costs=${diseaseResults.totalCost}, icer=${diseaseResults.icer}` 
-            : 'null'}`);
-        });
-      }
-      
-      // Save it
-      const newScenarios = [...scenarios, newScenario];
-      set(scenariosAtom, newScenarios);
-      set(selectedScenarioIdAtom, newScenario.id);
+      set(scenariosAtom, [...scenarios, newScenarioEntry]);
+      set(selectedScenarioIdAtom, newScenarioEntry.id);
     }
   }
 );
@@ -761,110 +593,67 @@ export const loadScenarioAtom = atom(
       
       set(baseParametersAtom, scenario.parameters);
       set(aiInterventionsAtom, scenario.aiInterventions);
-      // Load effect magnitudes if they exist in the scenario, otherwise use empty object
       set(effectMagnitudesAtom, scenario.effectMagnitudes || {});
-      set(simulationResultsAtom, scenario.results);
+      set(simulationResultsAtom, scenario.results ? JSON.parse(JSON.stringify(scenario.results)) : null);
       set(selectedScenarioIdAtom, scenarioId);
       
-      // Load disease selections if available
+      // Restore primary disease and selected diseases list
       if (scenario.selectedDiseases && scenario.selectedDiseases.length > 0) {
-        console.log('Setting selected diseases:', scenario.selectedDiseases);
-        
-        // Ensure the diseases array has real content
-        if (scenario.selectedDiseases.some(d => d && d.trim() !== '')) {
-          set(selectedDiseasesAtom, scenario.selectedDiseases);
-          set(selectedDiseaseAtom, scenario.selectedDiseases[0]);
-        } else {
-          // Fallback to the single disease from parameters if available
-          console.log('Empty selectedDiseases array, falling back to parameters.disease');
-          const fallbackDisease = scenario.parameters.disease || 'pneumonia';
-          set(selectedDiseasesAtom, [fallbackDisease]);
-          set(selectedDiseaseAtom, fallbackDisease);
-        }
+        set(selectedDiseasesAtom, [...scenario.selectedDiseases]);
+        set(selectedDiseaseAtom, scenario.selectedDiseases[0]);
       } else if (scenario.parameters.disease) {
-        console.log('No multi-disease selection, using primary disease:', scenario.parameters.disease);
         set(selectedDiseaseAtom, scenario.parameters.disease);
         set(selectedDiseasesAtom, [scenario.parameters.disease]);
-      }
-      
-      // Load multi-disease results if available
-      if (scenario.diseaseResultsMap && Object.keys(scenario.diseaseResultsMap).length > 0) {
-        console.log('Setting disease results map with keys:', Object.keys(scenario.diseaseResultsMap));
-        console.log('Disease results map ICER values:', 
-          Object.entries(scenario.diseaseResultsMap)
-            .map(([disease, results]) => `${disease}: ICER=${results?.icer}`)
-        );
-            
-        // Ensure we're creating a fresh deep copy to avoid reference issues
-        const deepCopyMap: Record<string, SimulationResults | null> = {};
-        
-        // Manually copy each disease's results with proper handling of complex properties
-        Object.entries(scenario.diseaseResultsMap).forEach(([disease, results]) => {
-          if (!results) {
-            deepCopyMap[disease] = null;
-            return;
-          }
-          
-          // Create a base copy of the result
-          const resultCopy: SimulationResults = {
-            // Copy all primitive values
-            cumulativeDeaths: results.cumulativeDeaths,
-            cumulativeResolved: results.cumulativeResolved,
-            totalCost: results.totalCost,
-            averageTimeToResolution: results.averageTimeToResolution,
-            dalys: results.dalys,
-            icer: results.icer,
-            
-            // Handle arrays by mapping to new objects
-            weeklyStates: results.weeklyStates.map(state => ({...state})),
-          };
-          
-          // Add to the deep copy map
-          deepCopyMap[disease] = resultCopy;
-        });
-        
-        console.log('Created manual deep copy of loaded results map with keys:', Object.keys(deepCopyMap));
-        set(simulationResultsMapAtom, deepCopyMap);
-        
-        // Make sure the hasMultipleDiseaseResults logic in Dashboard.tsx will work
-        if (Object.keys(deepCopyMap).length > 1) {
-          console.log('Multi-disease view should be available with', Object.keys(deepCopyMap).length, 'diseases');
-        }
-      } else if (scenario.results) {
-        // Backward compatibility - create a results map with just the primary disease
-        const diseasesToUse = scenario.selectedDiseases && scenario.selectedDiseases.length > 0 
-          ? scenario.selectedDiseases 
-          : [scenario.parameters.disease || get(selectedDiseaseAtom)];
-          
-        console.log('No multi-disease results, creating results map with diseases:', diseasesToUse);
-        
-        // Create results map with all selected diseases
-        const newResultsMap: Record<string, SimulationResults | null> = {};
-        
-        diseasesToUse.forEach(disease => {
-          // Create a proper deep copy of the single result for each disease
-          if (scenario.results) {
-            newResultsMap[disease] = {
-              ...JSON.parse(JSON.stringify(scenario.results)),
-              weeklyStates: scenario.results.weeklyStates.map(state => ({...state}))
-            };
-          }
-        });
-        
-        console.log('Created results map with keys:', Object.keys(newResultsMap));
-        set(simulationResultsMapAtom, newResultsMap);
-      }
-      
-      // Load baseline if it exists in the scenario
-      if (scenario.baselineResults) {
-        const baselineCopy = {
-          ...JSON.parse(JSON.stringify(scenario.baselineResults)),
-          weeklyStates: scenario.baselineResults.weeklyStates.map(state => ({...state}))
-        };
-        set(baselineResultsAtom, baselineCopy);
       } else {
-        // Clear baseline if it doesn't exist in the scenario
-        set(baselineResultsAtom, null);
+        // Fallback if no disease info
+        set(selectedDiseasesAtom, ['pneumonia']); // Default or clear
+        set(selectedDiseaseAtom, 'pneumonia');
+      }
+
+      // Restore multi-disease results map
+      if (scenario.diseaseResultsMap && Object.keys(scenario.diseaseResultsMap).length > 0) {
+        set(simulationResultsMapAtom, JSON.parse(JSON.stringify(scenario.diseaseResultsMap)));
+      } else if (scenario.results) {
+        // Backward compatibility: if only primary result exists, populate map with it for selected diseases
+        const mapForBackwardCompat: Record<string, SimulationResults | null> = {};
+        const diseasesToUse = get(selectedDiseasesAtom);
+        diseasesToUse.forEach(d => {
+          mapForBackwardCompat[d] = JSON.parse(JSON.stringify(scenario.results));
+        });
+        set(simulationResultsMapAtom, mapForBackwardCompat);
+      } else {
+        set(simulationResultsMapAtom, {}); // Clear if no results
+      }
+
+      // Restore primary baseline
+      if (scenario.baselineResults) {
+        set(baselineResultsAtom, JSON.parse(JSON.stringify(scenario.baselineResults)));
+      } else {
+        set(baselineResultsAtom, null); // Clear primary baseline if not in scenario
+      }
+
+      // Restore the per-disease baseline map
+      if (scenario.savedBaselineResultsMap && Object.keys(scenario.savedBaselineResultsMap).length > 0) {
+        set(baselineResultsMapAtom, JSON.parse(JSON.stringify(scenario.savedBaselineResultsMap)));
+      } else {
+        // If no saved map, decide on fallback: clear it, or try to construct from primary baseline?
+        // For now, let's clear it to avoid using stale data. 
+        // Or, better: if a primary baseline exists, create a map from it for currently selected diseases.
+        const primaryBaseline = get(baselineResultsAtom);
+        if (primaryBaseline) {
+            const mapFromPrimaryBaseline: Record<string, SimulationResults | null> = {};
+            const currentSelectedDiseases = get(selectedDiseasesAtom);
+            currentSelectedDiseases.forEach(d => {
+                mapFromPrimaryBaseline[d] = JSON.parse(JSON.stringify(primaryBaseline));
+            });
+            set(baselineResultsMapAtom, mapFromPrimaryBaseline);
+        } else {
+            set(baselineResultsMapAtom, {}); // Fully clear if no primary baseline either
+        }
+      }
+      // Population size needs to be restored too if it's part of scenario parameters
+      if (scenario.parameters.population !== undefined) {
+        set(populationSizeAtom, scenario.parameters.population);
       }
     }
   }
@@ -874,99 +663,46 @@ export const loadScenarioAtom = atom(
 export const updateScenarioAtom = atom(
   null,
   (get, set, updatedScenario?: Scenario) => {
-    if (updatedScenario) {
-      // If provided with a scenario, update it directly
-      const scenarios = get(scenariosAtom);
-      const updatedScenarios = scenarios.map(s => 
-        s.id === updatedScenario.id ? updatedScenario : s
-      );
-      set(scenariosAtom, updatedScenarios);
-    } else {
-      // Otherwise update the current selected scenario
-      const scenarioId = get(selectedScenarioIdAtom);
-      const scenarios = get(scenariosAtom);
-      const params = get(derivedParametersAtom);
-      const aiInterventions = get(aiInterventionsAtom);
-      const effectMagnitudes = get(effectMagnitudesAtom);
-      const results = get(simulationResultsAtom);
-      const resultsMap = get(simulationResultsMapAtom);
-      const baseline = get(baselineResultsAtom);
-      const population = get(populationSizeAtom);
-      const selectedDiseases = get(selectedDiseasesAtom);
-      
-      // Deep copy the entire results map using the same approach as in addScenarioAtom
-      const diseaseResultsMapCopy = (() => {
-        if (Object.keys(resultsMap).length === 0) {
-          console.log('Update scenario: Results map is empty, returning undefined');
-          return undefined;
-        }
-        
-        // Create a new object to hold the deep copies
-        const deepCopy: Record<string, SimulationResults | null> = {};
-      
-        // Manually copy each disease's results with proper handling of complex properties
-        Object.entries(resultsMap).forEach(([disease, results]) => {
-          if (!results) {
-            deepCopy[disease] = null;
-            return;
-          }
-          
-          // Create a base copy of the result
-          const resultCopy: SimulationResults = {
-            // Copy all primitive values
-            cumulativeDeaths: results.cumulativeDeaths,
-            cumulativeResolved: results.cumulativeResolved,
-            totalCost: results.totalCost,
-            averageTimeToResolution: results.averageTimeToResolution,
-            dalys: results.dalys,
-            icer: results.icer,
-            
-            // Handle arrays by mapping to new objects
-            weeklyStates: results.weeklyStates.map(state => ({...state})),
-          };
-          
-          // Add to the deep copy map
-          deepCopy[disease] = resultCopy;
-        });
-        
-        console.log('Update scenario: Created manual deep copy of results map with keys:', Object.keys(deepCopy));
-        return deepCopy;
-      })();
-      
-      if (scenarioId) {
-        console.log('Updating scenario:', scenarioId, 'with diseases:', selectedDiseases, 
-          'resultsMap keys:', Object.keys(resultsMap).length > 0 ? Object.keys(resultsMap) : 'none');
-        
-        const updatedScenarios = scenarios.map(s => 
-          s.id === scenarioId 
-            ? { 
-                ...s, 
-                parameters: { 
-                  ...params, 
-                  population,
-                  healthSystemStrength: s.parameters.healthSystemStrength,
-                  disease: s.parameters.disease
-                }, 
-                aiInterventions: { ...aiInterventions },
-                effectMagnitudes: { ...effectMagnitudes },
-                results: results ? { 
-                  ...JSON.parse(JSON.stringify(results)),
-                  weeklyStates: results.weeklyStates.map(state => ({...state}))
-                } : null,
-                baselineResults: baseline ? { 
-                  ...JSON.parse(JSON.stringify(baseline)),
-                  weeklyStates: baseline.weeklyStates.map(state => ({...state}))
-                } : null,
-                // Add multi-disease data with improved deep copy
-                selectedDiseases: [...selectedDiseases],
-                diseaseResultsMap: diseaseResultsMapCopy
-              }
-            : s
-        );
-        
-        set(scenariosAtom, updatedScenarios);
-      }
-    }
+    const scenarioToUpdate = updatedScenario || scenariosAtom.init.find(s => s.id === get(selectedScenarioIdAtom));
+    if (!scenarioToUpdate) return;
+
+    const currentParams = get(derivedParametersAtom);
+    const currentAiInterventions = get(aiInterventionsAtom);
+    const currentEffectMagnitudes = get(effectMagnitudesAtom);
+    const currentResults = get(simulationResultsAtom); // Primary result
+    const currentResultsMap = get(simulationResultsMapAtom); // Multi-disease results map
+    const currentPopulation = get(populationSizeAtom);
+    const currentSelectedDiseases = get(selectedDiseasesAtom);
+    const currentPrimaryBaseline = get(baselineResultsAtom);
+    const currentBaselineMap = get(baselineResultsMapAtom);
+    
+    const scenarioIndex = get(scenariosAtom).findIndex(s => s.id === scenarioToUpdate.id);
+    if (scenarioIndex === -1) return;
+
+    const newScenarios = [...get(scenariosAtom)];
+    newScenarios[scenarioIndex] = {
+      ...scenarioToUpdate, // Keep original ID, name, feasibility
+      parameters: { 
+        ...currentParams, // Use current model params from store
+        population: currentPopulation,
+        // Preserve original health system and primary disease from the scenario being updated
+        // unless they are meant to be updated from global state too.
+        healthSystemStrength: scenarioToUpdate.parameters.healthSystemStrength || get(selectedHealthSystemStrengthAtom),
+        disease: scenarioToUpdate.parameters.disease || get(selectedDiseaseAtom) 
+      }, 
+      aiInterventions: { ...currentAiInterventions },
+      effectMagnitudes: { ...currentEffectMagnitudes },
+      results: currentResults ? JSON.parse(JSON.stringify(currentResults)) : null,
+      baselineResults: currentPrimaryBaseline ? JSON.parse(JSON.stringify(currentPrimaryBaseline)) : null,
+      savedBaselineResultsMap: currentBaselineMap ? JSON.parse(JSON.stringify(currentBaselineMap)) : undefined,
+      selectedDiseases: [...currentSelectedDiseases],
+      diseaseResultsMap: currentResultsMap ? JSON.parse(JSON.stringify(currentResultsMap)) : undefined,
+      // Feasibility is managed by slider/BubbleChartView, or set initially. Should it be updated here?
+      // For now, assume feasibility is updated separately if needed, or comes from scenarioToUpdate.
+      feasibility: scenarioToUpdate.feasibility 
+    };
+
+    set(scenariosAtom, newScenarios);
   }
 );
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useAtom } from 'jotai';
 import { 
+  baseParametersAtom,
   derivedParametersAtom, 
   populationSizeAtom, 
   aiInterventionsAtom,
@@ -34,11 +35,15 @@ interface Link {
 
 const StockFlowDiagram: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [params] = useAtom(derivedParametersAtom);
+  const [baseParams] = useAtom(baseParametersAtom);
+  const [derivedParams] = useAtom(derivedParametersAtom);
   const [population] = useAtom(populationSizeAtom);
   const [aiInterventions] = useAtom(aiInterventionsAtom);
   const [activeMultipliers] = useAtom(healthSystemMultipliersAtom);
 
+  // Use the most current parameters, preferring base params for user-edited values
+  const params = baseParams;
+  
   // Weekly incidence
   const weeklyIncidence = (params.lambda * population) / 52;
 
@@ -91,75 +96,76 @@ const StockFlowDiagram: React.FC = () => {
 
     const nodeWidth = 150;
     const nodeHeight = 50;
-    const pullBackOffset = (nodeHeight / 2) + 5; // Increased pullback for arrows
+    const pullBackOffset = (nodeHeight / 2) + 10; // Increased pullback for arrows from 5 to 10
 
     const nodes: Node[] = [
       { id: 'new', name: 'New Cases', description: 'New cases per week', type: 'stock', x: 50, y: 325, width: nodeWidth, height: nodeHeight },
-      { id: 'formal', name: 'Formal Care', description: 'Entry to health system', type: 'formal', x: 350, y: 150, width: nodeWidth, height: nodeHeight },
-      { id: 'informal', name: 'Informal Care', description: 'Self-care/traditional healers', type: 'informal', x: 350, y: 325, width: nodeWidth, height: nodeHeight },
-      { id: 'untreated', name: 'Untreated', description: 'No care received', type: 'stock', x: 350, y: 500, width: nodeWidth, height: nodeHeight },
-      { id: 'l0', name: 'CHW (L0)', description: 'Community Health Workers', type: 'level0', x: 750, y: 100, width: nodeWidth, height: nodeHeight },
-      { id: 'l1', name: 'Primary (L1)', description: 'Primary Care Facilities', type: 'level1', x: 750, y: 250, width: nodeWidth, height: nodeHeight },
-      { id: 'l2', name: 'District (L2)', description: 'District Hospitals', type: 'level2', x: 750, y: 400, width: nodeWidth, height: nodeHeight },
-      { id: 'l3', name: 'Tertiary (L3)', description: 'Tertiary Hospitals', type: 'level3', x: 750, y: 550, width: nodeWidth, height: nodeHeight },
-      { id: 'resolved', name: 'Resolved', description: 'Cases resolved', type: 'outcome', x: 1000, y: 200, width: nodeWidth, height: nodeHeight },
-      { id: 'deaths', name: 'Deaths', description: 'Deaths from all causes', type: 'outcome', x: 1000, y: 450, width: nodeWidth, height: nodeHeight },
+      { id: 'formal', name: 'Formal Care', description: 'Entry to health system', type: 'formal', x: 250, y: 150, width: nodeWidth, height: nodeHeight },
+      { id: 'informal', name: 'Informal Care', description: 'Self-care/traditional healers', type: 'informal', x: 250, y: 325, width: nodeWidth, height: nodeHeight },
+      { id: 'untreated', name: 'Untreated', description: 'No care received', type: 'stock', x: 250, y: 500, width: nodeWidth, height: nodeHeight },
+      { id: 'l0', name: 'CHW (L0)', description: 'Community Health Workers', type: 'level0', x: 550, y: 100, width: nodeWidth, height: nodeHeight },
+      { id: 'l1', name: 'Primary (L1)', description: 'Primary Care Facilities', type: 'level1', x: 550, y: 250, width: nodeWidth, height: nodeHeight },
+      { id: 'l2', name: 'District (L2)', description: 'District Hospitals', type: 'level2', x: 550, y: 400, width: nodeWidth, height: nodeHeight },
+      { id: 'l3', name: 'Tertiary (L3)', description: 'Tertiary Hospitals', type: 'level3', x: 550, y: 550, width: nodeWidth, height: nodeHeight },
+      { id: 'resolved', name: 'Resolved', description: 'Cases resolved', type: 'outcome', x: 950, y: 200, width: nodeWidth, height: nodeHeight },
+      { id: 'deaths', name: 'Deaths', description: 'Deaths from all causes', type: 'outcome', x: 950, y: 450, width: nodeWidth, height: nodeHeight },
     ];
 
     const fmt = (num: number) => num < 0.01 && num !== 0 ? num.toFixed(4) : num < 0.1 && num !== 0 ? num.toFixed(3) : num.toFixed(2);
 
     const links: Link[] = [
       // From New Cases
-      { id: 'link_new_untreated', source: 'new', target: 'untreated', label: `(1 - ${getUnicodeBaseSymbol('phi', '0')}) = ${fmt(1 - params.phi0)}`, value: (1 - params.phi0) * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 200, y1: 500 }, labelOffset: {dy: -10} },
-      { id: 'link_new_informal', source: 'new', target: 'informal', label: `${getUnicodeBaseSymbol('phi', '0')}(1-r) = ${fmt((1 - params.phi0) * (1 - params.informalCareRatio))}`, value: (1 - params.phi0) * (1 - params.informalCareRatio) * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 200, y1: 325 } },
-      { id: 'link_new_formal', source: 'new', target: 'formal', label: `${getUnicodeBaseSymbol('phi', '0')} = ${fmt(params.phi0)}`, value: params.phi0 * weeklyIncidence, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: 'phi0', controlPoints: { x1: 200, y1: 150 } },
+      { id: 'link_new_untreated', source: 'new', target: 'untreated', label: `(1-${getUnicodeBaseSymbol('phi', '0')})r: ${fmt((1 - params.phi0) * params.informalCareRatio)}`, value: (1 - params.phi0) * params.informalCareRatio * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 150, y1: 475 }, labelOffset: {dy: -15} },
+      { id: 'link_new_informal', source: 'new', target: 'informal', label: `${getUnicodeBaseSymbol('phi', '0')}(1-r): ${fmt(params.phi0 * (1 - params.informalCareRatio))}`, value: params.phi0 * (1 - params.informalCareRatio) * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 150, y1: 325 } },
+      { id: 'link_new_formal', source: 'new', target: 'formal', label: `${getUnicodeBaseSymbol('phi', '0')}: ${fmt(params.phi0)}`, value: params.phi0 * weeklyIncidence, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: 'phi0', controlPoints: { x1: 150, y1: 175 }, labelOffset: {dy: -15} },
       
       // From Untreated to Deaths
-      { id: 'link_untreated_deaths', source: 'untreated', target: 'deaths', label: `${getUnicodeMultiplierSymbol('delta', 'U')}${getUnicodeBaseSymbol('delta', 'U')}: ${fmt(params.deltaU)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 675, y1: 500 }, labelOffset: {dx: 20, dy: 20} },
+      { id: 'link_untreated_deaths', source: 'untreated', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', 'U')}: ${fmt(params.deltaU)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 600, y1: 500 }, labelOffset: {dx: 30, dy: 15} },
       
       // From Informal Care
-      { id: 'link_informal_formal', source: 'informal', target: 'formal', label: `${getUnicodeBaseSymbol('sigma', 'I')}: ${fmt(params.sigmaI)}`, value: null, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: 'sigmaI', controlPoints: { x1: 350, y1: 225 } },
-      { id: 'link_informal_resolved', source: 'informal', target: 'resolved', label: `${getUnicodeMultiplierSymbol('mu', 'I')}${getUnicodeBaseSymbol('mu', 'I')}: ${fmt(params.muI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'muI', controlPoints: { x1: 675, y1: 225 }, labelOffset: {dy: -10} },
-      { id: 'link_informal_deaths', source: 'informal', target: 'deaths', label: `${getUnicodeMultiplierSymbol('delta', 'I')}${getUnicodeBaseSymbol('delta', 'I')}: ${fmt(params.deltaI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'deltaI', controlPoints: { x1: 675, y1: 375 }, labelOffset: {dy: 10} },
+      { id: 'link_informal_formal', source: 'informal', target: 'formal', label: `${getUnicodeBaseSymbol('sigma', 'I')}: ${fmt(params.sigmaI)}`, value: null, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: 'sigmaI', controlPoints: { x1: 250, y1: 225 }, labelOffset: {dx: -20} },
+      { id: 'link_informal_resolved', source: 'informal', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', 'I')}: ${fmt(params.muI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'muI', controlPoints: { x1: 600, y1: 225 }, labelOffset: {dy: -20} },
+      { id: 'link_informal_deaths', source: 'informal', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', 'I')}: ${fmt(params.deltaI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'deltaI', controlPoints: { x1: 600, y1: 375 }, labelOffset: {dy: 20} },
       
       // From Formal Care to L0 only
-      { id: 'link_formal_l0', source: 'formal', target: 'l0', label: `(to L0): ${fmt(1.0)}`, value: null, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: null, controlPoints: { x1: 550, y1: 125 } },
+      { id: 'link_formal_l0', source: 'formal', target: 'l0', label: `(to L0): ${fmt(1.0)}`, value: null, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: null, controlPoints: { x1: 400, y1: 125 }, labelOffset: {dy: -10} },
       
       // From L0 (CHW)
-      { id: 'link_l0_l1', source: 'l0', target: 'l1', label: `${getUnicodeMultiplierSymbol('rho', 'L0')}${getUnicodeBaseSymbol('rho', '0')}: ${fmt(params.rho0)}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: 'rho0', controlPoints: { x1: 750, y1: 175 } },
-      { id: 'link_l0_resolved', source: 'l0', target: 'resolved', label: `${getUnicodeMultiplierSymbol('mu', 'L0')}${getUnicodeBaseSymbol('mu', '0')}: ${fmt(params.mu0)}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: 'mu0', controlPoints: { x1: 875, y1: 150 }, labelOffset: {dy: -10} },
-      { id: 'link_l0_deaths', source: 'l0', target: 'deaths', label: `${getUnicodeMultiplierSymbol('delta', 'L0')}${getUnicodeBaseSymbol('delta', '0')}: ${fmt(params.delta0)}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: 'delta0', controlPoints: { x1: 875, y1: 300 }, labelOffset: {dy: 15, dx:15 } },
+      { id: 'link_l0_l1', source: 'l0', target: 'l1', label: `${getUnicodeBaseSymbol('rho', '0')}: ${fmt(params.rho0)}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: 'rho0', controlPoints: { x1: 550, y1: 175 }, labelOffset: {dx: -25} },
+      { id: 'link_l0_resolved', source: 'l0', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', '0')}: ${fmt(params.mu0)}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: 'mu0', controlPoints: { x1: 750, y1: 150 }, labelOffset: {dy: -15} },
+      { id: 'link_l0_deaths', source: 'l0', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', '0')}: ${fmt(params.delta0)}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: 'delta0', controlPoints: { x1: 750, y1: 300 }, labelOffset: {dy: 25, dx: 20} },
       
       // From L1 (Primary)
-      { id: 'link_l1_l2', source: 'l1', target: 'l2', label: `${getUnicodeMultiplierSymbol('rho', 'L1')}${getUnicodeBaseSymbol('rho', '1')}: ${fmt(params.rho1)}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: 'rho1', controlPoints: { x1: 750, y1: 325 } },
-      { id: 'link_l1_resolved', source: 'l1', target: 'resolved', label: `${getUnicodeMultiplierSymbol('mu', 'L1')}${getUnicodeBaseSymbol('mu', '1')}: ${fmt(params.mu1)}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: 'mu1', controlPoints: { x1: 875, y1: 225 } , labelOffset: {dy: -10} },
-      { id: 'link_l1_deaths', source: 'l1', target: 'deaths', label: `${getUnicodeMultiplierSymbol('delta', 'L1')}${getUnicodeBaseSymbol('delta', '1')}: ${fmt(params.delta1)}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: 'delta1', controlPoints: { x1: 875, y1: 350 }, labelOffset: {dy: 10} },
+      { id: 'link_l1_l2', source: 'l1', target: 'l2', label: `${getUnicodeBaseSymbol('rho', '1')}: ${fmt(params.rho1)}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: 'rho1', controlPoints: { x1: 550, y1: 325 }, labelOffset: {dx: -25} },
+      { id: 'link_l1_resolved', source: 'l1', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', '1')}: ${fmt(params.mu1)}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: 'mu1', controlPoints: { x1: 750, y1: 225 }, labelOffset: {dy: -15} },
+      { id: 'link_l1_deaths', source: 'l1', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', '1')}: ${fmt(params.delta1)}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: 'delta1', controlPoints: { x1: 750, y1: 350 }, labelOffset: {dy: 20} },
       
       // From L2 (District)
-      { id: 'link_l2_l3', source: 'l2', target: 'l3', label: `${getUnicodeMultiplierSymbol('rho', 'L2')}${getUnicodeBaseSymbol('rho', '2')}: ${fmt(params.rho2)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 750, y1: 475 } },
-      { id: 'link_l2_resolved', source: 'l2', target: 'resolved', label: `${getUnicodeMultiplierSymbol('mu', 'L2')}${getUnicodeBaseSymbol('mu', '2')}: ${fmt(params.mu2)}`, value: null, aiIntervention: aiInterventions.bedManagementAI ? 'bedManagementAI' : null, parameter: 'mu2', controlPoints: { x1: 875, y1: 300 }, labelOffset: {dy: -10} },
-      { id: 'link_l2_deaths', source: 'l2', target: 'deaths', label: `${getUnicodeMultiplierSymbol('delta', 'L2')}${getUnicodeBaseSymbol('delta', '2')}: ${fmt(params.delta2)}`, value: null, aiIntervention: aiInterventions.hospitalDecisionAI ? 'hospitalDecisionAI' : null, parameter: 'delta2', controlPoints: { x1: 875, y1: 425 }, labelOffset: {dy: 10} },
+      { id: 'link_l2_l3', source: 'l2', target: 'l3', label: `${getUnicodeBaseSymbol('rho', '2')}: ${fmt(params.rho2)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 550, y1: 475 }, labelOffset: {dx: -25} },
+      { id: 'link_l2_resolved', source: 'l2', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', '2')}: ${fmt(params.mu2)}`, value: null, aiIntervention: aiInterventions.bedManagementAI ? 'bedManagementAI' : null, parameter: 'mu2', controlPoints: { x1: 750, y1: 325 }, labelOffset: {dy: -20} },
+      { id: 'link_l2_deaths', source: 'l2', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', '2')}: ${fmt(params.delta2)}`, value: null, aiIntervention: aiInterventions.hospitalDecisionAI ? 'hospitalDecisionAI' : null, parameter: 'delta2', controlPoints: { x1: 750, y1: 425 }, labelOffset: {dy: 20} },
       
       // From L3 (Tertiary)
-      { id: 'link_l3_resolved', source: 'l3', target: 'resolved', label: `${getUnicodeMultiplierSymbol('mu', 'L3')}${getUnicodeBaseSymbol('mu', '3')}: ${fmt(params.mu3)}`, value: null, aiIntervention: aiInterventions.bedManagementAI ? 'bedManagementAI' : null, parameter: 'mu3', controlPoints: { x1: 875, y1: 375 }, labelOffset: {dy: -15, dx: -10} },
-      { id: 'link_l3_deaths', source: 'l3', target: 'deaths', label: `${getUnicodeMultiplierSymbol('delta', 'L3')}${getUnicodeBaseSymbol('delta', '3')}: ${fmt(params.delta3)}`, value: null, aiIntervention: aiInterventions.hospitalDecisionAI ? 'hospitalDecisionAI' : null, parameter: 'delta3', controlPoints: { x1: 875, y1: 500 }, labelOffset: {dy: 10} },
+      { id: 'link_l3_resolved', source: 'l3', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', '3')}: ${fmt(params.mu3)}`, value: null, aiIntervention: aiInterventions.bedManagementAI ? 'bedManagementAI' : null, parameter: 'mu3', controlPoints: { x1: 750, y1: 375 }, labelOffset: {dy: -20, dx: -15} },
+      { id: 'link_l3_deaths', source: 'l3', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', '3')}: ${fmt(params.delta3)}`, value: null, aiIntervention: aiInterventions.hospitalDecisionAI ? 'hospitalDecisionAI' : null, parameter: 'delta3', controlPoints: { x1: 750, y1: 500 }, labelOffset: {dy: 15} },
     ];
 
-    const svgWidth = 1200;
+    const svgWidth = 1100;
     const svgHeight = 700;
 
     svg
       .attr('width', '100%')
       .attr('height', '100%')
       .attr('viewBox', `0 0 ${svgWidth} ${svgHeight}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet')
       .style('background', '#f8f9fa');
 
     // Define Arrowhead Markers
-    const markerPath = 'M0,-3.5L7,0L0,3.5'; // Narrower arrowhead path
-    const markerViewBox = '-1 -4 8 8';    // Adjusted viewBox for new path
-    const markerWidth = 6;                // Smaller marker width
-    const markerHeight = 6;               // Smaller marker height
-    const markerRefX = 7;                 // Tip of the arrow (end of its path)
+    const markerPath = 'M0,-4L8,0L0,4'; // Wider and longer arrowhead path
+    const markerViewBox = '-1 -5 10 10';    // Adjusted viewBox for new path
+    const markerWidth = 8;                // Larger marker width
+    const markerHeight = 8;               // Larger marker height
+    const markerRefX = 5;                 // Pull back from tip slightly to make more visible
 
     svg.append('defs').append('marker')
       .attr('id', 'arrowhead-default').attr('viewBox', markerViewBox)
@@ -267,21 +273,49 @@ const StockFlowDiagram: React.FC = () => {
       const isAI = d.aiIntervention !== null;
 
       if (d.label) {
-        d3.select(this).append('text')
+        // Add a subtle background for the label
+        const labelGroup = d3.select(this).append('g')
+          .attr('id', `label-group-${d.id}`);
+          
+        // Add background rect
+        labelGroup.append('rect')
+          .attr('id', `label-bg-${d.id}`)
+          .attr('x', labelPos.x + labelDx - 25) // Will be adjusted after text length is known
+          .attr('y', labelPos.y + labelDy - 10)
+          .attr('width', 50) // Placeholder, will be adjusted
+          .attr('height', 15)
+          .attr('rx', 4)
+          .attr('fill', '#f8f9fa')
+          .attr('fill-opacity', 0.85)
+          .attr('stroke', 'none');
+        
+        // Add the text on top of the background
+        const textElement = labelGroup.append('text')
           .attr('id', `label-${d.id}`)
-          .attr('x', labelPos.x + labelDx).attr('y', labelPos.y + labelDy)
-          .attr('text-anchor', 'middle').attr('font-size', '11px')
-          .attr('fill', isAI ? '#28a745' : '#333').attr('font-weight', isAI ? 'bold' : 'normal')
-          .style('paint-order', 'stroke').style('stroke', '#f8f9fa')
-          .style('stroke-width', '3px').style('stroke-linejoin', 'round')
+          .attr('x', labelPos.x + labelDx)
+          .attr('y', labelPos.y + labelDy)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '10px')
+          .attr('fill', isAI ? '#28a745' : '#333')
+          .attr('font-weight', isAI ? 'bold' : 'normal')
           .style('transition', 'opacity 0.3s, fill 0.3s, font-weight 0.3s')
           .text(d.label);
+          
+        // Adjust the background rectangle to match the text width
+        const textNode = textElement.node();
+        if (textNode) {
+          const textWidth = textNode.getBBox().width;
+          labelGroup.select(`#label-bg-${d.id}`)
+            .attr('x', labelPos.x + labelDx - (textWidth / 2) - 5)
+            .attr('width', textWidth + 10);
+        }
       }
+      
       if (isAI) {
         d3.select(this).append('circle')
           .attr('id', `aicircle-${d.id}`)
-          .attr('cx', labelPos.x + labelDx).attr('cy', labelPos.y + labelDy + (d.label ? 12 : 0))
-          .attr('r', 4).attr('fill', '#28a745')
+          .attr('cx', labelPos.x + labelDx).attr('cy', labelPos.y + labelDy + 15)
+          .attr('r', 3).attr('fill', '#28a745')
           .style('transition', 'opacity 0.3s, fill 0.3s');
       }
     });
@@ -347,8 +381,11 @@ const StockFlowDiagram: React.FC = () => {
           .attr('stroke-width', isConnected ? 2.5 : (linkData.aiIntervention ? 2.0 : 1.2)) // Highlighted links thicker
           .attr('marker-end', isConnected ? 'url(#arrowhead-highlight)' : (linkData.aiIntervention ? 'url(#arrowhead-ai)' : 'url(#arrowhead-default)'));
 
+        // Update label group
+        linkGroup.select(`#label-group-${linkData.id}`)
+          .style('opacity', isConnected ? 1 : fadedOpacity);
+          
         linkGroup.select(`#label-${linkData.id}`)
-          .style('opacity', isConnected ? 1 : fadedOpacity)
           .attr('fill', isConnected ? highlightColor : (linkData.aiIntervention ? '#28a745' : '#333'))
           .attr('font-weight', isConnected ? 'bold' : (linkData.aiIntervention ? 'bold' : 'normal'));
         
@@ -370,8 +407,11 @@ const StockFlowDiagram: React.FC = () => {
           .attr('stroke-width', linkData.aiIntervention ? 2.0 : 1.2)
           .attr('marker-end', linkData.aiIntervention ? 'url(#arrowhead-ai)' : 'url(#arrowhead-default)');
 
+        // Reset label group
+        linkGroup.select(`#label-group-${linkData.id}`)
+          .style('opacity', 1);
+          
         linkGroup.select(`#label-${linkData.id}`)
-          .style('opacity', 1)
           .attr('fill', linkData.aiIntervention ? '#28a745' : '#333')
           .attr('font-weight', linkData.aiIntervention ? 'bold' : 'normal');
 

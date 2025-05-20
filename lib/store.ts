@@ -157,7 +157,7 @@ export const getDerivedParamsForDisease = (
   return applyAIInterventions(params, aiInterventions, effectMagnitudes, aiCostParams);
 };
 
-// Update parameters when health system strength or disease changes
+// Update parameters when health system strength or disease changes, but preserve custom user changes
 export const derivedParametersAtom = atom(
   (get) => {
     const baseParams = get(baseParametersAtom);
@@ -168,6 +168,8 @@ export const derivedParametersAtom = atom(
     const activeMultipliers = get(healthSystemMultipliersAtom);
     const aiCostParams = get(aiCostParametersAtom);
     
+    // Return base params with applied changes for visualization, but don't modify base params
+    // This allows the components to see derived values but doesn't overwrite user changes
     return getDerivedParamsForDisease(baseParams, healthSystemStrength, disease, aiInterventions, effectMagnitudes, activeMultipliers, aiCostParams);
   }
 );

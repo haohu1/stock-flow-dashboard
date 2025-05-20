@@ -131,10 +131,7 @@ const ParametersPanel: React.FC = () => {
   const [results] = useAtom(simulationResultsAtom);
   const [activeMultipliers, setActiveMultipliers] = useAtom(healthSystemMultipliersAtom);
   
-  // editMode is now true by default if there are no simulation results yet
-  const [editMode, setEditMode] = useState(!results);
-  const [editableParams, setEditableParams] = useState(baseParams);
-  const [editablePopulation, setEditablePopulation] = useState(populationSize);
+  // Directly use parameters without edit mode
   const [customHealthSystem, setCustomHealthSystem] = useState<boolean>(false);
   const [customDisease, setCustomDisease] = useState<boolean>(false);
   
@@ -144,46 +141,68 @@ const ParametersPanel: React.FC = () => {
   // Get default parameters for reference
   const defaultParams = getDefaultParameters();
   
-  // Update editable params when base params change
-  useEffect(() => {
-    setEditableParams(baseParams);
-  }, [baseParams]);
+  // Keep track of initial load and selection changes
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [lastHealthSystemStrength, setLastHealthSystemStrength] = useState(selectedHealthSystemStrength);
+  const [lastDisease, setLastDisease] = useState(selectedDisease);
   
-  // Update edit mode when results change
+  // Update params ONLY when health system strength or disease selection changes
   useEffect(() => {
-    if (!results) {
-      setEditMode(true);
+    // Skip if we're in custom mode
+    if (customHealthSystem || customDisease) {
+      return;
     }
-  }, [results]);
-  
-  // Update editable params when health system strength or disease changes
-  useEffect(() => {
-    // Get derived parameters that incorporate health system and disease specific values
-    const updatedParams = { ...derivedParams };
     
-    // Only update if not in custom mode
-    if (!customHealthSystem && !customDisease) {
-      setEditableParams(updatedParams);
+    // Check if health system or disease selection has actually changed
+    const healthSystemChanged = lastHealthSystemStrength !== selectedHealthSystemStrength;
+    const diseaseChanged = lastDisease !== selectedDisease;
+    
+    // Only update params if there's been a change in selection or on initial load
+    if (healthSystemChanged || diseaseChanged || initialLoad) {
+      // Update the base parameters with the derived parameters
+      setBaseParams({ ...derivedParams });
+      
+      // Update our tracking variables
+      setLastHealthSystemStrength(selectedHealthSystemStrength);
+      setLastDisease(selectedDisease);
+      setInitialLoad(false);
     }
-  }, [selectedHealthSystemStrength, selectedDisease, derivedParams, customHealthSystem, customDisease]);
+  }, [selectedHealthSystemStrength, selectedDisease, customHealthSystem, customDisease, 
+      lastHealthSystemStrength, lastDisease, initialLoad, derivedParams, setBaseParams]);
   
   // Available health system scenarios and diseases from the model
   const healthSystemScenarios = Object.keys(healthSystemStrengthDefaults);
   const diseases = Object.keys(diseaseProfiles);
   
   const handleParamChange = (path: string, value: string) => {
-    // Deep clone current editable params
-    const newParams = JSON.parse(JSON.stringify(editableParams));
-    
-    // Handle nested properties (like perDiemCosts.L1)
-    if (path.includes('.')) {
-      const [parent, child] = path.split('.');
-      newParams[parent][child] = Number(value);
-    } else {
-      newParams[path] = Number(value);
+    try {
+      // Deep clone current params
+      const newParams = JSON.parse(JSON.stringify(baseParams));
+      
+      // Handle nested properties (like perDiemCosts.L1)
+      if (path.includes('.')) {
+        const [parent, child] = path.split('.');
+        newParams[parent][child] = Number(value);
+      } else {
+        newParams[path] = Number(value);
+      }
+      
+      // When user edits a parameter manually, set appropriate custom mode
+      // Check if this parameter is disease-specific or health-system-specific
+      if (isDiseaseSpecific(path)) {
+        setCustomDisease(true);
+      } else if (isHealthSystemSpecific(path)) {
+        setCustomHealthSystem(true);
+      }
+      
+      // Automatically save changes
+      setBaseParams(newParams);
+      
+      // For debugging
+      console.log(`Parameter ${path} changed to ${value}`);
+    } catch (error) {
+      console.error("Error updating parameter:", error);
     }
-    
-    setEditableParams(newParams);
   };
   
   const handleHealthSystemChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -224,65 +243,20 @@ const ParametersPanel: React.FC = () => {
     } else {
       setCustomDisease(false);
       setSelectedDisease(value);
-      
-      // If we switched from custom to a predefined disease,
-      // immediately get disease-specific parameters
-      if (customDisease) {
-        // We'll use the useEffect to update the parameters
-      }
     }
   };
   
-  const saveChanges = () => {
-    // Apply current health system and disease settings
-    let finalParams = { ...editableParams };
-    
-    // Save parameters to the atom
-    setBaseParams(finalParams);
-    setPopulationSize(editablePopulation);
-    
-    if (!results) {
-      // Only close edit mode if there are simulation results
-      setEditMode(false);
-    } else {
-      // Just close edit mode without running simulation
-      setEditMode(false);
-    }
-  };
-  
-  const cancelChanges = () => {
-    setEditableParams(baseParams);
-    setEditablePopulation(populationSize);
-    // Also reset multipliers if cancelling changes and a scenario is selected
-    if (!customHealthSystem) {
-      const scenario = healthSystemStrengthDefaults[selectedHealthSystemStrength as keyof typeof healthSystemStrengthDefaults];
-      if (scenario) {
-        setActiveMultipliers({
-          mu_multiplier_I: scenario.mu_multiplier_I,
-          mu_multiplier_L0: scenario.mu_multiplier_L0,
-          mu_multiplier_L1: scenario.mu_multiplier_L1,
-          mu_multiplier_L2: scenario.mu_multiplier_L2,
-          mu_multiplier_L3: scenario.mu_multiplier_L3,
-          delta_multiplier_U: scenario.delta_multiplier_U,
-          delta_multiplier_I: scenario.delta_multiplier_I,
-          delta_multiplier_L0: scenario.delta_multiplier_L0,
-          delta_multiplier_L1: scenario.delta_multiplier_L1,
-          delta_multiplier_L2: scenario.delta_multiplier_L2,
-          delta_multiplier_L3: scenario.delta_multiplier_L3,
-          rho_multiplier_L0: scenario.rho_multiplier_L0,
-          rho_multiplier_L1: scenario.rho_multiplier_L1,
-          rho_multiplier_L2: scenario.rho_multiplier_L2,
-        });
-      }
-    }
-    if (results) {
-      // Only close edit mode if there are simulation results
-      setEditMode(false);
-    }
+  const handlePopulationChange = (value: number) => {
+    setPopulationSize(value);
   };
   
   const handleMultiplierChange = (key: keyof HealthSystemMultipliers, value: string) => {
-    setActiveMultipliers(prev => ({ ...prev, [key]: Number(value) }));
+    // When user edits a multiplier, set custom health system
+    setCustomHealthSystem(true);
+    
+    // Update the multipliers
+    const newMultipliers = { ...activeMultipliers, [key]: Number(value) };
+    setActiveMultipliers(newMultipliers);
   };
   
   const resetMultipliersToScenarioDefaults = () => {
@@ -356,8 +330,8 @@ const ParametersPanel: React.FC = () => {
   
   // Reset all parameters to defaults
   const resetToDefaults = () => {
-    setEditableParams(getDefaultParameters());
-    setEditablePopulation(300000);
+    setBaseParams(getDefaultParameters());
+    setPopulationSize(300000);
     setCustomHealthSystem(false);
     setCustomDisease(false);
   };
@@ -375,8 +349,8 @@ const ParametersPanel: React.FC = () => {
       description: configDescription || "",
       healthSystemStrength: customHealthSystem ? "custom" : selectedHealthSystemStrength,
       disease: customDisease ? "custom" : selectedDisease,
-      population: editablePopulation,
-      parameters: { ...editableParams }
+      population: populationSize,
+      parameters: { ...baseParams }
     };
     
     const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
@@ -408,7 +382,7 @@ const ParametersPanel: React.FC = () => {
         }
         
         // Apply the imported parameters
-        setEditableParams(config.parameters);
+        setBaseParams(config.parameters);
         
         // Handle health system, disease, and population settings
         if (config.healthSystemStrength === "custom") {
@@ -426,13 +400,10 @@ const ParametersPanel: React.FC = () => {
         }
         
         if (config.population) {
-          setEditablePopulation(config.population);
+          setPopulationSize(config.population);
         }
         
-        // Switch to edit mode to allow reviewing the imported parameters
-        setEditMode(true);
-        
-        alert(`Parameters "${config.name}" loaded successfully. Review and click "Save Parameters" to apply.`);
+        alert(`Parameters "${config.name}" loaded successfully.`);
       } catch (error) {
         console.error('Error importing parameters:', error);
         alert('Failed to import parameters. Please check the file format.');
@@ -451,72 +422,29 @@ const ParametersPanel: React.FC = () => {
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Model Parameters</h3>
-        <div>
-          {!editMode ? (
-            <div className="flex space-x-2">
-              <button 
-                onClick={() => setEditMode(true)}
-                className="btn btn-primary text-sm"
-              >
-                Edit Parameters
-              </button>
-              <button
-                onClick={exportParameters}
-                className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm"
-              >
-                Export JSON
-              </button>
-              <label className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm cursor-pointer">
-                Import JSON
-                <input
-                  type="file"
-                  accept=".json"
-                  className="hidden"
-                  onChange={importParameters}
-                  ref={fileInputRef}
-                />
-              </label>
-            </div>
-          ) : (
-            <div className="flex space-x-2">
-              {results && (
-                <button 
-                  onClick={cancelChanges}
-                  className="btn bg-gray-300 hover:bg-gray-400 text-gray-800 text-sm"
-                >
-                  Cancel
-                </button>
-              )}
-              <button 
-                onClick={resetToDefaults}
-                className="btn bg-red-50 hover:bg-red-100 text-red-600 text-sm"
-              >
-                Reset to Defaults
-              </button>
-              <button
-                onClick={exportParameters}
-                className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm"
-              >
-                Export JSON
-              </button>
-              <label className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm cursor-pointer">
-                Import JSON
-                <input
-                  type="file"
-                  accept=".json"
-                  className="hidden"
-                  onChange={importParameters}
-                  ref={fileInputRef}
-                />
-              </label>
-              <button 
-                onClick={saveChanges}
-                className="btn bg-green-50 hover:bg-green-100 text-green-600 text-sm"
-              >
-                Save Parameters
-              </button>
-            </div>
-          )}
+        <div className="flex space-x-2">
+          <button
+            onClick={resetToDefaults}
+            className="btn bg-red-50 hover:bg-red-100 text-red-600 text-sm"
+          >
+            Reset to Defaults
+          </button>
+          <button
+            onClick={exportParameters}
+            className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm"
+          >
+            Export JSON
+          </button>
+          <label className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm cursor-pointer">
+            Import JSON
+            <input
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={importParameters}
+              ref={fileInputRef}
+            />
+          </label>
         </div>
       </div>
       
@@ -539,50 +467,25 @@ const ParametersPanel: React.FC = () => {
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                 Predefined settings for different health system strengths
               </p>
-              {editMode ? (
-                <select 
-                  value={customHealthSystem ? 'custom' : selectedHealthSystemStrength}
-                  onChange={handleHealthSystemChange}
-                  className="w-full rounded-md border border-gray-300 p-2 text-sm"
-                >
-                  {healthSystemScenarios.map(scenarioKey => (
-                    <option key={scenarioKey} value={scenarioKey}>
-                      {scenarioKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </option>
-                  ))}
-                  <option value="custom">Custom</option>
-                </select>
-              ) : (
-                <div className="text-sm py-2">{selectedHealthSystemStrength.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
-              )}
-              {!customHealthSystem && (
+              <select 
+                value={customHealthSystem ? 'custom' : selectedHealthSystemStrength}
+                onChange={handleHealthSystemChange}
+                className="w-full rounded-md border border-gray-300 p-2 text-sm"
+              >
+                {healthSystemScenarios.map(scenarioKey => (
+                  <option key={scenarioKey} value={scenarioKey}>
+                    {scenarioKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </option>
+                ))}
+                <option value="custom">Custom</option>
+              </select>
+              {customHealthSystem && (
                 <div className="mt-2">
                   <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md bg-green-100 text-green-800">
-                    Using {selectedHealthSystemStrength.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} parameters
+                    Using custom health system parameters
                   </span>
                 </div>
               )}
-              <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 p-2 rounded-md">
-                <p className="font-semibold mb-1">Health System Description:</p>
-                {selectedHealthSystemStrength === 'moderate_urban_system' && (
-                  <p>A middle-tier healthcare system in urban settings with reasonable infrastructure. Features 65% initial formal care seeking and 25% transition from informal to formal care. Has standard mortality rates across all levels of care, with balanced referral patterns. Per diem costs range from $7 (informal) to $350 (tertiary). Represents typical urban healthcare in middle-income countries.</p>
-                )}
-                {selectedHealthSystemStrength === 'weak_rural_system' && (
-                  <p>Limited healthcare capacity in rural areas with poor access. Only 30% of patients initially seek formal care, and just 10% transition from informal to formal care later. Features 40% higher untreated rates, significantly reduced resolution rates (40-50% below standard), and 50-100% higher mortality rates. Referral rates are 30-50% lower due to transportation and capacity issues.</p>
-                )}
-                {selectedHealthSystemStrength === 'strong_urban_system_lmic' && (
-                  <p>An aspirational high-quality system in lower/middle-income urban areas. High initial formal care seeking (80%) and good transition from informal care (35%). Features 20-30% better resolution rates and 20-40% lower mortality compared to baseline. Has efficient referral pathways and higher quality infrastructure, representing best-in-class urban healthcare in developing countries.</p>
-                )}
-                {selectedHealthSystemStrength === 'fragile_conflict_system' && (
-                  <p>Severely compromised healthcare in humanitarian crisis or conflict zones. Extremely limited access (only 20% seek formal care) with 60% remaining completely untreated. Resolution effectiveness is reduced by 40-70% with mortality 50-150% higher than normal. Referral pathways are broken (60-80% reduced), with severe discontinuity of care.</p>
-                )}
-                {selectedHealthSystemStrength === 'high_income_system' && (
-                  <p>World-class healthcare in wealthy nations with nearly universal access (90% formal care seeking). Features 50-70% better resolution rates and 50-70% lower mortality compared to standard. Has very efficient referral patterns but substantially higher costs ($15-1200 per day). Represents healthcare systems in developed countries with advanced technology, training, and infrastructure.</p>
-                )}
-                {customHealthSystem && (
-                  <p>Custom health system parameters with user-defined values for care-seeking behavior, resolution rates, mortality rates, and referral patterns.</p>
-                )}
-              </div>
             </div>
             
             {/* Disease Selection */}
@@ -591,73 +494,39 @@ const ParametersPanel: React.FC = () => {
                 Disease Profile
               </label>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                Predefined parameters for different diseases
+                Predefined disease parameters
               </p>
-              {editMode ? (
-                <select 
-                  value={customDisease ? 'custom' : selectedDisease}
-                  onChange={handleDiseaseChange}
-                  className="w-full rounded-md border border-gray-300 p-2 text-sm"
-                >
-                  <optgroup label="Infectious Diseases">
-                    <option value="tuberculosis">Tuberculosis</option>
-                    <option value="pneumonia">Pneumonia</option>
-                    <option value="infant_pneumonia">Infant Pneumonia</option>
-                    <option value="malaria">Malaria</option>
-                    <option value="fever">Fever of Unknown Origin</option>
-                    <option value="diarrhea">Diarrheal Disease</option>
-                    <option value="hiv_opportunistic">HIV Opportunistic Infections</option>
-                    <option value="urti">Upper Respiratory Tract Infection (URTI)</option>
-                  </optgroup>
-                  <optgroup label="General & Chronic Conditions">
-                    <option value="high_risk_pregnancy_low_anc">High-Risk Pregnancy (Low ANC)</option>
-                    <option value="anemia">Anemia</option>
-                    <option value="hiv_management_chronic">HIV Management (Chronic)</option>
-                    <option value="congestive_heart_failure">Congestive Heart Failure</option>
-                  </optgroup>
-                  <option value="custom">Custom</option>
-                </select>
-              ) : (
-                <div className="text-sm py-2">{selectedDisease.charAt(0).toUpperCase() + selectedDisease.slice(1).replace(/_/g, ' ')}</div>
-              )}
-              {!customDisease && (
+              <select 
+                value={customDisease ? 'custom' : selectedDisease}
+                onChange={handleDiseaseChange}
+                className="w-full rounded-md border border-gray-300 p-2 text-sm"
+              >
+                {diseases.map(diseaseKey => (
+                  <option key={diseaseKey} value={diseaseKey}>
+                    {diseaseKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </option>
+                ))}
+                <option value="custom">Custom</option>
+              </select>
+              {customDisease && (
                 <div className="mt-2">
                   <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md bg-blue-100 text-blue-800">
-                    Using {selectedDisease.charAt(0).toUpperCase() + selectedDisease.slice(1).replace(/_/g, ' ')} parameters
+                    Using custom disease parameters
                   </span>
                 </div>
               )}
-              <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 p-2 rounded-md">
-                <p className="font-semibold mb-1">Disease Description:</p>
-                {selectedDisease === 'congestive_heart_failure' && (
-                  <p>A chronic cardiac condition affecting primarily older adults (mean age 67), with 1.2% annual incidence. Has negligible home resolution (1% weekly) but good hospital-based care outcomes (55-75% weekly resolution). Carries significant mortality risk if untreated (9% weekly) or managed informally (6% weekly). Requires substantial hospital-level care with high referral rates from community and primary levels.</p>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                {selectedDisease === 'malaria' && (
+                  <p>Malaria is a mosquito-borne disease with moderate incidence (0.2 episodes per person-year). Features modest spontaneous resolution (20% weekly) but high mortality if untreated (5% weekly). Significant benefit from healthcare intervention at all levels. Represents a common infectious disease with severe consequences if left untreated.</p>
                 )}
                 {selectedDisease === 'tuberculosis' && (
-                  <p>A serious infectious disease with 0.2% annual incidence in high-burden countries. Features very slow resolution (2-6% weekly) requiring 25+ weeks of treatment. Has low but persistent mortality (0.05-0.3% weekly) and high disability impact (0.333 weight). Community health workers primarily support ongoing treatment adherence rather than providing definitive care, with high referral rates (85%) to formal healthcare.</p>
+                  <p>Tuberculosis is a slow-progressing bacterial infection with low incidence (0.002 episodes per person-year) but near-zero spontaneous resolution (0.1% weekly) and moderate untreated mortality (1% weekly). High disability weight (0.4) and requires sustained treatment. Represents a chronic infectious disease requiring significant healthcare intervention.</p>
+                )}
+                {selectedDisease === 'diabetes' && (
+                  <p>Diabetes is a chronic metabolic disorder with low incidence (0.005 episodes per person-year) and extremely low spontaneous resolution (0.01% weekly). Features progressive deterioration if untreated (0.2% weekly mortality) and significant benefit from healthcare intervention. Represents a non-communicable chronic disease with lifelong management.</p>
                 )}
                 {selectedDisease === 'pneumonia' && (
-                  <p>A respiratory infection with very high incidence in children under five (0.9 episodes per child-year). Features good resolution rates with appropriate antibiotics (70-80% weekly) but significant mortality if untreated (5% weekly). Community health workers can effectively treat non-severe cases, while severe cases require hospital management with higher mortality rates (1-2% weekly).</p>
-                )}
-                {selectedDisease === 'malaria' && (
-                  <p>A parasitic disease with moderate-high incidence (0.4 episodes per person-year) in endemic areas. Shows some spontaneous resolution for uncomplicated cases (15% weekly) and excellent response to appropriate treatment at CHW/primary levels (80-85% weekly). Severe malaria requires hospital management with significant mortality risk (2-3% weekly) but good outcomes with proper care.</p>
-                )}
-                {selectedDisease === 'fever' && (
-                  <p>A symptomatic presentation with diverse underlying causes, affecting all ages. Features moderate spontaneous resolution (30% weekly) and good response to healthcare interventions (55-90% weekly resolution depending on level). Generally low mortality (0.1-1.5% weekly) but requires diagnostic capability for proper classification and treatment.</p>
-                )}
-                {selectedDisease === 'diarrhea' && (
-                  <p>An acute gastrointestinal condition with very high incidence especially in children (1.5 episodes per child-year). Features moderate spontaneous resolution (35% weekly) and excellent response to ORS/Zinc (85-90% weekly resolution). Carries significant mortality risk through dehydration if untreated (2.5% weekly) but can be effectively managed at community level in non-severe cases.</p>
-                )}
-                {selectedDisease === 'infant_pneumonia' && (
-                  <p>A more severe form of pneumonia in infants under 1 year, with high incidence (1.2 episodes per infant-year). Features lower spontaneous resolution (10% weekly) and requires more intensive management than standard pneumonia. Has significantly higher mortality rates (4-6% weekly if not appropriately treated) and high referral rates to hospital care.</p>
-                )}
-                {selectedDisease === 'anemia' && (
-                  <p>A nutritional condition with 20% annual incidence of symptomatic cases requiring care. Features slow resolution even with treatment (5-30% weekly improvement), affecting primarily women and children. Very low mortality (0.03-0.1% weekly) but causes persistent disability until resolved. Community and primary care management are effective for uncomplicated cases.</p>
-                )}
-                {selectedDisease === 'hiv_management_chronic' && (
-                  <p>Focuses on stable HIV patients on antiretroviral therapy with low new diagnosis rate (0.1% annually). Features very low "resolution" rates without formal care (1% weekly) but good stabilization with appropriate ART (10-15% weekly progress to stable status). Mortality is high without treatment (0.5-0.7% weekly) but quite low with proper management (0.04-0.06% weekly).</p>
-                )}
-                {selectedDisease === 'high_risk_pregnancy_low_anc' && (
-                  <p>Pregnancy complications without adequate prenatal monitoring, affecting 2% of reproductive-age women annually. Features very poor outcomes without formal care (1-2% weekly mortality/morbidity risk) but good resolution with hospital management (50-60% weekly). Requires intensive hospital resources with very high referral rates from community health workers (90%) and primary care (70%).</p>
+                  <p>Pneumonia is an acute respiratory infection with moderate incidence (0.05 episodes per person-year). Features moderate spontaneous resolution (15% weekly) but significant mortality if untreated (3% weekly). Strong benefit from healthcare intervention at all levels. Represents an acute infection requiring prompt medical attention.</p>
                 )}
                 {selectedDisease === 'urti' && (
                   <p>Common viral respiratory infection with very high incidence (2 episodes per person-year). Features excellent spontaneous resolution (70% weekly) and minimal additional benefit from healthcare intervention. Extremely low mortality (&lt;0.002% weekly) and minimal referral requirements. Represents a high-volume, low-severity condition that rarely requires advanced care.</p>
@@ -676,18 +545,14 @@ const ParametersPanel: React.FC = () => {
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                 Total population in the modeled region
               </p>
-              {editMode ? (
-                <input
-                  type="number"
-                  value={editablePopulation}
-                  onChange={(e) => setEditablePopulation(Number(e.target.value))}
-                  min="1000"
-                  step="1000"
-                  className="w-full rounded-md border border-gray-300 p-2 text-sm"
-                />
-              ) : (
-                <div className="text-sm py-2">{populationSize.toLocaleString()}</div>
-              )}
+              <input
+                type="number"
+                value={populationSize}
+                onChange={(e) => handlePopulationChange(Number(e.target.value))}
+                min="1000"
+                step="1000"
+                className="w-full rounded-md border border-gray-300 p-2 text-sm"
+              />
             </div>
           </div>
         </div>
@@ -754,37 +619,23 @@ const ParametersPanel: React.FC = () => {
                             {param.description}
                           </p>
                         </div>
-                        {editMode ? (
+                        <div>
                           <input
                             type="number"
-                            value={getParamValue(editableParams, param.key)}
+                            value={getParamValue(baseParams, param.key)}
                             onChange={(e) => handleParamChange(param.key, e.target.value)}
                             step={param.key.startsWith('delta') || param.key.includes('Rate') || param.key === 'disabilityWeight' ? '0.001' : '0.01'}
                             min="0"
                             max={param.key.startsWith('phi') || param.key.startsWith('rho') || param.key === 'disabilityWeight' ? '1' : undefined}
                             className={inputClasses}
                           />
-                        ) : (
-                          <div className="text-right">
-                            <span className={`font-mono text-sm ${
-                              highlightAsDisease 
-                                ? 'text-blue-600 dark:text-blue-400' 
-                                : highlightAsHealthSystem
-                                  ? 'text-green-600 dark:text-green-400'
-                                  : group.isAISpecific
-                                    ? 'text-purple-600 dark:text-purple-400'
-                                    : 'text-gray-700 dark:text-gray-300'
-                            }`}>
-                              {formatParamValue(param.key, derivedValue)}
-                            </span>
-                             {/* Show default value only if it's different from derived and not custom */}
-                             {defaultValue !== derivedValue && !customDisease && !customHealthSystem && (
-                              <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                Default: {formatParamValue(param.key, defaultValue)}
-                              </div>
-                            )}
-                          </div>
-                        )}
+                          {/* Show default value only if it's different from derived and not custom */}
+                          {defaultValue !== derivedValue && !customDisease && !customHealthSystem && (
+                            <div className="text-xs text-gray-400 dark:text-gray-500 mt-1 text-right">
+                              Default: {formatParamValue(param.key, defaultValue)}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -793,81 +644,80 @@ const ParametersPanel: React.FC = () => {
             </div>
           );
         })}
-        {/* Health System Outcome Multipliers Section - MOVED HERE, AFTER aLL OTHER PARAMETER GROUPS */}
-        {editMode && (
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
-            <div className="flex justify-between items-center mb-3">
-                <h4 className="text-md font-medium text-gray-700 dark:text-gray-300">
-                Health System Outcome Multipliers
-                {!customHealthSystem && (
-                  <span className="text-xs text-green-500 ml-2">(Health System Specific)</span>
-                )}
-                </h4>
-                {!customHealthSystem && (
-                    <button 
-                        onClick={resetMultipliersToScenarioDefaults}
-                        className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                    >
-                        Reset to Scenario Defaults
-                    </button>
-                )}
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-              These multipliers adjust disease-specific base rates for resolution (μ), mortality (δ), and referral (ρ).
-              A value of 1.0 means no change from the disease's baseline for the current health system scenario.
-              Values &lt; 1.0 generally mean better outcomes (for mortality/referral) or lower effectiveness (for resolution), and &gt; 1.0 the opposite.
-              Modify these to conduct sensitivity analysis on health system strength.
-            </p>
-
-            {(Object.keys(activeMultipliers) as Array<keyof HealthSystemMultipliers>).length > 0 && (
-              <div className="space-y-4">
-                {[ 
-                  { groupTitle: 'Resolution Rate Multipliers (α) (Base: μ)', keys: ['mu_multiplier_I', 'mu_multiplier_L0', 'mu_multiplier_L1', 'mu_multiplier_L2', 'mu_multiplier_L3'], symbol: 'α' },
-                  { groupTitle: 'Mortality Rate Multipliers (β) (Base: δ)', keys: ['delta_multiplier_U', 'delta_multiplier_I', 'delta_multiplier_L0', 'delta_multiplier_L1', 'delta_multiplier_L2', 'delta_multiplier_L3'], symbol: 'β' },
-                  { groupTitle: 'Referral Rate Multipliers (γ) (Base: ρ)', keys: ['rho_multiplier_L0', 'rho_multiplier_L1', 'rho_multiplier_L2'], symbol: 'γ' },
-                ].map(group => (
-                  <div key={group.groupTitle}>
-                    <h5 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{group.groupTitle}</h5>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
-                      {group.keys.map(key => {
-                        // Derive a user-friendly label from the key using the new Greek symbols
-                        const parts = key.split('_'); // e.g., ['mu', 'multiplier', 'L0'] or ['delta', 'multiplier', 'U']
-                        const level = parts[2]; // L0, L1, I, U etc.
-                        let type = '';
-                        if (parts[0] === 'mu') type = 'Resolution';
-                        else if (parts[0] === 'delta') type = 'Mortality';
-                        else if (parts[0] === 'rho') type = 'Referral';
-
-                        const label = `${group.symbol}${level === 'I' ? 'ᵢ' : level === 'U' ? 'ᵤ' : level ? `₍${level}₎` : ''} (${level}-Level ${type})`;
-                        
-                        return (
-                          <div key={key} className={`bg-gray-50 dark:bg-gray-700 p-3 rounded-md ${!customHealthSystem ? 'border border-green-300 dark:border-green-600 bg-green-50 dark:!bg-gray-700' : 'border border-gray-300 dark:border-gray-600'}`}>
-                            <label htmlFor={key} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              {label}
-                            </label>
-                            <input
-                              id={key}
-                              type="number"
-                              value={activeMultipliers[key as keyof HealthSystemMultipliers]}
-                              onChange={(e) => handleMultiplierChange(key as keyof HealthSystemMultipliers, e.target.value)}
-                              step="0.05"
-                              min="0"
-                              className={`w-full text-right px-2 py-1 border rounded-md text-sm ${
-                                !customHealthSystem 
-                                  ? 'border-green-400 bg-white dark:bg-gray-800 dark:border-green-500' 
-                                  : 'border-gray-300 dark:border-gray-600'
-                              }`}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        
+        {/* Health System Outcome Multipliers Section */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+          <div className="flex justify-between items-center mb-3">
+              <h4 className="text-md font-medium text-gray-700 dark:text-gray-300">
+              Health System Outcome Multipliers
+              {!customHealthSystem && (
+                <span className="text-xs text-green-500 ml-2">(Health System Specific)</span>
+              )}
+              </h4>
+              {!customHealthSystem && (
+                  <button 
+                      onClick={resetMultipliersToScenarioDefaults}
+                      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                      Reset to Scenario Defaults
+                  </button>
+              )}
           </div>
-        )}
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            These multipliers adjust disease-specific base rates for resolution (μ), mortality (δ), and referral (ρ).
+            A value of 1.0 means no change from the disease's baseline for the current health system scenario.
+            Values &lt; 1.0 generally mean better outcomes (for mortality/referral) or lower effectiveness (for resolution), and &gt; 1.0 the opposite.
+            Modify these to conduct sensitivity analysis on health system strength.
+          </p>
+
+          {(Object.keys(activeMultipliers) as Array<keyof HealthSystemMultipliers>).length > 0 && (
+            <div className="space-y-4">
+              {[ 
+                { groupTitle: 'Resolution Rate Multipliers (α) (Base: μ)', keys: ['mu_multiplier_I', 'mu_multiplier_L0', 'mu_multiplier_L1', 'mu_multiplier_L2', 'mu_multiplier_L3'], symbol: 'α' },
+                { groupTitle: 'Mortality Rate Multipliers (β) (Base: δ)', keys: ['delta_multiplier_U', 'delta_multiplier_I', 'delta_multiplier_L0', 'delta_multiplier_L1', 'delta_multiplier_L2', 'delta_multiplier_L3'], symbol: 'β' },
+                { groupTitle: 'Referral Rate Multipliers (γ) (Base: ρ)', keys: ['rho_multiplier_L0', 'rho_multiplier_L1', 'rho_multiplier_L2'], symbol: 'γ' },
+              ].map(group => (
+                <div key={group.groupTitle}>
+                  <h5 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{group.groupTitle}</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
+                    {group.keys.map(key => {
+                      // Derive a user-friendly label from the key using the new Greek symbols
+                      const parts = key.split('_'); // e.g., ['mu', 'multiplier', 'L0'] or ['delta', 'multiplier', 'U']
+                      const level = parts[2]; // L0, L1, I, U etc.
+                      let type = '';
+                      if (parts[0] === 'mu') type = 'Resolution';
+                      else if (parts[0] === 'delta') type = 'Mortality';
+                      else if (parts[0] === 'rho') type = 'Referral';
+
+                      const label = `${group.symbol}${level === 'I' ? 'ᵢ' : level === 'U' ? 'ᵤ' : level ? `₍${level}₎` : ''} (${level}-Level ${type})`;
+                      
+                      return (
+                        <div key={key} className={`bg-gray-50 dark:bg-gray-700 p-3 rounded-md ${!customHealthSystem ? 'border border-green-300 dark:border-green-600 bg-green-50 dark:!bg-gray-700' : 'border border-gray-300 dark:border-gray-600'}`}>
+                          <label htmlFor={key} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {label}
+                          </label>
+                          <input
+                            id={key}
+                            type="number"
+                            value={activeMultipliers[key as keyof HealthSystemMultipliers]}
+                            onChange={(e) => handleMultiplierChange(key as keyof HealthSystemMultipliers, e.target.value)}
+                            step="0.05"
+                            min="0"
+                            className={`w-full text-right px-2 py-1 border rounded-md text-sm ${
+                              !customHealthSystem 
+                                ? 'border-green-400 bg-white dark:bg-gray-800 dark:border-green-500' 
+                                : 'border-gray-300 dark:border-gray-600'
+                            }`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

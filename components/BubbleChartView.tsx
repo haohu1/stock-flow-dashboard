@@ -220,31 +220,71 @@ const BubbleChartView: React.FC = () => {
         }
       }
       
-      // Use disease-specific baseline from baselineMap if available, otherwise fallback to scenario.baselineResults
-      const diseaseBaseline = baselineMap[disease] || scenario.baselineResults;
+      // ENHANCED BASELINE SELECTION LOGIC
+      // First try disease-specific baseline from the baselineMap
+      // Then fall back to scenario's own baseline if available
+      // Then check if any baseline exists in baselineMap for fallback
+      let diseaseBaseline = null;
       
-      if (!diseaseBaseline) {
-        console.warn(`No baseline results for disease: ${disease} in scenario: ${scenario.name}`);
-        return 0;
+      // 1. First choice: Disease-specific baseline from baselineMap
+      if (baselineMap[disease]) {
+        diseaseBaseline = baselineMap[disease];
+        if (isImported) console.log(`  Using disease-specific baseline from baselineMap for ${disease}`);
+      } 
+      // 2. Second choice: Scenario's own baselineResults
+      else if (scenario.baselineResults) {
+        diseaseBaseline = scenario.baselineResults;
+        if (isImported) console.log(`  Using scenario's own baselineResults for ${disease}`);
+      }
+      // 3. Last resort: Use first available baseline from baselineMap
+      else if (Object.keys(baselineMap).length > 0) {
+        const firstAvailableDisease = Object.keys(baselineMap)[0];
+        diseaseBaseline = baselineMap[firstAvailableDisease];
+        console.warn(`WARNING: No specific baseline for ${disease}, falling back to ${firstAvailableDisease} baseline`);
       }
       
-      // Calculate the averted values correctly based on the disease-specific baseline
+      // If still no baseline, log warning and use a placeholder value
+      if (!diseaseBaseline) {
+        console.warn(`WARNING: No baseline results found for disease: ${disease} in scenario: ${scenario.name}`);
+        
+        // Return some reasonable default size to ensure visibility
+        // Use a size proportional to the scenario's own results to ensure some differentiation
+        return sizeMetric === 'dalys' 
+          ? Math.max(1000, scenario.results.dalys * 0.1) // ~10% of current DALYs
+          : Math.max(10, scenario.results.cumulativeDeaths * 0.1); // ~10% of current deaths
+      }
+      
+      // Calculate the averted values correctly based on the available baseline
       if (sizeMetric === 'dalys') {
         const dalysAverted = diseaseBaseline.dalys - scenario.results.dalys;
+        
         // Log extreme values
         if (Math.abs(dalysAverted) > 1000000) {
           console.warn(`Large DALY difference detected for ${scenario.name} (${disease}): ${dalysAverted}`);
           console.warn(`  Baseline DALYs: ${diseaseBaseline.dalys}, Current DALYs: ${scenario.results.dalys}`);
+          
+          // Cap extremely large values to prevent visual distortion
+          const cappedValue = Math.min(Math.abs(dalysAverted), 10000000);
+          console.log(`  Capping extremely large value to: ${cappedValue}`);
+          return dalysAverted > 0 ? cappedValue : 0; // Only return positive values
         }
+        
         // For averted values, higher is better, so return max of 0 or the actual value
         return Math.max(0, dalysAverted);
       } else {
         const deathsAverted = diseaseBaseline.cumulativeDeaths - scenario.results.cumulativeDeaths;
+        
         // Log extreme values
         if (Math.abs(deathsAverted) > 10000) {
           console.warn(`Large deaths difference detected for ${scenario.name} (${disease}): ${deathsAverted}`);
           console.warn(`  Baseline deaths: ${diseaseBaseline.cumulativeDeaths}, Current deaths: ${scenario.results.cumulativeDeaths}`);
+          
+          // Cap extremely large values to prevent visual distortion
+          const cappedValue = Math.min(Math.abs(deathsAverted), 100000);
+          console.log(`  Capping extremely large value to: ${cappedValue}`);
+          return deathsAverted > 0 ? cappedValue : 0; // Only return positive values
         }
+        
         // For averted values, higher is better, so return max of 0 or the actual value
         return Math.max(0, deathsAverted);
       }

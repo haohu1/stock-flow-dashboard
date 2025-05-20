@@ -203,11 +203,27 @@ const BubbleChartView: React.FC = () => {
       // Get the specific disease for this scenario
       const disease = scenario.parameters.disease || 'Unknown';
       
+      // Debug baseline data
+      const isImported = scenario.id.startsWith('imported-');
+      if (isImported) {
+        console.log(`DEBUG [Imported=${isImported}] - Scenario: ${scenario.name} (${disease})`);
+        console.log(`  baselineMap has disease? ${!!baselineMap[disease]}`);
+        console.log(`  scenario.baselineResults exists? ${!!scenario.baselineResults}`);
+        
+        if (scenario.baselineResults) {
+          console.log(`  Baseline DALYs: ${scenario.baselineResults.dalys}, Deaths: ${scenario.baselineResults.cumulativeDeaths}`);
+          console.log(`  Current DALYs: ${scenario.results.dalys}, Deaths: ${scenario.results.cumulativeDeaths}`);
+        }
+        
+        if (baselineMap[disease]) {
+          console.log(`  diseaseBaseline DALYs: ${baselineMap[disease]?.dalys}, Deaths: ${baselineMap[disease]?.cumulativeDeaths}`);
+        }
+      }
+      
       // Use disease-specific baseline from baselineMap if available, otherwise fallback to scenario.baselineResults
       const diseaseBaseline = baselineMap[disease] || scenario.baselineResults;
       
       if (!diseaseBaseline) {
-        // Only log warnings, not regular values
         console.warn(`No baseline results for disease: ${disease} in scenario: ${scenario.name}`);
         return 0;
       }
@@ -215,10 +231,20 @@ const BubbleChartView: React.FC = () => {
       // Calculate the averted values correctly based on the disease-specific baseline
       if (sizeMetric === 'dalys') {
         const dalysAverted = diseaseBaseline.dalys - scenario.results.dalys;
+        // Log extreme values
+        if (Math.abs(dalysAverted) > 1000000) {
+          console.warn(`Large DALY difference detected for ${scenario.name} (${disease}): ${dalysAverted}`);
+          console.warn(`  Baseline DALYs: ${diseaseBaseline.dalys}, Current DALYs: ${scenario.results.dalys}`);
+        }
         // For averted values, higher is better, so return max of 0 or the actual value
         return Math.max(0, dalysAverted);
       } else {
         const deathsAverted = diseaseBaseline.cumulativeDeaths - scenario.results.cumulativeDeaths;
+        // Log extreme values
+        if (Math.abs(deathsAverted) > 10000) {
+          console.warn(`Large deaths difference detected for ${scenario.name} (${disease}): ${deathsAverted}`);
+          console.warn(`  Baseline deaths: ${diseaseBaseline.cumulativeDeaths}, Current deaths: ${scenario.results.cumulativeDeaths}`);
+        }
         // For averted values, higher is better, so return max of 0 or the actual value
         return Math.max(0, deathsAverted);
       }

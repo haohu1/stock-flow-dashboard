@@ -720,21 +720,39 @@ export const loadScenarioAtom = atom(
     const scenario = scenarios.find(s => s.id === scenarioId);
     
     if (scenario) {
-      console.log('DETAILED DEBUG - Loading scenario:', {
+      const isImported = scenario.id.startsWith('imported-');
+      console.log(`DETAILED DEBUG - Loading scenario${isImported ? ' [IMPORTED]' : ''}:`, {
         id: scenario.id, 
+        name: scenario.name,
+        disease: scenario.parameters.disease,
         selectedDiseases: scenario.selectedDiseases || [], 
         diseaseResultsMapKeys: scenario.diseaseResultsMap ? Object.keys(scenario.diseaseResultsMap) : [],
+        hasBaselineResults: !!scenario.baselineResults,
+        baselineResultsDisease: scenario.baselineResults ? 'From ' + (scenario.parameters.disease || 'unknown disease') : 'None',
         hasResultsMap: !!scenario.diseaseResultsMap,
         mapType: scenario.diseaseResultsMap ? typeof scenario.diseaseResultsMap : 'undefined',
         isEmptyObject: scenario.diseaseResultsMap && Object.keys(scenario.diseaseResultsMap).length === 0
       });
+      
+      // Check for baseline-results mismatch
+      if (scenario.baselineResults && scenario.results) {
+        const baselineDiseaseName = scenario.parameters.disease || 'unknown';
+        console.log(`Baseline check for ${baselineDiseaseName}:`, {
+          baselineDALYs: scenario.baselineResults.dalys,
+          currentDALYs: scenario.results.dalys,
+          difference: scenario.baselineResults.dalys - scenario.results.dalys,
+          baselineDeaths: scenario.baselineResults.cumulativeDeaths,
+          currentDeaths: scenario.results.cumulativeDeaths,
+          deathDifference: scenario.baselineResults.cumulativeDeaths - scenario.results.cumulativeDeaths
+        });
+      }
       
       // Directly inspect the contents of the scenario's diseaseResultsMap
       if (scenario.diseaseResultsMap) {
         console.log('Raw scenario.diseaseResultsMap structure:');
         Object.entries(scenario.diseaseResultsMap).forEach(([disease, diseaseResults]) => {
           console.log(`  ${disease}: ${diseaseResults ? 
-            `deaths=${diseaseResults.cumulativeDeaths}, costs=${diseaseResults.totalCost}, icer=${diseaseResults.icer}` 
+            `deaths=${diseaseResults.cumulativeDeaths}, dalys=${diseaseResults.dalys}, icer=${diseaseResults.icer}` 
             : 'null'}`);
         });
       }
@@ -763,6 +781,48 @@ export const loadScenarioAtom = atom(
         console.log('Reconstructed results map with keys:', Object.keys(reconstructedMap));
         // Add the reconstructed map to the scenario object (this doesn't save it permanently)
         scenario.diseaseResultsMap = reconstructedMap;
+      }
+      
+      // NEW CRITICAL FIX: Ensure imported scenarios have consistent disease-specific baseline data
+      if (scenario.id.startsWith('imported-') && scenario.baselineResults && scenario.results) {
+        console.log('CRITICAL FIX: Checking baseline consistency for imported scenario');
+        
+        // Create or update baselineResultsMap with this scenario's disease-specific baseline
+        const existingBaselineMap = get(baselineResultsMapAtom);
+        const updatedBaselineMap = { ...existingBaselineMap };
+        
+        // Get the disease for this scenario
+        const disease = scenario.parameters.disease || 'Unknown';
+        
+        // If this scenario has baselineResults, make sure it's properly added to the global baselineMap
+        if (!updatedBaselineMap[disease] && scenario.baselineResults) {
+          console.log(`  Adding missing baseline for ${disease} to baselineMap`);
+          
+          // Create a deep copy of the baseline results
+          const baselineCopy = {
+            ...JSON.parse(JSON.stringify(scenario.baselineResults)),
+            weeklyStates: scenario.baselineResults.weeklyStates.map(state => ({...state}))
+          };
+          
+          // Add to the baseline map
+          updatedBaselineMap[disease] = baselineCopy;
+        }
+        
+        // Update the global baseline map with any new baselines
+        if (Object.keys(updatedBaselineMap).length > Object.keys(existingBaselineMap).length) {
+          console.log('  Updating global baselineMap with:', Object.keys(updatedBaselineMap));
+          set(baselineResultsMapAtom, updatedBaselineMap);
+        }
+        
+        // Also ensure the main baseline is set if needed
+        const mainBaseline = get(baselineResultsAtom);
+        if (!mainBaseline && scenario.baselineResults) {
+          console.log('  Setting main baseline from imported scenario');
+          set(baselineResultsAtom, {
+            ...JSON.parse(JSON.stringify(scenario.baselineResults)),
+            weeklyStates: scenario.baselineResults.weeklyStates.map(state => ({...state}))
+          });
+        }
       }
       
       set(baseParametersAtom, scenario.parameters);

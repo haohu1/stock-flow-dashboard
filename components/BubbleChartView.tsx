@@ -25,25 +25,14 @@ const BubbleChartView: React.FC = () => {
       const disease = scenario.parameters.disease || 'Unknown';
       diseaseSet.add(disease);
 
-      let currentFeasibility: number;
-
-      // Priority for feasibility value:
-      // 1. From the scenario object itself (e.g., imported or previously set)
-      if (scenario.feasibility !== undefined) {
-        currentFeasibility = scenario.feasibility;
-      }
-      // 2. From existing editableScenarios map (if user was already editing it)
-      else if (editableScenarios.has(scenario.id) && editableScenarios.get(scenario.id)!.feasibility !== undefined) {
-        currentFeasibility = editableScenarios.get(scenario.id)!.feasibility;
-      }
-      // 3. Calculate a suggested feasibility as a fallback
-      else {
-        const activeInterventions = Object.values(scenario.aiInterventions).filter(Boolean).length;
-        currentFeasibility = calculateSuggestedFeasibility(activeInterventions);
-        // console.warn(`BubbleChartView init: Scenario ${scenario.name} (ID: ${scenario.id}) missing feasibility, calculating default: ${currentFeasibility}`);
-      }
+      // For editableScenarios (sliders), prioritize scenario.feasibility from global state.
+      // Fallback to calculating a suggested one if not present.
+      const activeInterventions = Object.values(scenario.aiInterventions).filter(Boolean).length;
+      const calculatedFeasibility = calculateSuggestedFeasibility(activeInterventions);
       
-      newEditableScenarios.set(scenario.id, { feasibility: currentFeasibility });
+      newEditableScenarios.set(scenario.id, { 
+        feasibility: scenario.feasibility !== undefined ? scenario.feasibility : calculatedFeasibility 
+      });
     });
     
     setEditableScenarios(newEditableScenarios);
@@ -54,9 +43,7 @@ const BubbleChartView: React.FC = () => {
     if (selectedDiseases.size === 0 && diseaseList.length > 0) {
       setSelectedDiseases(new Set(diseaseList));
     }
-    // No longer depend on editableScenarios in the dependency array for this effect,
-    // as we are rebuilding it from scratch based on `scenarios`.
-  }, [scenarios, selectedDiseases]); // Removed editableScenarios from dependencies
+  }, [scenarios, selectedDiseases]); // Dependency array remains focused on global scenarios changes.
 
   // Calculate suggested feasibility based on number of active interventions
   const calculateSuggestedFeasibility = (interventionsCount: number): number => {
@@ -382,23 +369,14 @@ const BubbleChartView: React.FC = () => {
     // Force simulation to prevent overlapping bubbles
     // Create a typed version of the data for simulation
     const simulationNodes = validScenarios.map(scenario => {
-      let feasibilityForNode: number;
+      // For D3 node positioning, directly use scenario.feasibility if available.
+      // Fallback to calculating a suggested one ONLY if scenario.feasibility is undefined.
+      const activeInterventions = Object.values(scenario.aiInterventions).filter(Boolean).length;
+      const feasibilityForNode = scenario.feasibility !== undefined 
+        ? scenario.feasibility 
+        : calculateSuggestedFeasibility(activeInterventions);
 
-      // 1. Use feasibility from the scenario object if available (set on import/save or by slider)
-      if (scenario.feasibility !== undefined) {
-        feasibilityForNode = scenario.feasibility;
-      } 
-      // 2. Fallback: Try to get it from the editableScenarios map (local state for sliders)
-      // This path is less likely to be hit if scenario.feasibility is correctly managed.
-      else if (editableScenarios.get(scenario.id)?.feasibility !== undefined) {
-        feasibilityForNode = editableScenarios.get(scenario.id)!.feasibility;
-      } 
-      // 3. Absolute Fallback: Calculate suggested feasibility if none found (should be rare)
-      else {
-        const activeInterventions = Object.values(scenario.aiInterventions).filter(Boolean).length;
-        feasibilityForNode = calculateSuggestedFeasibility(activeInterventions);
-        // console.warn(`BubbleChartView: Scenario ${scenario.name} (ID: ${scenario.id}) missing feasibility, calculating default.`);
-      }
+      // console.log(`Scenario: ${scenario.name}, Feasibility for Node: ${feasibilityForNode}, Original scenario.feasibility: ${scenario.feasibility}`);
 
       return {
         ...scenario,

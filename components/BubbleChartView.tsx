@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAtom } from 'jotai';
 import { scenariosAtom, Scenario, updateScenarioAtom } from '../lib/store';
-import { formatNumber } from '../lib/utils';
+import { formatNumber, calculateSuggestedFeasibility } from '../lib/utils';
 import * as d3 from 'd3';
 import { baselineResultsMapAtom } from '../lib/store';
 
@@ -44,14 +44,6 @@ const BubbleChartView: React.FC = () => {
       setSelectedDiseases(new Set(diseaseList));
     }
   }, [scenarios, selectedDiseases]); // Dependency array remains focused on global scenarios changes.
-
-  // Calculate suggested feasibility based on number of active interventions
-  const calculateSuggestedFeasibility = (interventionsCount: number): number => {
-    // More interventions generally means lower feasibility (earlier stage)
-    // Scale from 0.2 (many interventions, early stage) to 0.9 (few interventions, late stage)
-    const maxInterventions = 6; // Total possible interventions
-    return Math.max(0.2, Math.min(0.9, 0.9 - (interventionsCount / maxInterventions) * 0.7));
-  };
 
   // Handle feasibility value change
   const handleFeasibilityChange = (scenarioId: string, value: number) => {

@@ -42,10 +42,7 @@ const StockFlowDiagram: React.FC = () => {
   const [activeMultipliers] = useAtom(healthSystemMultipliersAtom);
 
   // Use the most current parameters, preferring base params for user-edited values
-  const params = {
-    ...derivedParams,
-    ...baseParams
-  };
+  const params = derivedParams;
   
   // Weekly incidence
   const weeklyIncidence = (params.lambda * population) / 52;
@@ -476,7 +473,7 @@ const StockFlowDiagram: React.FC = () => {
             .text(intervention.name);
         });
       }
-  }, [baseParams, derivedParams, population, aiInterventions, activeMultipliers]);
+  }, [params, population, aiInterventions, activeMultipliers, derivedParams, baseParams]);
 
   return (
     <div className="flex justify-center mb-4 w-full">

@@ -152,7 +152,7 @@ const Dashboard: React.FC = () => {
 
   if (!results) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8">
+      <div className="flex flex-col items-start justify-start h-full p-8">
         {/* Scenarios information - show even without simulation results */}
         {scenarios.length > 0 && (
           <div className="bg-indigo-50 dark:bg-indigo-900 p-4 rounded-lg border border-indigo-200 dark:border-indigo-700 mb-8 w-full max-w-2xl">

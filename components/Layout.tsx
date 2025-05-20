@@ -29,7 +29,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, []);
 
   return (
-    <div className="flex bg-gray-50 dark:bg-gray-900">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Mobile hamburger menu */}
       <button 
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -41,11 +41,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </button>
       
       {/* Sidebar with responsive hiding */}
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 fixed md:sticky top-0 h-screen z-40`}>
+      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 fixed md:static h-full z-40`}>
         <Sidebar />
       </div>
       
-      <main className="flex-1 p-4 md:p-6">
+      <main className="flex-1 p-4 md:p-6 md:ml-64">
         {children}
       </main>
     </div>

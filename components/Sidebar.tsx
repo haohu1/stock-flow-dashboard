@@ -264,6 +264,70 @@ const Sidebar: React.FC = () => {
             <option value="congestive_heart_failure">Congestive Heart Failure</option>
           </optgroup>
         </select>
+        
+        {/* Add disease descriptions */}
+        <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-left">
+          {selectedDisease === 'malaria' && (
+            <p>Malaria is a mosquito-borne disease with moderate incidence (0.2 episodes per person-year). Features modest spontaneous resolution (20% weekly) but high mortality if untreated (5% weekly). Significant benefit from healthcare intervention at all levels. Represents a common infectious disease with severe consequences if left untreated.</p>
+          )}
+          {selectedDisease === 'tuberculosis' && (
+            <p>Tuberculosis is a slow-progressing bacterial infection with low incidence (0.002 episodes per person-year) but near-zero spontaneous resolution (0.1% weekly) and moderate untreated mortality (1% weekly). High disability weight (0.4) and requires sustained treatment. Represents a chronic infectious disease requiring significant healthcare intervention.</p>
+          )}
+          {selectedDisease === 'diabetes' && (
+            <p>Diabetes is a chronic metabolic disorder with low incidence (0.005 episodes per person-year) and extremely low spontaneous resolution (0.01% weekly). Features progressive deterioration if untreated (0.2% weekly mortality) and significant benefit from healthcare intervention. Represents a non-communicable chronic disease with lifelong management.</p>
+          )}
+          {selectedDisease === 'pneumonia' && (
+            <p>Pneumonia is an acute respiratory infection with moderate incidence (0.05 episodes per person-year). Features moderate spontaneous resolution (15% weekly) but significant mortality if untreated (3% weekly). Strong benefit from healthcare intervention at all levels. Represents an acute infection requiring prompt medical attention.</p>
+          )}
+          {selectedDisease === 'urti' && (
+            <p>Common viral respiratory infection with very high incidence (2 episodes per person-year). Features excellent spontaneous resolution (70% weekly) and minimal additional benefit from healthcare intervention. Extremely low mortality (&lt;0.002% weekly) and minimal referral requirements. Represents a high-volume, low-severity condition that rarely requires advanced care.</p>
+          )}
+          {selectedDisease === 'infant_pneumonia' && (
+            <p>A severe respiratory infection affecting infants, with higher mortality rates than adult pneumonia. Requires prompt medical intervention and has a significant benefit from healthcare at all levels.</p>
+          )}
+          {selectedDisease === 'fever' && (
+            <p>Fever of unknown origin represents a symptom-based presentation with moderate spontaneous resolution but requiring diagnostic evaluation to rule out serious conditions.</p>
+          )}
+          {selectedDisease === 'diarrhea' && (
+            <p>Diarrheal disease with moderate to high incidence, featuring good spontaneous resolution with proper hydration but risk of severe dehydration if untreated, particularly in vulnerable populations.</p>
+          )}
+          {selectedDisease === 'hiv_opportunistic' && (
+            <p>Opportunistic infections in HIV patients require specialized management and have higher mortality rates without appropriate care.</p>
+          )}
+          {selectedDisease === 'urti' && (
+            <p>Upper Respiratory Tract Infections are common mild viral infections with excellent spontaneous resolution and low mortality.</p>
+          )}
+          {selectedDisease === 'high_risk_pregnancy_low_anc' && (
+            <p>High-risk pregnancies with inadequate antenatal care have elevated risk of maternal and fetal complications requiring healthcare intervention.</p>
+          )}
+          {selectedDisease === 'anemia' && (
+            <p>Chronic anemia with varying severity requiring diagnosis and management of underlying causes.</p>
+          )}
+          {selectedDisease === 'hiv_management_chronic' && (
+            <p>Chronic management of HIV infection requires consistent medical care to maintain viral suppression and prevent complications.</p>
+          )}
+          {selectedDisease === 'congestive_heart_failure' && (
+            <p>Chronic cardiac condition requiring ongoing medical management to prevent acute exacerbations and hospitalizations.</p>
+          )}
+        </div>
+      </div>
+      
+      {/* Add Population Size field */}
+      <div className="mb-6">
+        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Population Size
+        </label>
+        <input
+          type="number"
+          value={population}
+          onChange={handlePopulationChange}
+          min="1000"
+          step="1000"
+          className="input w-full"
+        />
+        <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-left">
+          <p>Total population in the modeled region. Affects absolute numbers in outcomes but not proportions.</p>
+        </div>
       </div>
 
       <div className="mb-6">
@@ -295,20 +359,6 @@ const Sidebar: React.FC = () => {
         <div className="mt-1 text-xs text-gray-500">
           Selected: {selectedDiseases.length} disease{selectedDiseases.length !== 1 ? 's' : ''}
         </div>
-      </div>
-
-      <div className="mb-6">
-        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Population Size
-        </label>
-        <input
-          type="number"
-          value={population}
-          onChange={handlePopulationChange}
-          className="input w-full"
-          min="1000"
-          step="1000"
-        />
       </div>
 
       <div className="mb-6">

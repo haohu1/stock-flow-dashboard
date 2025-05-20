@@ -40,6 +40,9 @@ const Sidebar: React.FC = () => {
     group: string;
     checked: boolean;
   }[]>([]);
+  
+  // State for expandable compare diseases section
+  const [compareDiseaseExpanded, setCompareDiseaseExpanded] = useState(false);
 
   // Initialize disease options
   useEffect(() => {
@@ -140,6 +143,33 @@ const Sidebar: React.FC = () => {
         option.id === diseaseId
           ? { ...option, checked: isChecked }
           : option
+      )
+    );
+  };
+
+  // Add handler for selecting all diseases
+  const handleSelectAllDiseases = () => {
+    const allDiseaseIds = diseaseOptions.map(option => option.id);
+    setSelectedDiseases(allDiseaseIds);
+    setDiseaseOptions(
+      diseaseOptions.map(option => ({ ...option, checked: true }))
+    );
+    
+    // Keep the primary disease as is, or set it to the first one if none selected
+    if (selectedDiseases.length === 0 && allDiseaseIds.length > 0) {
+      setSelectedDisease(allDiseaseIds[0]);
+    }
+  };
+
+  // Add handler for clearing all diseases
+  const handleClearAllDiseases = () => {
+    // Keep at least the primary disease selected
+    const newSelection = selectedDisease ? [selectedDisease] : [];
+    setSelectedDiseases(newSelection);
+    
+    setDiseaseOptions(
+      diseaseOptions.map(option => 
+        ({ ...option, checked: option.id === selectedDisease })
       )
     );
   };
@@ -331,34 +361,70 @@ const Sidebar: React.FC = () => {
       </div>
 
       <div className="mb-6">
-        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Compare Multiple Diseases
-        </label>
-        <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md max-h-48 overflow-y-auto">
-          {Object.entries(groupedDiseaseOptions).map(([group, options]) => (
-            <div key={group} className="mb-2">
-              <h4 className="text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">{group}</h4>
-              <div className="space-y-1">
-                {options.map(option => (
-                  <label key={option.id} className="flex items-center text-sm">
-                    <input
-                      type="checkbox"
-                      checked={option.checked}
-                      onChange={(e) => handleDiseaseToggle(option.id, e.target.checked)}
-                      className="mr-2"
-                    />
-                    <span className="text-xs text-gray-700 dark:text-gray-300">
-                      {option.name}
-                    </span>
-                  </label>
-                ))}
-              </div>
+        <div className="flex justify-between items-center mb-2">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Compare Multiple Diseases
+          </label>
+          <button 
+            onClick={() => setCompareDiseaseExpanded(!compareDiseaseExpanded)}
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            {compareDiseaseExpanded ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
+        </div>
+        
+        <div className="mt-1 text-xs text-gray-500 flex justify-between items-center">
+          <span>Selected: {selectedDiseases.length} disease{selectedDiseases.length !== 1 ? 's' : ''}</span>
+          {compareDiseaseExpanded && (
+            <div className="space-x-2">
+              <button 
+                onClick={handleSelectAllDiseases}
+                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400"
+              >
+                Add All
+              </button>
+              <button 
+                onClick={handleClearAllDiseases}
+                className="text-xs text-red-600 hover:text-red-800 dark:text-red-400"
+              >
+                Clear All
+              </button>
             </div>
-          ))}
+          )}
         </div>
-        <div className="mt-1 text-xs text-gray-500">
-          Selected: {selectedDiseases.length} disease{selectedDiseases.length !== 1 ? 's' : ''}
-        </div>
+        
+        {compareDiseaseExpanded && (
+          <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md mt-2">
+            {Object.entries(groupedDiseaseOptions).map(([group, options]) => (
+              <div key={group} className="mb-2">
+                <h4 className="text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">{group}</h4>
+                <div className="space-y-1">
+                  {options.map(option => (
+                    <label key={option.id} className="flex items-center text-sm">
+                      <input
+                        type="checkbox"
+                        checked={option.checked}
+                        onChange={(e) => handleDiseaseToggle(option.id, e.target.checked)}
+                        className="mr-2"
+                      />
+                      <span className="text-xs text-gray-700 dark:text-gray-300">
+                        {option.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mb-6">

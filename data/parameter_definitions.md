@@ -11,6 +11,7 @@ This document provides concise definitions of all parameters used in the stock-f
 | `disability_weight` | Severity factor used for DALY calculations | Scale from 0-1 (0=perfect health, 1=death) |
 | `mean_age` | Average age when patients contract the disease | Years |
 | **Resolution Rates** | | |
+| `muU` (μᵤ) | Probability of spontaneous resolution if untreated | Weekly probability (0-1) |
 | `muI` (μᵢ) | Probability of resolution in informal care | Weekly probability (0-1) |
 | `mu0` (μ₀) | Probability of resolution at CHW level | Weekly probability (0-1) |
 | `mu1` (μ₁) | Probability of resolution at primary care | Weekly probability (0-1) |

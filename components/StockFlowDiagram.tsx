@@ -122,6 +122,9 @@ const StockFlowDiagram: React.FC = () => {
       // From Untreated to Deaths
       { id: 'link_untreated_deaths', source: 'untreated', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', 'U')}: ${fmt(params.deltaU)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 600, y1: 500 }, labelOffset: {dx: 30, dy: 15} },
       
+      // From Untreated to Resolved (new link for spontaneous recovery)
+      { id: 'link_untreated_resolved', source: 'untreated', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', 'U')}: ${fmt(params.muU)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 600, y1: 325 }, labelOffset: {dy: 20, dx: 10} },
+      
       // From Informal Care
       { id: 'link_informal_formal', source: 'informal', target: 'formal', label: `${getUnicodeBaseSymbol('sigma', 'I')}: ${fmt(params.sigmaI)}`, value: null, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: 'sigmaI', controlPoints: { x1: 250, y1: 225 }, labelOffset: {dx: -20} },
       { id: 'link_informal_resolved', source: 'informal', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', 'I')}: ${fmt(params.muI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'muI', controlPoints: { x1: 600, y1: 225 }, labelOffset: {dy: -20} },

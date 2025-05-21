@@ -52,41 +52,42 @@ const EquationExplainer: React.FC = () => {
     },
     {
       title: 'Untreated Patients',
-      equation: 'U_{deaths} = \\delta_U \\cdot U_t \\\\ U_{remaining} = U_t - U_{deaths} \\\\ U_{new} = r \\cdot (1 - \\phi_0) \\cdot New \\\\ U_{t+1} = U_{remaining} + U_{new}',
-      explanation: 'Weekly transitions for patients who remain completely untreated. Note: The health system multipliers for δ_U have already been applied to the parameter. Each week, new untreated patients (U_new) join those who remained untreated from the previous week.',
+      equation: 'U_{deaths} = \\delta_U \\cdot U_t \\\\ U_{resolved} = \\mu_U \\cdot U_t \\\\ U_{t+1} = U_t + U_{new} - U_{deaths} - U_{resolved}',
+      explanation: 'Weekly transitions for patients who remain completely untreated. Note: The health system multipliers for δ_U have already been applied to the parameter. Each week, the untreated population changes based on inflows from new cases and outflows from deaths and resolution.',
       variables: [
         { symbol: 'U_t', name: 'Current Untreated Cases', value: 'Dynamic' },
         { symbol: 'U_{t+1}', name: 'Untreated Cases Next Week', value: 'Dynamic' },
-        { symbol: '\\delta_U', name: 'Untreated Death Rate (including multiplier)', value: params.deltaU },
+        { symbol: '\\delta_U', name: 'Untreated Death Rate (weekly probability, including multiplier)', value: params.deltaU },
+        { symbol: '\\mu_U', name: 'Untreated Spontaneous Resolution Rate (weekly probability)', value: params.muU },
         { symbol: getLatexMultiplierSymbol('delta', 'U'), name: 'Untreated Death Multiplier (pre-applied)', value: activeMultipliers.delta_multiplier_U },
         { symbol: 'r', name: 'Untreated Ratio (informalCareRatio)', value: params.informalCareRatio },
       ],
-      example: `The base untreated death rate has been adjusted by the health system multiplier ${getLatexMultiplierSymbol('delta', 'U')} = ${formatDecimal(activeMultipliers.delta_multiplier_U, 2)}, resulting in an effective weekly death rate of ${formatDecimal(params.deltaU * 100, 2)}% for untreated patients. Each week, new untreated patients (U_new = ${formatDecimal(params.informalCareRatio * (1-params.phi0) * 100, 1)}% of New) join those remaining from the previous week.`
+      example: `The base untreated death rate has been adjusted by the health system multiplier ${getLatexMultiplierSymbol('delta', 'U')} = ${formatDecimal(activeMultipliers.delta_multiplier_U, 2)}, resulting in an effective weekly death rate of ${formatDecimal(params.deltaU * 100, 2)}% for untreated patients. Each week, ${formatDecimal(params.muU * 100, 2)}% of untreated patients recover spontaneously, and new untreated patients (U_new = ${formatDecimal(params.informalCareRatio * (1-params.phi0) * 100, 1)}% of New) join the population.`
     },
     {
       title: 'Informal Care Transitions',
-      equation: 'I_{formal} = \\sigma_I \\cdot I_t \\\\ I_{resolved} = \\mu_I \\cdot I_t \\\\ I_{deaths} = \\delta_I \\cdot I_t \\\\ I_{remaining} = I_t - I_{formal} - I_{resolved} - I_{deaths} \\\\ I_{new} = (1 - r) \\cdot (1 - \\phi_0) \\cdot New \\\\ I_{t+1} = I_{remaining} + I_{new}',
-      explanation: 'Weekly transitions for patients in informal care (self-care or traditional healers). Note: Health system multipliers for μ_I and δ_I have already been applied to these parameters. Each week, new informal care patients (I_new) join those who remained in informal care from the previous week.',
+      equation: 'I_{formal} = \\sigma_I \\cdot I_t \\\\ I_{resolved} = \\mu_I \\cdot I_t \\\\ I_{deaths} = \\delta_I \\cdot I_t \\\\ I_{t+1} = I_t + I_{new} - I_{formal} - I_{resolved} - I_{deaths}',
+      explanation: 'Weekly transitions for patients in informal care (self-care or traditional healers). Note: Health system multipliers for μ_I and δ_I have already been applied to these parameters. Each week, the informal care population changes based on inflows of new patients and outflows to formal care, resolution, or death.',
       variables: [
         { symbol: 'I_t', name: 'Current Cases in Informal Care', value: 'Dynamic' },
         { symbol: 'I_{t+1}', name: 'Informal Care Cases Next Week', value: 'Dynamic' },
-        { symbol: '\\sigma_I', name: 'Informal to Formal Transfer Rate', value: params.sigmaI },
-        { symbol: '\\mu_I', name: 'Informal Care Resolution Rate (including multiplier)', value: params.muI },
-        { symbol: '\\delta_I', name: 'Informal Care Death Rate (including multiplier)', value: params.deltaI },
+        { symbol: '\\sigma_I', name: 'Informal to Formal Transfer Rate (weekly probability)', value: params.sigmaI },
+        { symbol: '\\mu_I', name: 'Informal Care Resolution Rate (weekly probability, including multiplier)', value: params.muI },
+        { symbol: '\\delta_I', name: 'Informal Care Death Rate (weekly probability, including multiplier)', value: params.deltaI },
         { symbol: getLatexMultiplierSymbol('mu', 'I'), name: 'Informal Resolution Multiplier (pre-applied)', value: activeMultipliers.mu_multiplier_I },
         { symbol: getLatexMultiplierSymbol('delta', 'I'), name: 'Informal Death Multiplier (pre-applied)', value: activeMultipliers.delta_multiplier_I },
         { symbol: 'r', name: 'Untreated Ratio (informalCareRatio)', value: params.informalCareRatio },
       ],
-      example: 'Each week: ' + formatDecimal(params.sigmaI * 100, 0) + '% of informal care patients transition to formal care. With multipliers pre-applied to parameters, ' + formatDecimal(params.muI * 100, 0) + '% resolve, and ' + formatDecimal(params.deltaI * 100, 2) + '% die. New informal care patients (I_new = ' + formatDecimal((1-params.informalCareRatio) * (1-params.phi0) * 100, 1) + '% of New) join those remaining from the previous week.'
+      example: 'Each week: ' + formatDecimal(params.sigmaI * 100, 0) + '% of informal care patients transition to formal care. With multipliers pre-applied to parameters, ' + formatDecimal(params.muI * 100, 0) + '% resolve, and ' + formatDecimal(params.deltaI * 100, 2) + '% die. New informal care patients (I_new = ' + formatDecimal((1-params.informalCareRatio) * (1-params.phi0) * 100, 1) + '% of New) join the population.'
     },
     {
       title: 'Formal Care Entry',
       equation: 'Formal_{new} = \\phi_0 \\cdot New + \\sigma_I \\cdot I_t',
       explanation: 'Total number of people entering formal care pathways each week, combining new cases directly seeking formal care and transfers from informal care.',
       variables: [
-        { symbol: '\\phi_0', name: 'Initial Formal Care Seeking', value: params.phi0 },
+        { symbol: '\\phi_0', name: 'Initial Formal Care Seeking (probability)', value: params.phi0 },
         { symbol: 'New', name: 'New Weekly Cases', value: 'Dynamic' },
-        { symbol: '\\sigma_I', name: 'Informal to Formal Transfer Rate', value: params.sigmaI },
+        { symbol: '\\sigma_I', name: 'Informal to Formal Transfer Rate (weekly probability)', value: params.sigmaI },
         { symbol: 'I_t', name: 'Current Cases in Informal Care', value: 'Dynamic' },
       ],
       example: 'With φ_0 = ' + formatDecimal(params.phi0, 2) + ' and σ_I = ' + formatDecimal(params.sigmaI, 2) + ', about ' + formatDecimal(params.phi0 * 100, 0) + '% of new patients and ' + formatDecimal(params.sigmaI * 100, 0) + '% of informal care patients enter formal care weekly.'
@@ -106,30 +107,30 @@ const EquationExplainer: React.FC = () => {
     },
     {
       title: 'CHW Level (L0) Transitions',
-      equation: 'L0_{resolved} = \\mu_{L0} \\cdot L0_t \\\\ L0_{deaths} = \\delta_{L0} \\cdot L0_t \\\\ L0_{referrals} = \\rho_{L0} \\cdot L0_t \\\\ L0_{remaining} = L0_t - L0_{resolved} - L0_{deaths} - L0_{referrals} \\\\ L0_{t+1} = L0_{remaining} + L0_{new}',
-      explanation: 'Weekly transitions for patients at the community health worker level. Note: Health system multipliers for μ_L0, δ_L0, and ρ_L0 have already been applied to these parameters. Each week, new CHW patients (L0_new) join those remaining from the previous week.',
+      equation: 'L0_{resolved} = \\mu_{L0} \\cdot L0_t \\\\ L0_{deaths} = \\delta_{L0} \\cdot L0_t \\\\ L0_{referrals} = \\rho_{L0} \\cdot L0_t \\\\ L0_{t+1} = L0_t + L0_{new} - L0_{resolved} - L0_{deaths} - L0_{referrals}',
+      explanation: 'Weekly transitions for patients at the community health worker level. Note: Health system multipliers for μ_L0, δ_L0, and ρ_L0 have already been applied to these parameters. Each week, the L0 population changes based on new entries and outflows through resolution, death, or referral.',
       variables: [
         { symbol: 'L0_t', name: 'Current Cases at CHW Level', value: 'Dynamic' },
         { symbol: 'L0_{t+1}', name: 'CHW Cases Next Week', value: 'Dynamic' },
-        { symbol: '\\mu_{L0}', name: 'CHW Resolution Rate (including multiplier)', value: params.mu0 },
-        { symbol: '\\delta_{L0}', name: 'CHW Death Rate (including multiplier)', value: params.delta0 },
-        { symbol: '\\rho_{L0}', name: 'CHW to Primary Care Referral Rate (including multiplier)', value: params.rho0 },
+        { symbol: '\\mu_{L0}', name: 'CHW Resolution Rate (weekly probability, including multiplier)', value: params.mu0 },
+        { symbol: '\\delta_{L0}', name: 'CHW Death Rate (weekly probability, including multiplier)', value: params.delta0 },
+        { symbol: '\\rho_{L0}', name: 'CHW to Primary Care Referral Rate (weekly probability, including multiplier)', value: params.rho0 },
         { symbol: getLatexMultiplierSymbol('mu', 'L0'), name: 'CHW Resolution Multiplier (pre-applied)', value: activeMultipliers.mu_multiplier_L0 },
         { symbol: getLatexMultiplierSymbol('delta', 'L0'), name: 'CHW Death Multiplier (pre-applied)', value: activeMultipliers.delta_multiplier_L0 },
         { symbol: getLatexMultiplierSymbol('rho', 'L0'), name: 'CHW Referral Multiplier (pre-applied)', value: activeMultipliers.rho_multiplier_L0 },
       ],
-      example: 'At CHW level, with health system multipliers pre-applied to parameters: ' + formatDecimal(params.mu0 * 100, 0) + '% resolve, ' + formatDecimal(params.delta0 * 100, 2) + '% die, and ' + formatDecimal(params.rho0 * 100, 0) + '% are referred. New CHW patients (L0_new) from formal care entries join those remaining from the previous week.'
+      example: 'At CHW level, with health system multipliers pre-applied to parameters: ' + formatDecimal(params.mu0 * 100, 0) + '% resolve, ' + formatDecimal(params.delta0 * 100, 2) + '% die, and ' + formatDecimal(params.rho0 * 100, 0) + '% are referred. New CHW patients (L0_new) from formal care entries join the system weekly.'
     },
     {
       title: 'Primary Care (L1) Transitions',
-      equation: 'L1_{resolved} = \\mu_{L1} \\cdot L1_t \\\\ L1_{deaths} = \\delta_{L1} \\cdot L1_t \\\\ L1_{referrals} = \\rho_{L1} \\cdot L1_t \\\\ L1_{remaining} = L1_t - L1_{resolved} - L1_{deaths} - L1_{referrals} \\\\ L1_{new} = L0_{referrals} \\\\ L1_{t+1} = L1_{remaining} + L1_{new}',
+      equation: 'L1_{resolved} = \\mu_{L1} \\cdot L1_t \\\\ L1_{deaths} = \\delta_{L1} \\cdot L1_t \\\\ L1_{referrals} = \\rho_{L1} \\cdot L1_t \\\\ L1_{new} = L0_{referrals} \\\\ L1_{t+1} = L1_t + L1_{new} - L1_{resolved} - L1_{deaths} - L1_{referrals}',
       explanation: 'Weekly transitions for patients at the primary care level. Note: Health system multipliers for μ_L1, δ_L1, and ρ_L1 have already been applied to these parameters. New primary care patients (L1_new) come from CHW referrals.',
       variables: [
         { symbol: 'L1_t', name: 'Current Cases at Primary Care', value: 'Dynamic' },
         { symbol: 'L1_{t+1}', name: 'Primary Care Cases Next Week', value: 'Dynamic' },
-        { symbol: '\\mu_{L1}', name: 'Primary Care Resolution Rate (including multiplier)', value: params.mu1 },
-        { symbol: '\\delta_{L1}', name: 'Primary Care Death Rate (including multiplier)', value: params.delta1 },
-        { symbol: '\\rho_{L1}', name: 'Primary to District Hospital Referral Rate (including multiplier)', value: params.rho1 },
+        { symbol: '\\mu_{L1}', name: 'Primary Care Resolution Rate (weekly probability, including multiplier)', value: params.mu1 },
+        { symbol: '\\delta_{L1}', name: 'Primary Care Death Rate (weekly probability, including multiplier)', value: params.delta1 },
+        { symbol: '\\rho_{L1}', name: 'Primary to District Hospital Referral Rate (weekly probability, including multiplier)', value: params.rho1 },
         { symbol: getLatexMultiplierSymbol('mu', 'L1'), name: 'Primary Care Resolution Multiplier (pre-applied)', value: activeMultipliers.mu_multiplier_L1 },
         { symbol: getLatexMultiplierSymbol('delta', 'L1'), name: 'Primary Care Death Multiplier (pre-applied)', value: activeMultipliers.delta_multiplier_L1 },
         { symbol: getLatexMultiplierSymbol('rho', 'L1'), name: 'Primary Care Referral Multiplier (pre-applied)', value: activeMultipliers.rho_multiplier_L1 },
@@ -138,14 +139,14 @@ const EquationExplainer: React.FC = () => {
     },
     {
       title: 'District Hospital (L2) Transitions',
-      equation: 'L2_{resolved} = \\mu_{L2} \\cdot L2_t \\\\ L2_{deaths} = \\delta_{L2} \\cdot L2_t \\\\ L2_{referrals} = \\rho_{L2} \\cdot L2_t \\\\ L2_{remaining} = L2_t - L2_{resolved} - L2_{deaths} - L2_{referrals} \\\\ L2_{new} = L1_{referrals} \\\\ L2_{t+1} = L2_{remaining} + L2_{new}',
+      equation: 'L2_{resolved} = \\mu_{L2} \\cdot L2_t \\\\ L2_{deaths} = \\delta_{L2} \\cdot L2_t \\\\ L2_{referrals} = \\rho_{L2} \\cdot L2_t \\\\ L2_{new} = L1_{referrals} \\\\ L2_{t+1} = L2_t + L2_{new} - L2_{resolved} - L2_{deaths} - L2_{referrals}',
       explanation: 'Weekly transitions for patients at the district hospital level. Note: Health system multipliers for μ_L2, δ_L2, and ρ_L2 have already been applied to these parameters. New district hospital patients (L2_new) come from primary care referrals.',
       variables: [
         { symbol: 'L2_t', name: 'Current Cases at District Hospitals', value: 'Dynamic' },
         { symbol: 'L2_{t+1}', name: 'District Hospital Cases Next Week', value: 'Dynamic' },
-        { symbol: '\\mu_{L2}', name: 'District Hospital Resolution Rate (including multiplier)', value: params.mu2 },
-        { symbol: '\\delta_{L2}', name: 'District Hospital Death Rate (including multiplier)', value: params.delta2 },
-        { symbol: '\\rho_{L2}', name: 'District to Tertiary Hospital Referral Rate (including multiplier)', value: params.rho2 },
+        { symbol: '\\mu_{L2}', name: 'District Hospital Resolution Rate (weekly probability, including multiplier)', value: params.mu2 },
+        { symbol: '\\delta_{L2}', name: 'District Hospital Death Rate (weekly probability, including multiplier)', value: params.delta2 },
+        { symbol: '\\rho_{L2}', name: 'District to Tertiary Hospital Referral Rate (weekly probability, including multiplier)', value: params.rho2 },
         { symbol: getLatexMultiplierSymbol('mu', 'L2'), name: 'District Hospital Resolution Multiplier (pre-applied)', value: activeMultipliers.mu_multiplier_L2 },
         { symbol: getLatexMultiplierSymbol('delta', 'L2'), name: 'District Hospital Death Multiplier (pre-applied)', value: activeMultipliers.delta_multiplier_L2 },
         { symbol: getLatexMultiplierSymbol('rho', 'L2'), name: 'District Hospital Referral Multiplier (pre-applied)', value: activeMultipliers.rho_multiplier_L2 },
@@ -154,13 +155,13 @@ const EquationExplainer: React.FC = () => {
     },
     {
       title: 'Tertiary Hospital (L3) Transitions',
-      equation: 'L3_{resolved} = \\mu_{L3} \\cdot L3_t \\\\ L3_{deaths} = \\delta_{L3} \\cdot L3_t \\\\ L3_{remaining} = L3_t - L3_{resolved} - L3_{deaths} \\\\ L3_{new} = L2_{referrals} \\\\ L3_{t+1} = L3_{remaining} + L3_{new}',
+      equation: 'L3_{resolved} = \\mu_{L3} \\cdot L3_t \\\\ L3_{deaths} = \\delta_{L3} \\cdot L3_t \\\\ L3_{new} = L2_{referrals} \\\\ L3_{t+1} = L3_t + L3_{new} - L3_{resolved} - L3_{deaths}',
       explanation: 'Weekly transitions for patients at the tertiary hospital level. Note: Health system multipliers for μ_L3 and δ_L3 have already been applied to these parameters. New tertiary hospital patients (L3_new) come from district hospital referrals.',
       variables: [
         { symbol: 'L3_t', name: 'Current Cases at Tertiary Hospitals', value: 'Dynamic' },
         { symbol: 'L3_{t+1}', name: 'Tertiary Hospital Cases Next Week', value: 'Dynamic' },
-        { symbol: '\\mu_{L3}', name: 'Tertiary Hospital Resolution Rate (including multiplier)', value: params.mu3 },
-        { symbol: '\\delta_{L3}', name: 'Tertiary Hospital Death Rate (including multiplier)', value: params.delta3 },
+        { symbol: '\\mu_{L3}', name: 'Tertiary Hospital Resolution Rate (weekly probability, including multiplier)', value: params.mu3 },
+        { symbol: '\\delta_{L3}', name: 'Tertiary Hospital Death Rate (weekly probability, including multiplier)', value: params.delta3 },
         { symbol: getLatexMultiplierSymbol('mu', 'L3'), name: 'Tertiary Hospital Resolution Multiplier (pre-applied)', value: activeMultipliers.mu_multiplier_L3 },
         { symbol: getLatexMultiplierSymbol('delta', 'L3'), name: 'Tertiary Hospital Death Multiplier (pre-applied)', value: activeMultipliers.delta_multiplier_L3 },
       ],
@@ -168,8 +169,8 @@ const EquationExplainer: React.FC = () => {
     },
     {
       title: 'Cumulative Health Outcomes',
-      equation: 'R_{total} = R + (\\mu_I \\cdot I_t) + (\\mu_{L0} \\cdot L0_t) + (\\mu_{L1} \\cdot L1_t) + (\\mu_{L2} \\cdot L2_t) + (\\mu_{L3} \\cdot L3_t) \\\\\\\ D_{total} = D + (\\delta_U \\cdot U_t) + (\\delta_I \\cdot I_t) + (\\delta_{L0} \\cdot L0_t) + (\\delta_{L1} \\cdot L1_t) + (\\delta_{L2} \\cdot L2_t) + (\\delta_{L3} \\cdot L3_t)',
-      explanation: 'Cumulative resolved cases and deaths across all pathways. Note: Health system multipliers have already been incorporated into the μ and δ parameters.',
+      equation: 'R_{total} = R + (\\mu_U \\cdot U_t) + (\\mu_I \\cdot I_t) + (\\mu_{L0} \\cdot L0_t) + (\\mu_{L1} \\cdot L1_t) + (\\mu_{L2} \\cdot L2_t) + (\\mu_{L3} \\cdot L3_t) \\\\\\\ D_{total} = D + (\\delta_U \\cdot U_t) + (\\delta_I \\cdot I_t) + (\\delta_{L0} \\cdot L0_t) + (\\delta_{L1} \\cdot L1_t) + (\\delta_{L2} \\cdot L2_t) + (\\delta_{L3} \\cdot L3_t)',
+      explanation: 'Cumulative resolved cases and deaths across all pathways. All μ and δ parameters represent weekly probabilities with health system multipliers already incorporated.',
       variables: [
         { symbol: 'R', name: 'Cumulative Resolved Cases', value: 'Dynamic' },
         { symbol: 'D', name: 'Cumulative Deaths', value: 'Dynamic' },
@@ -220,6 +221,18 @@ const EquationExplainer: React.FC = () => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
       <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Model Structure and Equations</h3>
+      
+      <div className="bg-yellow-50 dark:bg-yellow-900 p-4 rounded-md mb-6">
+        <h4 className="text-md font-medium text-gray-700 dark:text-yellow-100 mb-2">Model Limitations</h4>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          This model has several important limitations to consider when interpreting results:
+          (1) Healthcare capacity constraints are not modeled - resolution rates are proportional to patient numbers without upper limits;
+          (2) The model simplifies disease progression pathways - it doesn't fully capture disease heterogeneity, non-linear progression patterns, comorbidities, demographic variations in outcomes, or complex transitions between care levels that occur in real-world settings;
+          (3) All rates are weekly probabilities rather than continuous rates, which simplifies transitions but may not capture time-dependent dynamics;
+          (4) The model doesn't directly capture patient suffering or quality of life beyond DALYs;
+          (5) Resolution pathways assume standard care processes without accounting for complex disease interactions or comorbidities.
+        </p>
+      </div>
       
       <div className="mb-8">
         <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">Stock-and-Flow Model Diagram</h4>

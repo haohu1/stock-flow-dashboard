@@ -35,6 +35,7 @@ export interface ModelParameters {
   muI: number;                // resolution probability in informal care
   deltaI: number;             // death probability in informal care
   deltaU: number;             // death probability if untreated
+  muU: number;                // resolution probability if untreated (spontaneous recovery)
   
   mu0: number;                // resolution probability at L0
   delta0: number;             // death probability at L0
@@ -147,7 +148,8 @@ const runWeek = (
   
   // Calculate transitions from U (untreated)
   const untreatedDeaths = params.deltaU * state.U;
-  const remainingUntreated = state.U - untreatedDeaths;
+  const untreatedResolved = params.muU * state.U; // New: spontaneous resolution for untreated patients
+  const remainingUntreated = state.U - untreatedDeaths - untreatedResolved; // Updated to include resolved
   
   // Calculate transitions from I (informal care)
   const informalToFormal = params.sigmaI * state.I;
@@ -198,7 +200,7 @@ const runWeek = (
   const newL2 = l1Referral + remainingL2;
   const newL3 = l2Referral + remainingL3;
   
-  const newR = state.R + informalResolved + l0Resolved + l1Resolved + l2Resolved + l3Resolved;
+  const newR = state.R + untreatedResolved + informalResolved + l0Resolved + l1Resolved + l2Resolved + l3Resolved; // Include untreated resolved
   const newD = state.D + untreatedDeaths + informalDeaths + l0Deaths + l1Deaths + l2Deaths + l3Deaths;
   
   // Calculate new patient days
@@ -260,8 +262,11 @@ const calculateEconomics = (
     (1 - params.discountRate) : 1;
   
   const deathDalys = state.D * adjustedYLL * discountFactor;
+  
+  // Calculate disability days - now including untreated days
   const disabilityDalys = 
-    (state.patientDays.I + state.patientDays.F + state.patientDays.L0 + state.patientDays.L1 + 
+    (state.U + // Include untreated days in disability calculation
+     state.patientDays.I + state.patientDays.F + state.patientDays.L0 + state.patientDays.L1 + 
      state.patientDays.L2 + state.patientDays.L3) * (params.disabilityWeight / 365.25) * discountFactor;
   
   const dalys = deathDalys + disabilityDalys;
@@ -277,12 +282,14 @@ const calculateTimeToResolution = (
   // If we have no data, return 0
   if (weeklyStates.length === 0) return 0;
   
-  // SIMPLIFY THE CALCULATION: Use the direct calculation for all disease cases
-  // This is the most reliable approach that works for all diseases including fast-resolving ones
-
   // Calculate probability of reaching each level based on referral rates
   const pInformal = 1 - params.phi0; // Probability of going to informal care
   const pFormal = params.phi0;       // Probability of going to formal care
+  
+  // For untreated, it's a portion of those who don't go to formal care
+  const pUntreated = pInformal * params.informalCareRatio;
+  // Adjust informal care probability to account for the portion who are untreated
+  const pInformalAdjusted = pInformal * (1 - params.informalCareRatio);
   
   // Probability of being at different formal care levels
   const pL0 = pFormal;
@@ -292,7 +299,8 @@ const calculateTimeToResolution = (
   
   // Calculate weighted average resolution rate based on pathway probabilities
   const weightedResolutionRate = 
-    pInformal * params.muI + 
+    pUntreated * params.muU +         // Include untreated spontaneous resolution
+    pInformalAdjusted * params.muI + 
     pL0 * params.mu0 + 
     pL1 * params.mu1 + 
     pL2 * params.mu2 + 
@@ -508,6 +516,7 @@ export const diseaseProfiles = {
     disabilityWeight: 0.42,   // moderate-high disability during acute decompensation
     meanAgeOfInfection: 67,   // primarily affects older adults
     muI: 0.01,                // negligible spontaneous resolution at home (1% per week)
+    muU: 0.004,               // very low spontaneous recovery rate without any care (0.4% per week)
     mu0: 0.03,                // very limited CHW role in resolution (3% per week)
     mu1: 0.35,                // moderate resolution at primary care with medications (35% per week)
     mu2: 0.55,                // good resolution at district hospital (55% per week)
@@ -527,6 +536,7 @@ export const diseaseProfiles = {
     disabilityWeight: 0.333,  // moderate disability weight for active TB
     meanAgeOfInfection: 35,   // typical age of TB diagnosis
     muI: 0.02,                // very low spontaneous resolution for active TB (2% per week)
+    muU: 0.005,               // extremely low spontaneous resolution if untreated (0.5% per week)
     mu0: 0.03,                // CHW role primarily DOTS/referral, low direct resolution (3% per week)
     mu1: 0.04,                // weekly resolution rate on standard 6-month primary care treatment (4% per week, implies ~25wks)
     mu2: 0.05,                // slightly better/faster for complex cases at district hospital (5% per week)
@@ -546,6 +556,7 @@ export const diseaseProfiles = {
     disabilityWeight: 0.28,   // moderate disability
     meanAgeOfInfection: 3,    // primarily affects young children
     muI: 0.10,                // some spontaneous resolution, esp. viral (10% per week)
+    muU: 0.06,                // limited spontaneous resolution if untreated (6% per week)
     mu0: 0.70,                // CHW with antibiotics (e.g. Amox DT) for non-severe (70% per week)
     mu1: 0.80,                // primary care with antibiotics for non-severe (80% per week)
     mu2: 0.70,                // district hospital for severe pneumonia (resolution may take longer) (70% per week)
@@ -560,30 +571,32 @@ export const diseaseProfiles = {
     rho1: 0.30,               // primary care referral to district for severe cases (30%)
     rho2: 0.20                // district referral to tertiary for highly complex cases (20%)
   },
-  malaria: { // Uncomplicated and severe malaria in endemic LMICs
-    lambda: 0.40,             // moderate-high incidence in endemic areas (episodes per person-year)
-    disabilityWeight: 0.192,  // moderate disability
-    meanAgeOfInfection: 9,    // affects children and adults, children at higher risk
-    muI: 0.15,                // some spontaneous resolution of uncomplicated malaria (15% per week)
-    mu0: 0.80,                // CHW with RDTs and ACTs for uncomplicated (80% per week)
-    mu1: 0.85,                // primary care with ACTs for uncomplicated (85% per week)
-    mu2: 0.60,                // district hospital for severe malaria (recovery longer) (60% per week)
-    mu3: 0.70,                // tertiary care for very severe/complicated malaria (70% per week)
-    deltaI: 0.02,             // mortality with informal care (uncomplicated progressing/severe missed) (2% per week)
-    deltaU: 0.03,             // mortality if completely untreated (3% per week)
-    delta0: 0.002,            // mortality under CHW care (uncomplicated, accounts for some failures/progression) (0.2% per week)
-    delta1: 0.001,            // mortality under primary care (uncomplicated) (0.1% per week)
-    delta2: 0.03,             // mortality for severe malaria at district hospital (3% per week)
-    delta3: 0.02,             // mortality for very severe/complicated at tertiary (2% per week)
-    rho0: 0.50,               // CHW referral to primary (danger signs, RDT positive non-response) (50%)
-    rho1: 0.40,               // primary care referral to district (severe malaria criteria) (40%)
-    rho2: 0.20                // district referral to tertiary (complex severe cases, organ failure) (20%)
+  malaria: { // Uncomplicated and severe malaria in Nigeria (high-burden setting)
+    lambda: 0.20,             // 20% annual incidence in endemic regions of Nigeria (higher than national avg of ~6%)
+    disabilityWeight: 0.186,  // From IHME GBD, weighted average for uncomplicated and severe cases
+    meanAgeOfInfection: 7,    // Lower mean age, reflecting higher burden in children in Nigeria
+    muI: 0.15,                // Spontaneous resolution with traditional/home remedies (~15% weekly)
+    muU: 0.08,                // Limited spontaneous resolution if completely untreated (8% weekly)
+    mu0: 0.75,                // CHW with RDTs and ACTs for uncomplicated cases (75% weekly resolution)
+    mu1: 0.80,                // Primary care with ACTs and better monitoring (80% weekly resolution)
+    mu2: 0.50,                // District hospital for severe malaria, IV artesunate (50% weekly - recovery takes longer)
+    mu3: 0.60,                // Tertiary care for complicated malaria (60% weekly resolution)
+    deltaI: 0.075,            // Mortality with informal care (7.5% weekly - comparable to untreated)
+    deltaU: 0.075,            // Mortality if completely untreated (7.5% weekly, ~5%-10% range)
+    delta0: 0.001,            // Mortality under CHW care (0.1% weekly - includes some misdiagnosis/late referral)
+    delta1: 0.001,            // Mortality under primary care (0.1% weekly - similar to CHW)
+    delta2: 0.10,             // Mortality for severe cases at district hospitals (10% weekly - severe cases, high fatality)
+    delta3: 0.05,             // Mortality for complicated cases at tertiary centers (5% weekly, 2%-10% range)
+    rho0: 0.25,               // CHW referral to primary (danger signs/severe cases) - lower than previous estimate
+    rho1: 0.20,               // Primary care referral to district (severe malaria) - lower than previous estimate
+    rho2: 0.10                // District to tertiary referral (very complicated cases) - lower rate as suggested
   },
   fever: { // Fever of Unknown Origin (non-specific)
     lambda: 0.60,             // moderate-high incidence (episodes per person-year)
     disabilityWeight: 0.10,   // lower disability weight
     meanAgeOfInfection: 15,   // affects all ages
     muI: 0.30,                // moderate spontaneous resolution for many fevers (30% per week)
+    muU: 0.25,                // significant spontaneous resolution for many non-specific fevers (25% per week)
     mu0: 0.55,                // CHW (symptomatic relief, advice, identify danger signs) (55% per week)
     mu1: 0.70,                // primary care (basic investigation, empiric treatment) (70% per week)
     mu2: 0.80,                // district hospital (further investigation) (80% per week)
@@ -603,6 +616,7 @@ export const diseaseProfiles = {
     disabilityWeight: 0.15,   // moderate disability (dehydration)
     meanAgeOfInfection: 2,    // primarily affects young children
     muI: 0.35,                // moderate spontaneous resolution with home fluids (35% per week)
+    muU: 0.20,                // reasonable spontaneous resolution even without fluid management (20% per week)
     mu0: 0.85,                // CHW with ORS/Zinc for non-severe (85% per week)
     mu1: 0.90,                // primary care with ORS/Zinc, antibiotics if dysentery (90% per week)
     mu2: 0.80,                // district hospital for severe dehydration/complications (recovery longer) (80% per week)
@@ -622,6 +636,7 @@ export const diseaseProfiles = {
     disabilityWeight: 0.35,   // moderate-high disability
     meanAgeOfInfection: 0.5,  // infants (6 months average age)
     muI: 0.10,                // some spontaneous resolution (viral, very mild bacterial) (10% per week)
+    muU: 0.04,                // minimal spontaneous resolution if untreated (4% per week)
     mu0: 0.50,                // CHW with antibiotics for non-severe infant pneumonia/PSBI (Amox DT) (50% per week)
     mu1: 0.70,                // primary care with antibiotics for non-severe (70% per week)
     mu2: 0.75,                // district hospital for severe infant pneumonia (75% per week)
@@ -641,6 +656,7 @@ export const diseaseProfiles = {
     disabilityWeight: 0.06,   // moderate for symptomatic anemia
     meanAgeOfInfection: 15,   // bimodal (young children, women of reproductive age)
     muI: 0.05,                // some response to dietary changes or informal iron (5% weekly improvement)
+    muU: 0.01,                // minimal spontaneous improvement without any iron intake (1% per week)
     mu0: 0.15,                // CHW providing iron supplements (15% weekly improvement to target Hb)
     mu1: 0.20,                // primary care diagnosis, iron supplementation, basic investigation (20% weekly improvement)
     mu2: 0.25,                // district hospital for severe anemia/non-response, investigation, transfusion (25% weekly improvement/stabilization)
@@ -659,26 +675,28 @@ export const diseaseProfiles = {
     lambda: 0.005,            // 0.5% annual new diagnoses needing linkage to chronic ART care (South Africa)
     disabilityWeight: 0.078,  // low for stable HIV on ART
     meanAgeOfInfection: 30,   // typical age of diagnosis
-    muI: 0.01,                // "Self-management" pre-linkage - very low success in viral suppression (1% weekly to stable)
+    muI: 0,                   // No spontaneous viral suppression with self-management 
+    muU: 0,                   // No spontaneous viral suppression if untreated 
     mu0: 0.05,                // CHW support for linkage, adherence (5% weekly to stable on ART)
     mu1: 0.10,                // primary care initiating ART, counseling, monitoring (10% weekly to stable initial phase)
     mu2: 0.12,                // district hospital for complex starts or managing side effects (12% weekly to stable)
     mu3: 0.15,                // tertiary for very complex cases, salvage regimens (15% weekly to stable)
-    deltaI: 0.006,            // high mortality if diagnosed but not linked (progression) (0.6% weekly)
-    deltaU: 0.008,            // higher mortality for undiagnosed/untreated (0.8% weekly)
-    delta0: 0.003,            // mortality during CHW linkage/support (0.3% weekly)
-    delta1: 0.0008,           // mortality on ART at primary care (treatment failure, NCDs) (0.08% weekly)
-    delta2: 0.001,            // similar to L1, maybe slightly higher if sicker patients (0.1% weekly)
-    delta3: 0.0006,           // mortality for very complex/failing patients at tertiary (0.06% weekly)
+    deltaI: 0.002,            // mortality if diagnosed but not linked (0.2% weekly, ~10-year survival)
+    deltaU: 0.002,            // untreated mortality (0.2% weekly, ~10-year survival)
+    delta0: 0.0015,           // mortality during CHW linkage/support (0.15% weekly)
+    delta1: 0.0001,           // very low mortality on effective ART at primary care (0.01% weekly)
+    delta2: 0.0005,           // slightly higher for complex cases at district level (0.05% weekly)
+    delta3: 0.02,             // high mortality for advanced disease at tertiary (2% weekly)
     rho0: 0.90,               // high CHW referral for ART initiation (90%)
     rho1: 0.18,               // low primary referral if stable, higher if complications (18%)
-    rho2: 0.12                // low district referral to tertiary (12%)
+    rho2: 0.5                 // moderate secondary to tertiary referral (50%)
   },
   high_risk_pregnancy_low_anc: { // High-risk pregnancy with limited/no antenatal care
     lambda: 0.02,             // 2% of women of reproductive age annually experience this (very rough estimate)
     disabilityWeight: 0.30,   // high average disability during complicated HRP
     meanAgeOfInfection: 28,   // typical reproductive age
     muI: 0.01,                // spontaneous favorable outcome despite HRP & low ANC (very low, 1% weekly)
+    muU: 0.005,               // extremely low favorable spontaneous outcome with no care (0.5% per week)
     mu0: 0.02,                // CHW identifies risk, encourages facility visits (2% weekly improved outcome by CHW alone)
     mu1: 0.10,                // primary care (if accessed) basic ANC, identifies major issues (10% weekly successful management of some risks)
     mu2: 0.50,                // district hospital managing complications, C-sections (50% weekly resolution of acute complication/delivery)
@@ -698,6 +716,7 @@ export const diseaseProfiles = {
     disabilityWeight: 0.01,   // very low disability
     meanAgeOfInfection: 10,   // affects all ages, common in children
     muI: 0.70,                // high spontaneous resolution (70% per week)
+    muU: 0.65,                // very high spontaneous resolution even without any care (65% per week)
     mu0: 0.75,                // CHW (reassurance, symptomatic advice) - similar to spontaneous (75% per week)
     mu1: 0.80,                // primary care (similar, rule out more serious) (80% per week)
     mu2: 0.85,                // rarely reaches hospital unless misdiagnosed/severe complication (85% per week)
@@ -716,20 +735,21 @@ export const diseaseProfiles = {
     lambda: 0.04,             // 4% annual incidence among PLHIV (higher in South Africa with ~13.5% HIV prevalence)
     disabilityWeight: 0.582,  // high disability during acute OI episode
     meanAgeOfInfection: 32,   // typical age for HIV-related OIs
-    muI: 0.05,                // low spontaneous resolution without proper treatment (5% per week)
-    mu0: 0.08,                // limited CHW role in OI management (8% per week)
-    mu1: 0.30,                // primary care with antibiotics/antifungals for some OIs (30% per week)
-    mu2: 0.55,                // district hospital with IV treatment, diagnostics (55% per week)
-    mu3: 0.70,                // tertiary with advanced diagnostics/treatment (70% per week)
-    deltaI: 0.04,             // high mortality with informal care only (4% per week)
-    deltaU: 0.06,             // very high mortality if completely untreated (6% per week)
-    delta0: 0.03,             // high mortality at CHW level (3% per week)
-    delta1: 0.02,             // moderate mortality at primary care (2% per week)
-    delta2: 0.01,             // lower mortality at district hospital (1% per week)
-    delta3: 0.005,            // lowest mortality at tertiary (0.5% per week)
-    rho0: 0.90,               // very high CHW referral for OIs (90%)
-    rho1: 0.60,               // high primary referral for severe/complex OIs (60%)
-    rho2: 0.30                // moderate district to tertiary for most severe/resistant cases (30%)
+    muI: 0,                   // No spontaneous resolution with informal care
+    muU: 0,                   // No spontaneous resolution without any care
+    mu0: 0.08,                // Limited CHW role in OI management (8% per week)
+    mu1: 0.30,                // Primary care with antibiotics/antifungals for some OIs (30% per week)
+    mu2: 0.55,                // District hospital with IV treatment, diagnostics (55% per week)
+    mu3: 0.70,                // Tertiary with advanced diagnostics/treatment (70% per week)
+    deltaI: 0.002,            // Mortality with informal care (0.2% weekly, ~10-year survival)
+    deltaU: 0.002,            // Untreated mortality (0.2% weekly, ~10-year survival)
+    delta0: 0.0015,           // Mortality with CHW support (0.15% weekly)
+    delta1: 0.0001,           // Very low mortality with effective ART & OI treatment at primary care (0.01% weekly)
+    delta2: 0.0005,           // Slightly higher mortality at district level (0.05% weekly)
+    delta3: 0.02,             // High mortality for advanced disease at tertiary (2% weekly)
+    rho0: 0.90,               // Very high CHW referral for OIs (90%)
+    rho1: 0.60,               // High primary referral for severe/complex OIs (60%)
+    rho2: 0.5                 // Moderate district to tertiary referral (50%)
   }
 };
 
@@ -870,6 +890,7 @@ export const getDefaultParameters = (): ModelParameters => ({
   muI: 0.30,
   deltaI: 0.02,
   deltaU: 0.01,
+  muU: 0.05,    // Default: 5% weekly chance of spontaneous resolution for untreated patients
   
   mu0: 0.50,
   delta0: 0.03,

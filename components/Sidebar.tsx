@@ -41,8 +41,10 @@ const Sidebar: React.FC = () => {
     checked: boolean;
   }[]>([]);
   
-  // State for expandable compare diseases section
+  // State for expandable sections
   const [compareDiseaseExpanded, setCompareDiseaseExpanded] = useState(false);
+  const [healthSystemExpanded, setHealthSystemExpanded] = useState(false);
+  const [diseaseDescriptionExpanded, setDiseaseDescriptionExpanded] = useState(false);
 
   // Initialize disease options
   useEffect(() => {
@@ -233,9 +235,26 @@ const Sidebar: React.FC = () => {
       <h2 className="text-xl font-bold mb-6 text-gray-800 dark:text-white">Model Settings</h2>
 
       <div className="mb-6">
-        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Health System Scenario
-        </label>
+        <div className="flex justify-between items-center mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Health System Scenario
+          </label>
+          <button 
+            onClick={() => setHealthSystemExpanded(!healthSystemExpanded)}
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            {healthSystemExpanded ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
+        </div>
+        
         <select
           value={selectedHealthSystemStrength}
           onChange={handleHealthSystemChange}
@@ -249,29 +268,48 @@ const Sidebar: React.FC = () => {
         </select>
 
         {/* Add health system scenario descriptions */}
-        <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-left">
-          {selectedHealthSystemStrength === 'moderate_urban_system' && (
-            <p>A typical urban health system with moderate resources. Balanced care-seeking behavior and healthcare quality.</p>
-          )}
-          {selectedHealthSystemStrength === 'weak_rural_system' && (
-            <p>Limited healthcare capacity in rural settings. Lower initial care-seeking, harder transitions between levels, higher mortality rates.</p>
-          )}
-          {selectedHealthSystemStrength === 'strong_urban_system_lmic' && (
-            <p>Well-functioning urban system in a lower/middle income country. Higher healthcare access, improved outcomes, and efficient referrals.</p>
-          )}
-          {selectedHealthSystemStrength === 'fragile_conflict_system' && (
-            <p>Healthcare system in a humanitarian crisis or conflict zone. Severely limited access, compromised care quality, and disrupted referral pathways.</p>
-          )}
-          {selectedHealthSystemStrength === 'high_income_system' && (
-            <p>Advanced healthcare system in a high-income country. Very high treatment quality and access, low mortality, with higher costs of care.</p>
-          )}
-        </div>
+        {healthSystemExpanded && (
+          <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-left">
+            {selectedHealthSystemStrength === 'moderate_urban_system' && (
+              <p>A typical urban health system with moderate resources. Balanced care-seeking behavior and healthcare quality.</p>
+            )}
+            {selectedHealthSystemStrength === 'weak_rural_system' && (
+              <p>Limited healthcare capacity in rural settings. Lower initial care-seeking, harder transitions between levels, higher mortality rates.</p>
+            )}
+            {selectedHealthSystemStrength === 'strong_urban_system_lmic' && (
+              <p>Well-functioning urban system in a lower/middle income country. Higher healthcare access, improved outcomes, and efficient referrals.</p>
+            )}
+            {selectedHealthSystemStrength === 'fragile_conflict_system' && (
+              <p>Healthcare system in a humanitarian crisis or conflict zone. Severely limited access, compromised care quality, and disrupted referral pathways.</p>
+            )}
+            {selectedHealthSystemStrength === 'high_income_system' && (
+              <p>Advanced healthcare system in a high-income country. Very high treatment quality and access, low mortality, with higher costs of care.</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mb-6">
-        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Primary Disease
-        </label>
+        <div className="flex justify-between items-center mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Primary Disease
+          </label>
+          <button 
+            onClick={() => setDiseaseDescriptionExpanded(!diseaseDescriptionExpanded)}
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            {diseaseDescriptionExpanded ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
+        </div>
+        
         <select
           value={selectedDisease}
           onChange={handleDiseaseChange}
@@ -296,44 +334,46 @@ const Sidebar: React.FC = () => {
         </select>
         
         {/* Add disease descriptions */}
-        <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-left">
-          {selectedDisease === 'malaria' && (
-            <p>Malaria is a mosquito-borne disease with moderate-high incidence (0.4 episodes per person-year) in endemic areas. Features some spontaneous resolution of uncomplicated cases (15% weekly) but significant mortality if untreated (3% weekly) or with informal care (2% weekly). CHWs with RDTs and ACTs achieve high resolution rates (80% weekly). Affects children and adults, with children at higher risk.</p>
-          )}
-          {selectedDisease === 'tuberculosis' && (
-            <p>Tuberculosis in South Africa has a very high incidence (615 per 100,000 population annually), reflecting one of the highest TB burdens globally. Features very low spontaneous resolution (2% weekly) and higher mortality rates than global averages (0.4% weekly if untreated). Complicated by high HIV co-infection rates. Requires sustained treatment with resolution rates of 4-6% weekly depending on care level. CHW role focuses on DOTS support with high referral rate (85%).</p>
-          )}
-          {selectedDisease === 'pneumonia' && (
-            <p>Pneumonia is an acute respiratory infection with high incidence (0.9 episodes per child-year) primarily affecting young children. Features some spontaneous resolution (10% weekly) but significant mortality if untreated (5% weekly). CHWs providing antibiotics achieve high resolution rates (70% weekly) for non-severe cases. Hospital care needed for severe cases with mortality rates of 1.5-2% weekly despite treatment.</p>
-          )}
-          {selectedDisease === 'urti' && (
-            <p>Upper Respiratory Tract Infection with very high incidence (2 episodes per person-year). Features excellent spontaneous resolution (70% weekly) with minimal additional benefit from healthcare intervention. Extremely low mortality (0.001-0.002% weekly) and minimal referral requirements (5% from CHW level). Represents a high-volume, low-severity condition affecting all ages.</p>
-          )}
-          {selectedDisease === 'infant_pneumonia' && (
-            <p>Severe respiratory infection affecting infants (&lt;1 year) with very high incidence (1.2 episodes per infant-year). Lower spontaneous resolution (10% weekly) and higher mortality (6% if untreated) than adult pneumonia. CHWs treating non-severe cases achieve 50% weekly resolution. Hospital care for severe cases still carries 2-2.5% weekly mortality despite treatment. Requires prompt medical intervention.</p>
-          )}
-          {selectedDisease === 'fever' && (
-            <p>Fever of unknown origin has moderate-high incidence (0.6 episodes per person-year) affecting all ages. Moderate spontaneous resolution (30% weekly) but requires diagnostic evaluation to rule out serious conditions. Mortality ranges from 1.5% weekly if untreated to 0.1% weekly at tertiary care. Primary care can diagnose and provide empiric treatment with good outcomes (70% weekly resolution).</p>
-          )}
-          {selectedDisease === 'diarrhea' && (
-            <p>Acute diarrheal disease with very high incidence (1.5 episodes per child-year), primarily affecting young children. Moderate spontaneous resolution with home fluids (35% weekly) but risk of severe dehydration if untreated (2.5% weekly mortality). CHWs with ORS/zinc achieve excellent outcomes (85% weekly resolution) for non-severe cases. Severe dehydration requires hospital management with 0.5-1% weekly mortality despite treatment.</p>
-          )}
-          {selectedDisease === 'hiv_opportunistic' && (
-            <p>HIV-related opportunistic infections in South Africa occur at high rates due to 13.5% HIV prevalence. Conditions include TB, pneumocystis pneumonia, cryptococcal meningitis, and others. Very low spontaneous resolution (5% weekly) with extremely high mortality if untreated (6% weekly). Requires specialized hospital care with mortality rates ranging from 2% weekly at primary care to 0.5% weekly at tertiary centers. Very high referral recommendations (90% from CHW level).</p>
-          )}
-          {selectedDisease === 'high_risk_pregnancy_low_anc' && (
-            <p>High-risk pregnancies with inadequate antenatal care affect approximately 2% of women of reproductive age annually. Very low spontaneous favorable outcomes (1% weekly) and high mortality/morbidity if managed informally (1.5% weekly) or untreated (2% weekly). District hospitals with C-section capability and blood products achieve much better outcomes (50% weekly resolution of complications). Very high referral rates recommended (90% from CHW level).</p>
-          )}
-          {selectedDisease === 'anemia' && (
-            <p>Primarily iron deficiency anemia with moderate incidence (20% annual) affecting young children and women of reproductive age. Low spontaneous improvement (5% weekly) with dietary changes alone. CHW-provided iron supplements achieve moderate improvement (15% weekly). Severe anemia may require hospital investigation and transfusion. Very low mortality (0.05-0.1% weekly) unless severe underlying complications present.</p>
-          )}
-          {selectedDisease === 'hiv_management_chronic' && (
-            <p>Chronic HIV management in South Africa with high incidence of new diagnoses (0.5% annual) requiring linkage to care, reflecting the 13.5% national prevalence. Self-management pre-linkage has very low success in viral suppression (1% weekly). Primary care ART initiation and monitoring achieves good outcomes (10% weekly stabilization). Mortality is higher than global averages if diagnosed but not linked to care (0.6% weekly) but considerably lower on effective ART (0.08% weekly). High CHW referral essential (90%).</p>
-          )}
-          {selectedDisease === 'congestive_heart_failure' && (
-            <p>Chronic cardiac condition with low incidence (1.2% annual) primarily affecting older adults (mean age 67). Negligible spontaneous resolution (1% weekly) and high mortality if untreated (9% weekly) or with informal care only (6% weekly). Requires medication management at primary care (35% weekly resolution) with progressively better outcomes at higher levels. Even with tertiary care maintains 1% weekly mortality.</p>
-          )}
-        </div>
+        {diseaseDescriptionExpanded && (
+          <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-left">
+            {selectedDisease === 'malaria' && (
+              <p>Malaria in Nigeria, a high-burden setting, has substantial incidence (20% annual) in endemic regions, particularly affecting young children (mean age 7). Features limited spontaneous resolution if completely untreated (8% weekly) and somewhat better with traditional remedies (15% weekly). Mortality is high at 7.5% weekly if untreated or with ineffective informal care. CHWs and primary care facilities with effective antimalarials achieve very low mortality rates (0.1% weekly) alongside good resolution rates (75-80% weekly). Severe cases requiring hospital admission face higher mortality despite treatment (10% at district hospitals, 5% at tertiary centers), reflecting the critical nature of advanced disease. Referral patterns follow Nigerian healthcare cascades, with 25% of CHW cases, 20% of primary care cases, and 10% of district hospital cases requiring higher-level care.</p>
+            )}
+            {selectedDisease === 'tuberculosis' && (
+              <p>Tuberculosis in South Africa has a very high incidence (615 per 100,000 population annually), reflecting one of the highest TB burdens globally. Features extremely low spontaneous resolution if untreated (0.5% weekly) or with informal care (2% weekly) and higher mortality rates than global averages (0.4% weekly if untreated). Complicated by high HIV co-infection rates. Requires sustained treatment with resolution rates of 4-6% weekly depending on care level. CHW role focuses on DOTS support with high referral rate (85%).</p>
+            )}
+            {selectedDisease === 'pneumonia' && (
+              <p>Pneumonia is an acute respiratory infection with high incidence (0.9 episodes per child-year) primarily affecting young children. Features limited spontaneous resolution if untreated (6% weekly) and somewhat better with informal care (10% weekly) but significant mortality if untreated (5% weekly). CHWs providing antibiotics achieve high resolution rates (70% weekly) for non-severe cases. Hospital care needed for severe cases with mortality rates of 1.5-2% weekly despite treatment.</p>
+            )}
+            {selectedDisease === 'urti' && (
+              <p>Upper Respiratory Tract Infection with very high incidence (2 episodes per person-year). Features very high spontaneous resolution even without any care (65% weekly) and with minimal additional benefit from informal care (70% weekly) or healthcare intervention. Extremely low mortality (0.001-0.002% weekly) and minimal referral requirements (5% from CHW level). Represents a high-volume, low-severity condition affecting all ages.</p>
+            )}
+            {selectedDisease === 'infant_pneumonia' && (
+              <p>Severe respiratory infection affecting infants (&lt;1 year) with very high incidence (1.2 episodes per infant-year). Minimal spontaneous resolution if untreated (4% weekly) and slightly better with informal care (10% weekly). Much higher mortality (6% if untreated) than adult pneumonia. CHWs treating non-severe cases achieve 50% weekly resolution. Hospital care for severe cases still carries 2-2.5% weekly mortality despite treatment. Requires prompt medical intervention.</p>
+            )}
+            {selectedDisease === 'fever' && (
+              <p>Fever of unknown origin has moderate-high incidence (0.6 episodes per person-year) affecting all ages. Significant spontaneous resolution for many non-specific fevers (25% weekly) even without care, and better with informal care (30% weekly), but requires diagnostic evaluation to rule out serious conditions. Mortality ranges from 1.5% weekly if untreated to 0.1% weekly at tertiary care. Primary care can diagnose and provide empiric treatment with good outcomes (70% weekly resolution).</p>
+            )}
+            {selectedDisease === 'diarrhea' && (
+              <p>Acute diarrheal disease with very high incidence (1.5 episodes per child-year), primarily affecting young children. Reasonable spontaneous resolution even without fluid management (20% weekly) and better with home fluids (35% weekly), but risk of severe dehydration if untreated (2.5% weekly mortality). CHWs with ORS/zinc achieve excellent outcomes (85% weekly resolution) for non-severe cases. Severe dehydration requires hospital management with 0.5-1% weekly mortality despite treatment.</p>
+            )}
+            {selectedDisease === 'hiv_opportunistic' && (
+              <p>HIV-related opportunistic infections in South Africa occur at high rates due to 13.5% HIV prevalence. Conditions include TB, pneumocystis pneumonia, cryptococcal meningitis, and others. No spontaneous resolution without intervention (0% weekly) and no significant improvement with informal care (0% weekly). Mortality rate if untreated is 0.2% weekly (≈10-year survival) and similar with informal care. Requires specialized care with mortality rates ranging from 0.01% weekly at primary care with effective ART to 2% weekly at tertiary centers for advanced disease. High CHW referral essential (90%) with moderate secondary to tertiary referral (50%).</p>
+            )}
+            {selectedDisease === 'high_risk_pregnancy_low_anc' && (
+              <p>High-risk pregnancies with inadequate antenatal care affect approximately 2% of women of reproductive age annually. Extremely low favorable spontaneous outcome with no care (0.5% weekly) and slightly better with informal care (1% weekly). High mortality/morbidity if untreated (2% weekly) or managed informally (1.5% weekly). District hospitals with C-section capability and blood products achieve much better outcomes (50% weekly resolution of complications). Very high referral rates recommended (90% from CHW level).</p>
+            )}
+            {selectedDisease === 'anemia' && (
+              <p>Primarily iron deficiency anemia with moderate incidence (20% annual) affecting young children and women of reproductive age. Minimal spontaneous improvement without any iron intake (1% weekly) and slightly better with dietary changes in informal care (5% weekly). CHW-provided iron supplements achieve moderate improvement (15% weekly). Severe anemia may require hospital investigation and transfusion. Very low mortality (0.05-0.1% weekly) unless severe underlying complications present.</p>
+            )}
+            {selectedDisease === 'hiv_management_chronic' && (
+              <p>Chronic HIV management in South Africa with high incidence of new diagnoses (0.5% annual) requiring linkage to care, reflecting the 13.5% national prevalence. No spontaneous viral suppression if untreated (0% weekly) and no improvement with self-management (0% weekly). Primary care ART initiation and monitoring achieves stabilization but not cure. Mortality is 0.2% weekly if untreated/informal care (≈10-year survival), but considerably lower with proper ART (0.01% weekly at primary care). However, patients with advanced disease requiring tertiary care face higher mortality (2% weekly) despite treatment. High CHW referral essential (90%) with moderate secondary to tertiary referral (50%).</p>
+            )}
+            {selectedDisease === 'congestive_heart_failure' && (
+              <p>Chronic cardiac condition with low incidence (1.2% annual) primarily affecting older adults (mean age 67). Very low spontaneous recovery rate without any care (0.4% weekly) and negligible with informal home care (1% weekly). High mortality if untreated (9% weekly) or with informal care only (6% weekly). Requires medication management at primary care (35% weekly resolution) with progressively better outcomes at higher levels. Even with tertiary care maintains 1% weekly mortality.</p>
+            )}
+          </div>
+        )}
       </div>
       
       {/* Add Population Size field */}

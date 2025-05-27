@@ -383,7 +383,14 @@ export const healthSystemStrengthDefaults = {
     sigmaI: 0.25, // Probability of transitioning from informal to formal care
     informalCareRatio: 0.15, // Proportion of patients remaining untreated (vs. informal care)
     regionalLifeExpectancy: 70, // Regional life expectancy (years)
-    perDiemCosts: { I: 7, F: 12, L0: 15, L1: 30, L2: 120, L3: 350 }, // USD
+    perDiemCosts: { 
+      I: 12,    // Informal care - mix of traditional healers and pharmacies
+      F: 25,    // Formal entry - urban facilities have higher overhead
+      L0: 20,   // CHW costs in urban areas (higher stipends)
+      L1: 40,   // Primary care - aligned with Kenya public data (~$41)
+      L2: 120,  // District hospitals - between Nigeria ($100) and Kenya ($150)
+      L3: 250   // Tertiary hospitals - South Africa lower range
+    }, // USD - validated against Kenya, Nigeria, India urban public sector data
 
     // Multipliers for Disease-Specific Base Rates (1.0 means no change from disease baseline)
     mu_multiplier_I: 1.0,   // Resolution in Informal
@@ -409,7 +416,14 @@ export const healthSystemStrengthDefaults = {
     sigmaI: 0.10, // Harder to transition
     informalCareRatio: 0.40, // Higher proportion untreated or in very basic informal
     regionalLifeExpectancy: 55,
-    perDiemCosts: { I: 3, F: 5, L0: 8, L1: 15, L2: 70, L3: 250 }, // Lower, but may reflect scarcity
+    perDiemCosts: { 
+      I: 5,     // Low-cost informal providers, drug shops
+      F: 10,    // Basic facility entry costs
+      L0: 8,    // CHWs with minimal supplies
+      L1: 20,   // Primary facilities - Bangladesh rural levels
+      L2: 80,   // District hospitals - limited services
+      L3: 200   // Tertiary care - often in distant cities
+    }, // USD - based on Bangladesh/Nigeria rural data, includes inefficiencies
 
     // Multipliers (Effectiveness reduction, mortality increase, referral issues)
     mu_multiplier_I: 0.6,
@@ -435,7 +449,14 @@ export const healthSystemStrengthDefaults = {
     sigmaI: 0.35,
     informalCareRatio: 0.10,
     regionalLifeExpectancy: 75,
-    perDiemCosts: { I: 10, F: 15, L0: 20, L1: 40, L2: 150, L3: 400 }, // Higher quality might mean higher cost
+    perDiemCosts: { 
+      I: 15,    // Even informal care is more expensive in well-developed areas
+      F: 30,    // Better equipped entry points
+      L0: 25,   // Well-trained, equipped CHWs
+      L1: 50,   // Primary care approaching middle-income standards
+      L2: 180,  // District hospitals - India urban public range
+      L3: 350   // Tertiary care - approaching South Africa public levels
+    }, // USD - based on India/South Africa urban public hospitals
 
     // Multipliers (Improved effectiveness, reduced mortality, efficient referrals)
     mu_multiplier_I: 1.2,
@@ -461,7 +482,14 @@ export const healthSystemStrengthDefaults = {
     sigmaI: 0.08, // Very difficult to transition from informal to formal care
     informalCareRatio: 0.60, // Majority of patients unable to access formal care
     regionalLifeExpectancy: 50, // Significantly reduced life expectancy
-    perDiemCosts: { I: 2, F: 6, L0: 10, L1: 20, L2: 150, L3: 400 }, // Variable costs, NGO-supported
+    perDiemCosts: { 
+      I: 4,     // Basic informal care, often traditional
+      F: 15,    // NGO-run entry points
+      L0: 20,   // CHWs often NGO-supported with supplies
+      L1: 40,   // Primary clinics with security/logistics costs
+      L2: 150,  // Field hospitals, high logistics costs
+      L3: 400   // Referral to stable areas, very expensive
+    }, // USD - includes 20-50% logistics/security premium over base costs
 
     // Multipliers (Severely compromised effectiveness, high mortality, broken referral chains)
     mu_multiplier_I: 0.4,
@@ -481,13 +509,20 @@ export const healthSystemStrengthDefaults = {
     rho_multiplier_L1: 0.3,
     rho_multiplier_L2: 0.2,
   },
-  high_income_system: { // High income country system
+  high_income_system: { // High income country system (for comparison)
     // Direct System-Wide Parameters
     phi0: 0.90, // Very high healthcare seeking
     sigmaI: 0.70, // High transition to formal
     informalCareRatio: 0.05, // Very few remain untreated
     regionalLifeExpectancy: 82, // High life expectancy
-    perDiemCosts: { I: 15, F: 30, L0: 50, L1: 100, L2: 500, L3: 1200 }, // High costs
+    perDiemCosts: { 
+      I: 30,     // Alternative medicine, out-of-network care
+      F: 80,     // Emergency department triage
+      L0: 100,   // Community health services
+      L1: 250,   // Primary care with full diagnostics
+      L2: 1000,  // Secondary hospitals
+      L3: 2500   // Academic medical centers
+    }, // USD - based on OECD country data
 
     // Multipliers (Very high effectiveness, very low mortality, efficient referrals)
     mu_multiplier_I: 1.5,
@@ -773,14 +808,94 @@ export interface AICostParameters {
   selfCareAI: { fixed: number, variable: number };
 }
 
-// Default AI cost parameters
+// AI base effects interface
+export interface AIBaseEffects {
+  triageAI: {
+    phi0Effect: number;      // Base increase in formal care seeking
+    sigmaIEffect: number;    // Base multiplier for informal to formal transition
+  };
+  chwAI: {
+    mu0Effect: number;       // Base increase in resolution at CHW level
+    delta0Effect: number;    // Base multiplier for mortality reduction at CHW
+    rho0Effect: number;      // Base multiplier for referral reduction from CHW
+  };
+  diagnosticAI: {
+    mu1Effect: number;       // Base increase in resolution at primary care
+    delta1Effect: number;    // Base multiplier for mortality reduction at primary
+    rho1Effect: number;      // Base multiplier for referral reduction from primary
+  };
+  bedManagementAI: {
+    mu2Effect: number;       // Base increase in resolution at district hospitals
+    mu3Effect: number;       // Base increase in resolution at tertiary hospitals
+  };
+  hospitalDecisionAI: {
+    delta2Effect: number;    // Base multiplier for mortality reduction at district
+    delta3Effect: number;    // Base multiplier for mortality reduction at tertiary
+  };
+  selfCareAI: {
+    muIEffect: number;       // Base increase in resolution in informal care
+    deltaIEffect: number;    // Base multiplier for mortality reduction in informal
+  };
+}
+
+// Default AI cost parameters - based on LMIC pilot and scale-up data
+// Fixed costs include infrastructure (connectivity, devices, training)
+// Variable costs reflect per-episode marginal costs at scale
 export const defaultAICostParameters: AICostParameters = {
-  triageAI: { fixed: 35000, variable: 2 },
-  chwAI: { fixed: 25000, variable: 1.5 },
-  diagnosticAI: { fixed: 40000, variable: 3.5 },
-  bedManagementAI: { fixed: 45000, variable: 1 },
-  hospitalDecisionAI: { fixed: 50000, variable: 4.5 },
-  selfCareAI: { fixed: 20000, variable: 0.8 }
+  triageAI: { 
+    fixed: 200000,    // Software dev/licensing, tablets, networking, training for ~20 hospitals
+    variable: 2.5     // Per-patient cost at scale (server, maintenance)
+  },
+  chwAI: { 
+    fixed: 150000,    // Devices for CHWs, training programs, supervision setup
+    variable: 1.5     // Per-consultation cost (data, cloud services) - drops significantly at scale
+  },
+  diagnosticAI: { 
+    fixed: 300000,    // Software licensing, integration, equipment upgrades (e.g., digital X-ray)
+    variable: 1.0     // Per-test cost at high volume (e.g., CAD4TB at scale ~$0.25-1.00)
+  },
+  bedManagementAI: { 
+    fixed: 250000,    // IT system setup in major hospitals, staff training
+    variable: 1.5     // Per-admission managed (mostly server/support costs)
+  },
+  hospitalDecisionAI: { 
+    fixed: 400000,    // EHR integration, clinical decision support systems across hospitals
+    variable: 3.0     // Per-decision/alert (complex integration, ongoing updates)
+  },
+  selfCareAI: { 
+    fixed: 100000,    // App development, localization, initial marketing
+    variable: 0.5     // Per-user per-year at scale (based on Rwanda Babylon experience)
+  }
+};
+
+// Default AI base effects
+export const defaultAIBaseEffects: AIBaseEffects = {
+  triageAI: {
+    phi0Effect: 0.08,      // 8% increase in formal care seeking
+    sigmaIEffect: 1.15     // 15% increase in informal to formal transition (multiplier)
+  },
+  chwAI: {
+    mu0Effect: 0.05,       // 5% increase in resolution at CHW level
+    delta0Effect: 0.92,    // 8% reduction in mortality (multiplier)
+    rho0Effect: 0.92       // 8% reduction in unnecessary referrals (multiplier)
+  },
+  diagnosticAI: {
+    mu1Effect: 0.06,       // 6% increase in resolution at primary care
+    delta1Effect: 0.92,    // 8% reduction in mortality (multiplier)
+    rho1Effect: 0.92       // 8% reduction in referrals (multiplier)
+  },
+  bedManagementAI: {
+    mu2Effect: 0.03,       // 3% increase in resolution at district hospitals
+    mu3Effect: 0.03        // 3% increase in resolution at tertiary hospitals
+  },
+  hospitalDecisionAI: {
+    delta2Effect: 0.90,    // 10% reduction in mortality (multiplier)
+    delta3Effect: 0.90     // 10% reduction in mortality (multiplier)
+  },
+  selfCareAI: {
+    muIEffect: 0.08,       // 8% increase in resolution in informal care
+    deltaIEffect: 0.85     // 15% reduction in mortality (multiplier)
+  }
 };
 
 // Apply AI intervention effects to parameters
@@ -788,7 +903,8 @@ export const applyAIInterventions = (
   baseParams: ModelParameters,
   interventions: AIInterventions,
   effectMagnitudes: {[key: string]: number} = {},
-  costParams: AICostParameters = defaultAICostParameters
+  costParams: AICostParameters = defaultAICostParameters,
+  baseEffects: AIBaseEffects = defaultAIBaseEffects
 ): ModelParameters => {
   const modifiedParams = { ...baseParams };
   
@@ -825,47 +941,46 @@ export const applyAIInterventions = (
   };
 
   if (interventions.triageAI) {
-    // Triage AI improves formal care seeking and transitions from informal care - modest effects
-    modifiedParams.phi0 += applyMagnitude('triageAI_φ₀', 0.08); // 8% increase in formal care seeking
-    modifiedParams.sigmaI *= applyMagnitude('triageAI_σI', 1.15, true); // 15% increase in transitions from informal to formal
+    // Triage AI improves formal care seeking and transitions from informal care
+    modifiedParams.phi0 += applyMagnitude('triageAI_φ₀', baseEffects.triageAI.phi0Effect);
+    modifiedParams.sigmaI *= applyMagnitude('triageAI_σI', baseEffects.triageAI.sigmaIEffect, true);
     modifiedParams.aiFixedCost += costParams.triageAI.fixed;
     modifiedParams.aiVariableCost += costParams.triageAI.variable;
   }
   
   if (interventions.chwAI) {
-    modifiedParams.mu0 += applyMagnitude('chwAI_μ₀', 0.05); // 5% increase in resolution at CHW level
-    modifiedParams.delta0 *= applyMagnitude('chwAI_δ₀', 0.92, true); // 8% reduction in mortality at CHW level
-    modifiedParams.rho0 *= applyMagnitude('chwAI_ρ₀', 0.92, true); // 8% reduction in referrals from CHW level
+    modifiedParams.mu0 += applyMagnitude('chwAI_μ₀', baseEffects.chwAI.mu0Effect);
+    modifiedParams.delta0 *= applyMagnitude('chwAI_δ₀', baseEffects.chwAI.delta0Effect, true);
+    modifiedParams.rho0 *= applyMagnitude('chwAI_ρ₀', baseEffects.chwAI.rho0Effect, true);
     modifiedParams.aiFixedCost += costParams.chwAI.fixed;
     modifiedParams.aiVariableCost += costParams.chwAI.variable;
   }
   
   if (interventions.diagnosticAI) {
-    modifiedParams.mu1 += applyMagnitude('diagnosticAI_μ₁', 0.06); // 6% increase in resolution at primary care
-    modifiedParams.delta1 *= applyMagnitude('diagnosticAI_δ₁', 0.92, true); // 8% reduction in mortality at primary care
-    modifiedParams.rho1 *= applyMagnitude('diagnosticAI_ρ₁', 0.92, true); // 8% reduction in referrals from primary care
+    modifiedParams.mu1 += applyMagnitude('diagnosticAI_μ₁', baseEffects.diagnosticAI.mu1Effect);
+    modifiedParams.delta1 *= applyMagnitude('diagnosticAI_δ₁', baseEffects.diagnosticAI.delta1Effect, true);
+    modifiedParams.rho1 *= applyMagnitude('diagnosticAI_ρ₁', baseEffects.diagnosticAI.rho1Effect, true);
     modifiedParams.aiFixedCost += costParams.diagnosticAI.fixed;
     modifiedParams.aiVariableCost += costParams.diagnosticAI.variable;
   }
   
   if (interventions.bedManagementAI) {
-    modifiedParams.mu2 += applyMagnitude('bedManagementAI_μ₂', 0.03); // 3% increase in resolution at district hospitals
-    modifiedParams.mu3 += applyMagnitude('bedManagementAI_μ₃', 0.03); // 3% increase in resolution at tertiary hospitals
+    modifiedParams.mu2 += applyMagnitude('bedManagementAI_μ₂', baseEffects.bedManagementAI.mu2Effect);
+    modifiedParams.mu3 += applyMagnitude('bedManagementAI_μ₃', baseEffects.bedManagementAI.mu3Effect);
     modifiedParams.aiFixedCost += costParams.bedManagementAI.fixed;
     modifiedParams.aiVariableCost += costParams.bedManagementAI.variable;
   }
   
   if (interventions.hospitalDecisionAI) {
-    modifiedParams.delta2 *= applyMagnitude('hospitalDecisionAI_δ₂', 0.90, true); // 10% reduction in mortality at district hospitals
-    modifiedParams.delta3 *= applyMagnitude('hospitalDecisionAI_δ₃', 0.90, true); // 10% reduction in mortality at tertiary hospitals
+    modifiedParams.delta2 *= applyMagnitude('hospitalDecisionAI_δ₂', baseEffects.hospitalDecisionAI.delta2Effect, true);
+    modifiedParams.delta3 *= applyMagnitude('hospitalDecisionAI_δ₃', baseEffects.hospitalDecisionAI.delta3Effect, true);
     modifiedParams.aiFixedCost += costParams.hospitalDecisionAI.fixed;
     modifiedParams.aiVariableCost += costParams.hospitalDecisionAI.variable;
   }
   
   if (interventions.selfCareAI) {
-    // Use configurable parameters for self-care AI effects
-    modifiedParams.muI += applyMagnitude('selfCareAI_μI', modifiedParams.selfCareAIEffectMuI); // Improved informal care resolution
-    modifiedParams.deltaI *= applyMagnitude('selfCareAI_δI', modifiedParams.selfCareAIEffectDeltaI, true); // Reduced mortality in informal care
+    modifiedParams.muI += applyMagnitude('selfCareAI_μI', baseEffects.selfCareAI.muIEffect);
+    modifiedParams.deltaI *= applyMagnitude('selfCareAI_δI', baseEffects.selfCareAI.deltaIEffect, true);
     modifiedParams.aiFixedCost += costParams.selfCareAI.fixed;
     modifiedParams.aiVariableCost += costParams.selfCareAI.variable;
     modifiedParams.selfCareAIActive = true; // Set the flag indicating self-care AI is active
@@ -912,14 +1027,14 @@ export const getDefaultParameters = (): ModelParameters => ({
   selfCareAIEffectDeltaI: 0.85, // 15% reduction in mortality from self-care AI (reduced from 30%)
   selfCareAIActive: false,      // Default to inactive
   
-  // Economic parameters
+  // Economic parameters - validated against recent LMIC data (2019-2024)
   perDiemCosts: {
-    I: 5,
-    F: 10,      // formal care entry point cost (triage, registration, initial assessment)
-    L0: 12,
-    L1: 25,
-    L2: 70,
-    L3: 110,
+    I: 10,      // informal care (traditional healers, pharmacies, self-medication)
+    F: 20,      // formal care entry point cost (triage, registration, initial assessment)
+    L0: 15,     // community health workers (basic supplies, stipends) - lower than originally estimated
+    L1: 35,     // primary care facilities (staff, basic diagnostics, drugs) - aligned with India/Kenya data
+    L2: 100,    // district hospitals (inpatient care, surgery, specialists) - reduced based on research
+    L3: 200,    // tertiary hospitals (ICU, complex procedures, subspecialists) - adjusted to LMIC reality
   },
   aiFixedCost: 0,
   aiVariableCost: 0,

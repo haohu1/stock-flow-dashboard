@@ -18,6 +18,8 @@ import {
   getDefaultParameters,
   ModelParameters
 } from '../models/stockAndFlowModel';
+import InfoTooltip from './InfoTooltip';
+import { getParameterRationale } from '../data/parameter_rationales';
 
 // Parameter groupings for better organization - Disease Characteristics first
 const parameterGroups = [
@@ -47,8 +49,6 @@ const parameterGroups = [
       { key: 'perDiemCosts.L1', label: 'Primary Care Cost', description: 'Cost per day at primary care (USD)' },
       { key: 'perDiemCosts.L2', label: 'District Hospital Cost', description: 'Cost per day at district hospital (USD)' },
       { key: 'perDiemCosts.L3', label: 'Tertiary Hospital Cost', description: 'Cost per day at tertiary hospital (USD)' },
-      // Note: aiFixedCost and aiVariableCost are handled by AI panel now, but kept for model integrity.
-      // We will display them as general parameters for now.
       { key: 'regionalLifeExpectancy', label: 'Life Expectancy', description: 'Regional life expectancy (years)' },
       { key: 'discountRate', label: 'Discount Rate', description: 'Annual discount rate for economic calculations' },
     ],
@@ -97,16 +97,6 @@ const parameterGroups = [
       { key: 'delta3', label: 'L3 Death (δ₃)', description: 'Weekly probability of death at tertiary hospital' },
     ],
     // These are affected by multipliers, so indirectly health system specific
-  },
-  {
-    title: 'AI Related Parameters', // Grouping AI specific economic and effectiveness params
-    params: [
-      { key: 'selfCareAIEffectMuI', label: 'Self-Care Resolution Effect', description: 'Improvement in resolution rate from self-care AI' },
-      { key: 'selfCareAIEffectDeltaI', label: 'Self-Care Death Effect', description: 'Multiplier for death rate with self-care AI (lower is better)' },
-      { key: 'aiFixedCost', label: 'AI Fixed Cost', description: 'Fixed cost for AI implementation (USD)' },
-      { key: 'aiVariableCost', label: 'AI Variable Cost', description: 'Variable cost per episode touched by AI (USD)' },
-    ],
-    isAISpecific: true, // New flag for AI specific parameters
   },
 ];
 
@@ -454,6 +444,13 @@ const ParametersPanel: React.FC = () => {
           All probabilities are weekly unless otherwise specified.
         </p>
         
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <p className="text-sm text-blue-800 dark:text-blue-200">
+            <strong>Note:</strong> AI intervention costs are configured in the <strong>AI Interventions</strong> tab in the sidebar, 
+            where you can set individual costs for each AI tool and see the total costs.
+          </p>
+        </div>
+        
         {/* Simplified Loop for Parameter Groups based on the new order */}
         {parameterGroups.map((group) => {
           // Determine if the group contains any parameter that is disease-specific
@@ -474,9 +471,6 @@ const ParametersPanel: React.FC = () => {
                 {group.isHealthSystemSpecific && !customHealthSystem && (
                   <span className="text-xs text-green-500 ml-2">(Health System Specific)</span>
                 )}
-                {group.isAISpecific && ( // New condition for AI specific tag
-                  <span className="text-xs text-purple-500 ml-2">(AI Related)</span>
-                )}
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {group.params.map((param) => {
@@ -496,9 +490,6 @@ const ParametersPanel: React.FC = () => {
                   } else if (highlightAsHealthSystem) {
                     inputClasses += ' border-green-300 bg-green-50 dark:bg-gray-800 dark:border-green-500';
                     paramBoxClasses += ' border-green-300 bg-green-50 dark:!bg-gray-700';
-                  } else if (group.isAISpecific) {
-                    inputClasses += ' border-purple-300 bg-purple-50 dark:bg-gray-800 dark:border-purple-500';
-                    paramBoxClasses += ' border-purple-300 bg-purple-50 dark:!bg-gray-700';
                   }
                   else {
                     inputClasses += ' border-gray-300 dark:border-gray-600';
@@ -508,10 +499,19 @@ const ParametersPanel: React.FC = () => {
                   return (
                     <div key={param.key} className={paramBoxClasses}>
                       <div className="flex justify-between items-start">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {param.label}
-                          </label>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-1">
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              {param.label}
+                            </label>
+                            <InfoTooltip 
+                              content={getParameterRationale(
+                                param.key, 
+                                selectedDisease || undefined, 
+                                selectedHealthSystemStrength || undefined
+                              )}
+                            />
+                          </div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             {param.description}
                           </p>

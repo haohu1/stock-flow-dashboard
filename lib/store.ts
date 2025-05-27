@@ -243,7 +243,8 @@ export const runSimulationAtom = atom(
         console.log("  Running simulation for disease:", disease);
         
         // Get derived parameters for this disease
-        const params = getDerivedParamsForDisease(baseParams, healthSystemStrength, disease, aiInterventions, effectMagnitudes, activeMultipliers);
+        const aiCostParams = get(aiCostParametersAtom);
+        const params = getDerivedParamsForDisease(baseParams, healthSystemStrength, disease, aiInterventions, effectMagnitudes, activeMultipliers, aiCostParams);
         
         // Run simulation with these parameters
         const results = runSimulation(params, {
@@ -293,9 +294,10 @@ export const runSimulationAtom = atom(
       const population = get(populationSizeAtom);
       const weeks = get(simulationWeeksAtom);
       const activeMultipliers = get(healthSystemMultipliersAtom);
+      const aiCostParams = get(aiCostParametersAtom);
       
       // Get derived parameters for this disease
-      const params = getDerivedParamsForDisease(baseParams, healthSystemStrength, disease, aiInterventions, effectMagnitudes, activeMultipliers);
+      const params = getDerivedParamsForDisease(baseParams, healthSystemStrength, disease, aiInterventions, effectMagnitudes, activeMultipliers, aiCostParams);
       
       const results = runSimulation(params, {
         numWeeks: weeks,
@@ -1219,6 +1221,8 @@ export const runSensitivityAnalysisAtom = atom(
     const weeks = get(simulationWeeksAtom);
     const aiInterventions = get(aiInterventionsAtom);
     const baseline = get(baselineResultsAtom);
+    const effectMagnitudes = get(effectMagnitudesAtom);
+    const aiCostParams = get(aiCostParametersAtom);
     
     const sensitivityParams = get(sensitivityParametersAtom);
     const primaryParamConfig = sensitivityParams.find(p => p.name === paramName);
@@ -1275,7 +1279,7 @@ export const runSensitivityAnalysisAtom = atom(
           modifiedParams = { ...modifiedParams, [paramName]: paramValue };
         }
         
-        const modifiedParamsWithAI = applyAIInterventions(modifiedParams, aiInterventions);
+        const modifiedParamsWithAI = applyAIInterventions(modifiedParams, aiInterventions, effectMagnitudes, aiCostParams);
         
         const simResult = runSimulation(modifiedParamsWithAI, {
           numWeeks: weeks,
@@ -1407,7 +1411,7 @@ export const runSensitivityAnalysisAtom = atom(
           } else {
             modifiedParams = { ...modifiedParams, [secondaryParamName]: secondaryValue };
           }
-          const modifiedParamsWithAI = applyAIInterventions(modifiedParams, aiInterventions);
+          const modifiedParamsWithAI = applyAIInterventions(modifiedParams, aiInterventions, effectMagnitudes, aiCostParams);
           
           // Run simulation with modified parameters
           const simResult = runSimulation(modifiedParamsWithAI, {

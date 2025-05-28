@@ -318,12 +318,40 @@ const ParametersPanel: React.FC = () => {
     return formatDecimal(value, 3);
   };
   
-  // Reset all parameters to defaults
+  // Reset all parameters to defaults for the current selections
   const resetToDefaults = () => {
-    setBaseParams(getDefaultParameters());
-    setPopulationSize(300000);
+    // Reset custom flags first
     setCustomHealthSystem(false);
     setCustomDisease(false);
+    
+    // Keep current selections but reset parameters
+    // Get the current health system's multipliers
+    const currentSystem = healthSystemStrengthDefaults[selectedHealthSystemStrength as keyof typeof healthSystemStrengthDefaults];
+    if (currentSystem) {
+      setActiveMultipliers({
+        mu_multiplier_I: currentSystem.mu_multiplier_I,
+        mu_multiplier_L0: currentSystem.mu_multiplier_L0,
+        mu_multiplier_L1: currentSystem.mu_multiplier_L1,
+        mu_multiplier_L2: currentSystem.mu_multiplier_L2,
+        mu_multiplier_L3: currentSystem.mu_multiplier_L3,
+        delta_multiplier_U: currentSystem.delta_multiplier_U,
+        delta_multiplier_I: currentSystem.delta_multiplier_I,
+        delta_multiplier_L0: currentSystem.delta_multiplier_L0,
+        delta_multiplier_L1: currentSystem.delta_multiplier_L1,
+        delta_multiplier_L2: currentSystem.delta_multiplier_L2,
+        delta_multiplier_L3: currentSystem.delta_multiplier_L3,
+        rho_multiplier_L0: currentSystem.rho_multiplier_L0,
+        rho_multiplier_L1: currentSystem.rho_multiplier_L1,
+        rho_multiplier_L2: currentSystem.rho_multiplier_L2,
+      });
+    }
+    
+    // Reset population to 1 million (the current default)
+    setPopulationSize(1000000);
+    
+    // Force refresh by updating the tracking state
+    // This will trigger the useEffect to reload parameters from the current disease/health system
+    setInitialLoad(true);
   };
 
   // Export current parameters to JSON file

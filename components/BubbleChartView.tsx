@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAtom } from 'jotai';
-import { scenariosAtom, Scenario, updateScenarioAtom } from '../lib/store';
+import { scenariosAtom, Scenario, updateScenarioAtom, aiTimeToScaleParametersAtom } from '../lib/store';
 import { formatNumber, estimateTimeToScale } from '../lib/utils';
 import * as d3 from 'd3';
 import { baselineResultsMapAtom } from '../lib/store';
@@ -9,6 +9,7 @@ const BubbleChartView: React.FC = () => {
   const [scenarios] = useAtom(scenariosAtom);
   const [, updateScenario] = useAtom(updateScenarioAtom);
   const [baselineMap] = useAtom(baselineResultsMapAtom);
+  const [timeToScaleParams] = useAtom(aiTimeToScaleParametersAtom);
   const [sizeMetric, setSizeMetric] = useState<'dalys' | 'deaths'>('dalys');
   const [selectedDiseases, setSelectedDiseases] = useState<Set<string>>(new Set());
   const [availableDiseases, setAvailableDiseases] = useState<string[]>([]);
@@ -375,7 +376,9 @@ const BubbleChartView: React.FC = () => {
       // Use the shared time-to-scale estimation
       const timeToScale = scenario.feasibility !== undefined 
         ? scenario.feasibility 
-        : estimateTimeToScale(scenario.aiInterventions);
+        : scenario.timeToScaleParams
+          ? estimateTimeToScale(scenario.aiInterventions, scenario.timeToScaleParams)
+          : estimateTimeToScale(scenario.aiInterventions, timeToScaleParams);
 
       return {
         ...scenario,
@@ -461,7 +464,9 @@ const BubbleChartView: React.FC = () => {
         // Get time to scale for display
         const timeToScale = data.feasibility !== undefined 
           ? data.feasibility 
-          : estimateTimeToScale(data.aiInterventions);
+          : data.timeToScaleParams
+            ? estimateTimeToScale(data.aiInterventions, data.timeToScaleParams)
+            : estimateTimeToScale(data.aiInterventions, timeToScaleParams);
         
         // Set content first
         tooltipDiv.innerHTML = `

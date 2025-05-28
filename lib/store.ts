@@ -195,14 +195,34 @@ export interface AICostParameters {
   selfCareAI: { fixed: number, variable: number };
 }
 
+// Time-to-scale parameters for each AI intervention
+export interface AITimeToScaleParameters {
+  triageAI: number;
+  chwAI: number;
+  diagnosticAI: number;
+  bedManagementAI: number;
+  hospitalDecisionAI: number;
+  selfCareAI: number;
+}
+
 // Default values match the hardcoded values in stockAndFlowModel.ts
 export const aiCostParametersAtom = atom<AICostParameters>({
   triageAI: { fixed: 35000, variable: 2 },
-  chwAI: { fixed: 25000, variable: 1.5 },
-  diagnosticAI: { fixed: 40000, variable: 3.5 },
-  bedManagementAI: { fixed: 45000, variable: 1 },
-  hospitalDecisionAI: { fixed: 50000, variable: 4.5 },
-  selfCareAI: { fixed: 20000, variable: 0.8 }
+  chwAI: { fixed: 25000, variable: 1 },
+  diagnosticAI: { fixed: 50000, variable: 1 },
+  bedManagementAI: { fixed: 40000, variable: 1 },
+  hospitalDecisionAI: { fixed: 60000, variable: 2 },
+  selfCareAI: { fixed: 15000, variable: 0.5 }
+});
+
+// Time-to-scale parameters with default values from utils.ts estimateTimeToScale function
+export const aiTimeToScaleParametersAtom = atom<AITimeToScaleParameters>({
+  triageAI: 0.75,        // 3-6 months
+  chwAI: 0.65,           // 6-9 months  
+  diagnosticAI: 0.60,    // 6-12 months
+  bedManagementAI: 0.65, // 6-9 months
+  hospitalDecisionAI: 0.55, // 9-12 months
+  selfCareAI: 0.85       // 1-3 months
 });
 
 // AI intervention effect magnitudes
@@ -397,6 +417,7 @@ export interface Scenario {
   results: SimulationResults | null;
   baselineResults?: SimulationResults | null;
   feasibility?: number; // 0 to 1, where 1 is most feasible (closest to launch)
+  timeToScaleParams?: AITimeToScaleParameters; // Add time-to-scale parameters
   // Add multi-disease support
   selectedDiseases?: string[];
   diseaseResultsMap?: Record<string, SimulationResults | null>;
@@ -425,6 +446,7 @@ export const addScenarioAtom = atom(
     const selectedDiseases = get(selectedDiseasesAtom);
     const population = get(populationSizeAtom);
     const selectedAIScenario = get(selectedAIScenarioAtom);
+    const timeToScaleParams = get(aiTimeToScaleParametersAtom);
     
     // Enhanced debug logs with full data inspection
     console.log('DETAILED DEBUG - Adding scenario(s) for diseases:', selectedDiseases);
@@ -557,7 +579,8 @@ export const addScenarioAtom = atom(
           // Store just this disease
           selectedDiseases: [diseaseName],
           diseaseResultsMap: diseaseResultsCopy,
-          feasibility: initialFeasibility
+          feasibility: initialFeasibility,
+          timeToScaleParams: timeToScaleParams
         };
         
         // Check the created scenario
@@ -680,7 +703,8 @@ export const addScenarioAtom = atom(
         // Store the multi-disease data
         selectedDiseases: [...selectedDiseases],
         diseaseResultsMap: diseaseResultsMapCopy,
-        feasibility: initialFeasibility
+        feasibility: initialFeasibility,
+        timeToScaleParams: timeToScaleParams
       };
       
       // Check the created scenario
@@ -887,6 +911,10 @@ export const loadScenarioAtom = atom(
       set(aiInterventionsAtom, scenario.aiInterventions);
       // Load effect magnitudes if they exist in the scenario, otherwise use empty object
       set(effectMagnitudesAtom, scenario.effectMagnitudes || {});
+      // Load time-to-scale parameters if they exist in the scenario
+      if (scenario.timeToScaleParams) {
+        set(aiTimeToScaleParametersAtom, scenario.timeToScaleParams);
+      }
       set(simulationResultsAtom, scenario.results);
       set(selectedScenarioIdAtom, scenarioId);
       
@@ -1017,6 +1045,7 @@ export const updateScenarioAtom = atom(
       const baseline = get(baselineResultsAtom);
       const population = get(populationSizeAtom);
       const selectedDiseases = get(selectedDiseasesAtom);
+      const timeToScaleParams = get(aiTimeToScaleParametersAtom);
       
       // Deep copy the entire results map using the same approach as in addScenarioAtom
       const diseaseResultsMapCopy = (() => {
@@ -1083,7 +1112,8 @@ export const updateScenarioAtom = atom(
                 } : null,
                 // Add multi-disease data with improved deep copy
                 selectedDiseases: [...selectedDiseases],
-                diseaseResultsMap: diseaseResultsMapCopy
+                diseaseResultsMap: diseaseResultsMapCopy,
+                timeToScaleParams: timeToScaleParams
               }
             : s
         );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAtom } from 'jotai';
-import { scenariosAtom, Scenario, updateScenarioAtom } from '../lib/store';
+import { scenariosAtom, Scenario, updateScenarioAtom, aiTimeToScaleParametersAtom } from '../lib/store';
 import { formatNumber, estimateTimeToScale } from '../lib/utils';
 import * as d3 from 'd3';
 import { baselineResultsMapAtom } from '../lib/store';
@@ -18,10 +18,11 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
   const [scenarios] = useAtom(scenariosAtom);
   const [, updateScenario] = useAtom(updateScenarioAtom);
   const [baselineMap] = useAtom(baselineResultsMapAtom);
+  const [timeToScaleParams] = useAtom(aiTimeToScaleParametersAtom);
+  const [yAxisMetric, setYAxisMetric] = useState<'dalys' | 'percent-deaths'>('percent-deaths');
   const [selectedDiseases, setSelectedDiseases] = useState<Set<string>>(new Set());
   const [availableDiseases, setAvailableDiseases] = useState<string[]>([]);
-  const [showLabels, setShowLabels] = useState(true);
-  const [yAxisMetric, setYAxisMetric] = useState<'dalys' | 'percent-deaths'>('percent-deaths');
+  const [showLabels, setShowLabels] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
@@ -66,7 +67,9 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     // Time to scale - use feasibility directly (higher feasibility = quicker to implement)
     const timeToScale = scenario.feasibility !== undefined 
       ? scenario.feasibility // Keep original scale: 0 = slow, 1 = quick
-      : estimateTimeToScale(scenario.aiInterventions);
+      : scenario.timeToScaleParams 
+        ? estimateTimeToScale(scenario.aiInterventions, scenario.timeToScaleParams)
+        : estimateTimeToScale(scenario.aiInterventions, timeToScaleParams);
     
     // Determine impact value based on selected metric
     const impactValue = yAxisMetric === 'dalys' ? impactPer1000 : percentDeathsAverted;
@@ -86,7 +89,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
 
   // Determine which quadrant a scenario falls into
   const determineQuadrant = (impact: number, timeToScale: number, metric: 'dalys' | 'percent-deaths'): ImpactFeasibilityData['quadrant'] => {
-    const impactThreshold = metric === 'dalys' ? 5 : 10; // 5 DALYs per 1000 or 10% deaths averted
+    const impactThreshold = metric === 'dalys' ? 100 : 10; // 100 DALYs per 1000 or 10% deaths averted
     const timeThreshold = 0.5; // 0-1 scale
     
     if (impact >= impactThreshold && timeToScale >= timeThreshold) {
@@ -151,7 +154,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     
     const impactValues = impactData.map(d => d.impact);
     const maxImpact = yAxisMetric === 'dalys' 
-      ? Math.max(...impactValues, 10) // Minimum of 10 DALYs per 1000 to show threshold clearly
+      ? Math.max(...impactValues, 100) // Minimum of 100 DALYs per 1000 to show threshold clearly
       : Math.max(...impactValues, 50); // Minimum of 50% for percentage scale
     
     const yScale = d3.scaleLinear()
@@ -169,7 +172,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .range(['#2a9d8f', '#e9c46a', '#8ecae6', '#e76f51']);
     
     // Calculate dynamic thresholds based on data
-    const impactThreshold = yAxisMetric === 'dalys' ? 5 : 10; // Same as in determineQuadrant
+    const impactThreshold = yAxisMetric === 'dalys' ? 100 : 10; // Same as in determineQuadrant
     const timeThreshold = 0.5; // Same as in determineQuadrant
     
     // Convert thresholds to pixel positions
@@ -232,7 +235,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .attr("y", impactThresholdY - 5)
       .attr("font-size", "11px")
       .attr("fill", "#666")
-      .text(yAxisMetric === 'dalys' ? "5 DALYs/1000" : "10% deaths");
+      .text(yAxisMetric === 'dalys' ? "100 DALYs/1000" : "10% deaths");
     
     // Add quadrant labels
     svg.selectAll(".quadrant-label")

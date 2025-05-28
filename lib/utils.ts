@@ -1,3 +1,5 @@
+import { AITimeToScaleParameters } from './store';
+
 /**
  * Formats a number with commas as thousands separators
  * @param value The number to format
@@ -86,14 +88,17 @@ export const calculateSuggestedFeasibility = (activeInterventionsCount: number):
 };
 
 // More realistic time-to-scale estimates based on AI intervention type
-export const estimateTimeToScale = (aiInterventions: Record<string, boolean> | any): number => {
+export const estimateTimeToScale = (
+  aiInterventions: Record<string, boolean> | any, 
+  timeToScaleParams?: AITimeToScaleParameters | Record<string, number>
+): number => {
   const activeInterventions = Object.entries(aiInterventions)
     .filter(([_, isActive]) => isActive)
     .map(([name]) => name);
   
   // Updated realistic time estimates reflecting the rapid advancement of LLMs and AI tools
   // Scale: 0 = 3+ years, 0.25 = 2 years, 0.5 = 1 year, 0.75 = 3-6 months, 1 = immediate
-  const timeEstimates: Record<string, number> = {
+  const defaultTimeEstimates: Record<string, number> = {
     // Self-care apps can now be built very quickly with LLM APIs (1-3 months)
     selfCareAI: 0.85,
     
@@ -112,6 +117,11 @@ export const estimateTimeToScale = (aiInterventions: Record<string, boolean> | a
     // Hospital decision support can leverage LLM APIs for rapid prototyping (9-12 months)
     hospitalDecisionAI: 0.55,
   };
+  
+  // Use provided parameters or fall back to defaults
+  const timeEstimates = timeToScaleParams ? 
+    (timeToScaleParams as Record<string, number>) : 
+    defaultTimeEstimates;
   
   if (activeInterventions.length === 0) return 0.5;
   

@@ -6,7 +6,9 @@ import {
   runSimulationAtom,
   selectedAIScenarioAtom,
   aiCostParametersAtom,
-  AICostParameters
+  aiTimeToScaleParametersAtom,
+  AICostParameters,
+  AITimeToScaleParameters
 } from '../lib/store';
 import { AIInterventions } from '../models/stockAndFlowModel';
 import InfoTooltip from './InfoTooltip';
@@ -19,6 +21,7 @@ interface AIInterventionConfig {
   description: string;
   interventions: AIInterventions;
   effectMagnitudes: {[key: string]: number};
+  timeToScaleParams?: AITimeToScaleParameters;
 }
 
 interface InterventionEffect {
@@ -217,15 +220,16 @@ const AIScenarioPresets: AIInterventionConfig[] = [
 
 const AIInterventionManager: React.FC = () => {
   const [aiInterventions, setAIInterventions] = useAtom(aiInterventionsAtom);
-  const [, runSimulation] = useAtom(runSimulationAtom);
-  
-  // Use global atom for effect magnitudes instead of local state
   const [effectMagnitudes, setEffectMagnitudes] = useAtom(effectMagnitudesAtom);
+  const [, runSimulation] = useAtom(runSimulationAtom);
   const [selectedPreset, setSelectedPreset] = useAtom(selectedAIScenarioAtom);
-  
-  // Add AI cost parameters state
-  const [aiCostParams, setAICostParams] = useAtom(aiCostParametersAtom);
+  const [aiCostParams, setAiCostParams] = useAtom(aiCostParametersAtom);
+  const [timeToScaleParams, setTimeToScaleParams] = useAtom(aiTimeToScaleParametersAtom);
   const [showCostSettings, setShowCostSettings] = useState(false);
+  const [showTimeToScaleSettings, setShowTimeToScaleSettings] = useState(false);
+  const [showEffectMagnitudes, setShowEffectMagnitudes] = useState(false);
+  const [expandedInterventions, setExpandedInterventions] = useState<Set<string>>(new Set());
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // State for saved configurations
   const [savedConfigs, setSavedConfigs] = useState<AIInterventionConfig[]>([]);
@@ -237,9 +241,6 @@ const AIInterventionManager: React.FC = () => {
   
   // State for locally tracking selected scenario (UI state)
   const [localSelectedScenario, setLocalSelectedScenario] = useState<string | null>(null);
-  
-  // Ref for file input
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Initialize local selected scenario from global atom
   useEffect(() => {
@@ -280,6 +281,9 @@ const AIInterventionManager: React.FC = () => {
   const loadConfig = (config: AIInterventionConfig) => {
     setAIInterventions({ ...config.interventions });
     setEffectMagnitudes({ ...config.effectMagnitudes });
+    if (config.timeToScaleParams) {
+      setTimeToScaleParams({ ...config.timeToScaleParams });
+    }
     setLocalSelectedScenario(config.id);
   };
   
@@ -294,6 +298,9 @@ const AIInterventionManager: React.FC = () => {
   const applyConfig = (config: AIInterventionConfig) => {
     setAIInterventions(config.interventions);
     setEffectMagnitudes(config.effectMagnitudes);
+    if (config.timeToScaleParams) {
+      setTimeToScaleParams(config.timeToScaleParams);
+    }
     setLocalSelectedScenario(config.id);
     // Also update the global atom
     setSelectedPreset(config.id);
@@ -325,7 +332,8 @@ const AIInterventionManager: React.FC = () => {
       name: configName,
       description: configDescription || "",
       interventions: { ...aiInterventions },
-      effectMagnitudes: { ...effectMagnitudes }
+      effectMagnitudes: { ...effectMagnitudes },
+      timeToScaleParams: { ...timeToScaleParams }
     };
     
     const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
@@ -522,12 +530,22 @@ const AIInterventionManager: React.FC = () => {
     costType: 'fixed' | 'variable',
     value: number
   ) => {
-    setAICostParams(prev => ({
+    setAiCostParams(prev => ({
       ...prev,
       [intervention]: {
         ...prev[intervention],
         [costType]: value
       }
+    }));
+  };
+
+  const handleTimeToScaleChange = (
+    intervention: keyof AIInterventions,
+    value: number
+  ) => {
+    setTimeToScaleParams(prev => ({
+      ...prev,
+      [intervention]: Math.max(0, Math.min(1, value)) // Clamp between 0 and 1
     }));
   };
   
@@ -652,15 +670,131 @@ const AIInterventionManager: React.FC = () => {
     if (!anyInterventionActive) return null;
     
     return (
-      <button
-        onClick={() => setShowCostSettings(!showCostSettings)}
-        className="mt-4 px-4 py-2 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900 dark:hover:bg-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-md text-sm font-medium"
-      >
-        {showCostSettings ? 'Hide Cost Settings' : 'Configure AI Costs'}
-      </button>
+      <div className="mt-4">
+        <button
+          onClick={() => setShowCostSettings(!showCostSettings)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded-lg transition-colors"
+        >
+          <span>Configure AI Costs</span>
+          <svg 
+            className={`w-4 h-4 transition-transform ${showCostSettings ? 'rotate-180' : ''}`} 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
     );
   };
 
+  const renderTimeToScaleSettings = () => {
+    if (!showTimeToScaleSettings) return null;
+
+    const formatTimeToScale = (value: number): string => {
+      if (value >= 0.85) return "1-3 months";
+      if (value >= 0.75) return "3-6 months";
+      if (value >= 0.65) return "6-9 months";
+      if (value >= 0.55) return "9-12 months";
+      if (value >= 0.5) return "1 year";
+      if (value >= 0.25) return "2 years";
+      return "3+ years";
+    };
+
+    return (
+      <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+        <h4 className="text-md font-semibold text-gray-800 dark:text-white mb-3">
+          Time-to-Scale Configuration
+        </h4>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Configure how quickly each AI intervention can be deployed and scaled. 
+          Higher values = faster deployment (0 = 3+ years, 1 = immediate).
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Object.entries(timeToScaleParams).map(([intervention, value]) => (
+            <div key={intervention} className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {getInterventionName(intervention as keyof AIInterventions)}
+                </label>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {formatTimeToScale(value)}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={value}
+                  onChange={(e) => handleTimeToScaleChange(
+                    intervention as keyof AIInterventions, 
+                    parseFloat(e.target.value)
+                  )}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-600"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={value.toFixed(2)}
+                  onChange={(e) => handleTimeToScaleChange(
+                    intervention as keyof AIInterventions, 
+                    parseFloat(e.target.value) || 0
+                  )}
+                  className="w-16 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="mt-4 flex justify-end space-x-2">
+          <button
+            onClick={() => {
+              // Reset to default values
+              setTimeToScaleParams({
+                triageAI: 0.75,
+                chwAI: 0.65,
+                diagnosticAI: 0.60,
+                bedManagementAI: 0.65,
+                hospitalDecisionAI: 0.55,
+                selfCareAI: 0.85
+              });
+            }}
+            className="px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 rounded"
+          >
+            Reset to Defaults
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTimeToScaleSettingsButton = () => {
+    return (
+      <div className="mt-4">
+        <button
+          onClick={() => setShowTimeToScaleSettings(!showTimeToScaleSettings)}
+          className="flex items-center gap-2 px-4 py-2 bg-green-50 hover:bg-green-100 dark:bg-green-900 dark:hover:bg-green-800 text-green-700 dark:text-green-300 rounded-lg transition-colors"
+        >
+          <span>Configure Time-to-Scale</span>
+          <svg 
+            className={`w-4 h-4 transition-transform ${showTimeToScaleSettings ? 'rotate-180' : ''}`} 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -1004,6 +1138,8 @@ const AIInterventionManager: React.FC = () => {
       
       {renderCostSettingsButton()}
       {renderCostSettings()}
+      {renderTimeToScaleSettingsButton()}
+      {renderTimeToScaleSettings()}
     </div>
   );
 };

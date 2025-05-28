@@ -207,7 +207,7 @@ const ScenarioManager: React.FC = () => {
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Scenario Management</h3>
         <div className="flex flex-wrap gap-2">
-          <button 
+          <button
             onClick={() => addScenario()}
             className="btn btn-primary text-sm"
           >
@@ -233,6 +233,29 @@ const ScenarioManager: React.FC = () => {
         </div>
       </div>
       
+      {/* Bubble Chart Availability Notice */}
+      {scenarios.length < 2 && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <span className="text-blue-500 text-xl">💡</span>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                Unlock Bubble Chart Analysis
+              </h3>
+              <div className="mt-1 text-sm text-blue-700 dark:text-blue-300">
+                <p>
+                  Save {2 - scenarios.length} more scenario{2 - scenarios.length > 1 ? 's' : ''} to access the 
+                  <strong> IPM Bubble Chart</strong> and <strong>Impact vs Feasibility</strong> analysis tabs.
+                  These charts help you compare and prioritize AI interventions across scenarios.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {scenarios.length === 0 ? (
         <div className="text-center p-6 bg-gray-50 dark:bg-gray-700 rounded-lg">
           <p className="text-gray-600 dark:text-gray-400">

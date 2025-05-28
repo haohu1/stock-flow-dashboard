@@ -181,25 +181,42 @@ export default function Home() {
                     { id: 'sensitivity', name: 'Sensitivity' },
                     { id: 'parameters', name: 'Parameters' },
                     { id: 'equations', name: 'Equations' },
-                    ...(scenarios.length > 1 ? [
-                      { id: 'ipm-bubble', name: 'IPM Bubble Chart' },
-                      { id: 'impact-bubble', name: 'Impact vs Feasibility' }
-                    ] : [])
+                    { 
+                      id: 'ipm-bubble', 
+                      name: 'IPM Bubble Chart',
+                      disabled: scenarios.length < 2,
+                      tooltip: scenarios.length < 2 ? `Save ${2 - scenarios.length} more scenario${2 - scenarios.length > 1 ? 's' : ''} to compare` : undefined
+                    },
+                    { 
+                      id: 'impact-bubble', 
+                      name: 'Impact vs Feasibility',
+                      disabled: scenarios.length < 2,
+                      tooltip: scenarios.length < 2 ? `Save ${2 - scenarios.length} more scenario${2 - scenarios.length > 1 ? 's' : ''} to compare` : undefined
+                    }
                   ].map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveTab(tab.id as TabType)}
+                      onClick={() => !tab.disabled && setActiveTab(tab.id as TabType)}
                       className={`
                         border-b-2 py-4 px-1 text-sm font-medium relative
                         ${activeTab === tab.id 
                           ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' 
+                          : tab.disabled
+                          ? 'border-transparent text-gray-400 dark:text-gray-500 cursor-not-allowed'
                           : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}
                       `}
+                      disabled={tab.disabled}
+                      title={tab.tooltip}
                     >
                       {tab.name}
                       {tab.badge && (
                         <span className="absolute top-2 -right-1 bg-green-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
                           {tab.badge}
+                        </span>
+                      )}
+                      {tab.disabled && (
+                        <span className="absolute top-1 -right-2 bg-gray-400 dark:bg-gray-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {scenarios.length}/2
                         </span>
                       )}
                     </button>

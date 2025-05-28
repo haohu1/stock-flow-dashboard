@@ -191,7 +191,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     
     // Color scale for quadrants
     const colorScale = d3.scaleOrdinal<string>()
-      .domain(['quick-wins', 'strategic', 'fill-ins', 'long-shots'])
+      .domain(['big-bets', 'moonshots', 'quick-wins', 'incremental'])
       .range(['#2a9d8f', '#e9c46a', '#8ecae6', '#e76f51']);
     
     // Calculate dynamic thresholds based on data

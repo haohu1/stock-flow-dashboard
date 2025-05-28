@@ -14,7 +14,10 @@ import {
   loadScenarioAtom,
   simulationResultsAtom,
   healthSystemMultipliersAtom,
-  HealthSystemMultipliers
+  HealthSystemMultipliers,
+  customScenarioNameAtom,
+  selectedAIScenarioAtom,
+  baselineResultsAtom
 } from '../lib/store';
 import { healthSystemStrengthDefaults } from '../models/stockAndFlowModel';
 
@@ -32,6 +35,9 @@ const Sidebar: React.FC = () => {
   const [selectedScenarioId] = useAtom(selectedScenarioIdAtom);
   const [, loadScenario] = useAtom(loadScenarioAtom);
   const [results] = useAtom(simulationResultsAtom);
+  const [customScenarioName, setCustomScenarioName] = useAtom(customScenarioNameAtom);
+  const [selectedAIScenario] = useAtom(selectedAIScenarioAtom);
+  const [baseline] = useAtom(baselineResultsAtom);
   
   // Local state for disease checkboxes
   const [diseaseOptions, setDiseaseOptions] = useState<{
@@ -67,6 +73,62 @@ const Sidebar: React.FC = () => {
     
     setDiseaseOptions(options);
   }, [selectedDiseases]);
+
+  // Generate default scenario name based on AI interventions or scenario
+  useEffect(() => {
+    // Only generate scenario name if baseline exists
+    if (!baseline) {
+      setCustomScenarioName('');
+      return;
+    }
+    
+    const activeAIInterventions = Object.entries(aiInterventions)
+      .filter(([_, isActive]) => isActive)
+      .map(([name]) => name);
+    
+    let defaultName = '';
+    
+    // If we have a selected AI scenario, use its name
+    if (selectedAIScenario) {
+      const presetNames: {[key: string]: string} = {
+        'best-case-2025': 'Best Case',
+        'worst-case-2025': 'Worst Case',
+        'clinical-decision-support-2025': 'Clinical Decision Support',
+        'workflow-efficiency-2025': 'Workflow Efficiency',
+        'patient-facing-ai-success-2025': 'Patient-Facing AI',
+        'diagnostic-imaging-2025': 'Diagnostic & Imaging',
+        'resource-constrained-2025': 'Resource-Constrained',
+        'community-health-2025': 'Community Health',
+        'referral-triage-2025': 'Referral & Triage'
+      };
+      
+      defaultName = presetNames[selectedAIScenario] || selectedAIScenario;
+    }
+    // Otherwise, use AI interventions or sequence number
+    else if (activeAIInterventions.length > 0) {
+      if (activeAIInterventions.length === 1) {
+        const aiName = (() => {
+          switch(activeAIInterventions[0]) {
+            case 'triageAI': return 'AI Triage';
+            case 'chwAI': return 'CHW Decision Support';
+            case 'diagnosticAI': return 'Diagnostic AI';
+            case 'bedManagementAI': return 'Bed Management AI';
+            case 'hospitalDecisionAI': return 'Hospital Decision Support';
+            case 'selfCareAI': return 'Self-Care Apps';
+            default: return activeAIInterventions[0];
+          }
+        })();
+        defaultName = aiName;
+      } else if (activeAIInterventions.length > 1) {
+        defaultName = `Combined AI (${activeAIInterventions.length})`;
+      }
+    } else {
+      // No AI interventions - use sequence number
+      defaultName = `Scenario ${scenarios.length + 1}`;
+    }
+    
+    setCustomScenarioName(defaultName);
+  }, [aiInterventions, selectedAIScenario, scenarios.length, setCustomScenarioName, baseline]);
 
   const handleHealthSystemChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newScenarioKey = e.target.value as keyof typeof healthSystemStrengthDefaults | 'custom';
@@ -534,13 +596,26 @@ const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-6 space-y-2">
-        <button 
-          onClick={handleRunSimulation}
-          className="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg w-full text-lg shadow-lg transition-all duration-200 transform hover:scale-105"
-        >
-          Run Simulation
-        </button>
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Scenario Name
+        </label>
+        <input
+          type="text"
+          value={customScenarioName}
+          onChange={(e) => setCustomScenarioName(e.target.value)}
+          className={`input w-full mb-4 ${!baseline ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''}`}
+          placeholder={baseline ? "Enter scenario name" : "Set as Baseline First"}
+          disabled={!baseline}
+        />
+        
+        <div className="space-y-2">
+          <button 
+            onClick={handleRunSimulation}
+            className="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg w-full text-lg shadow-lg transition-all duration-200 transform hover:scale-105"
+          >
+            Run Simulation
+          </button>
         
         {results && (
           <>
@@ -558,6 +633,7 @@ const Sidebar: React.FC = () => {
             </button>
           </>
         )}
+        </div>
       </div>
 
       {scenarios.length > 0 && (

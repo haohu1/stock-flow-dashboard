@@ -430,6 +430,9 @@ export const scenariosAtom = atom<Scenario[]>([]);
 // Selected scenario ID
 export const selectedScenarioIdAtom = atom<string | null>(null);
 
+// Custom scenario name atom
+export const customScenarioNameAtom = atom<string>('');
+
 // Add current settings as a new scenario
 export const addScenarioAtom = atom(
   null,
@@ -447,6 +450,7 @@ export const addScenarioAtom = atom(
     const population = get(populationSizeAtom);
     const selectedAIScenario = get(selectedAIScenarioAtom);
     const timeToScaleParams = get(aiTimeToScaleParametersAtom);
+    const customScenarioName = get(customScenarioNameAtom);
     
     // Enhanced debug logs with full data inspection
     console.log('DETAILED DEBUG - Adding scenario(s) for diseases:', selectedDiseases);
@@ -459,11 +463,15 @@ export const addScenarioAtom = atom(
       .filter(([_, isActive]) => isActive)
       .map(([name]) => name);
     
-    // Create scenario name based on AI scenario preset, AI interventions, or sequence number
+    // Create scenario name based on custom name, AI scenario preset, AI interventions, or sequence number
     let baseName = '';
     
+    // If we have a custom scenario name, use it
+    if (customScenarioName.trim()) {
+      baseName = customScenarioName.trim();
+    }
     // If we have a selected AI scenario, use its name
-    if (selectedAIScenario) {
+    else if (selectedAIScenario) {
       // Find the preset name based on the selected scenario ID
       const presetNames: {[key: string]: string} = {
         'best-case-2025': 'Best Case',

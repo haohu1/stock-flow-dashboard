@@ -428,57 +428,57 @@ const AIInterventionManager: React.FC = () => {
     { 
       key: 'triageAI', 
       name: 'AI Triage', 
-      description: 'Direct-to-consumer AI that helps patients decide whether to seek formal healthcare instead of self-care',
+      description: 'LLM-powered conversational AI that provides personalized health guidance, symptom assessment, and care navigation through natural language interaction',
       effects: [
-        { param: 'φ₀', effect: '+0.08', description: 'Increases formal care seeking (8% increase based on symptom checker studies from Kenya and Nigeria)' },
-        { param: 'σI', effect: '×1.15', description: 'Faster transition from informal to formal care (15% increase based on mobile health intervention studies)' }
+        { param: 'φ₀', effect: '+0.08', description: 'Increases formal care seeking by 8 percentage points (absolute) - e.g., from 45% to 53%. LLMs provide 24/7 multilingual support, understand complex symptoms in context, and build trust through empathetic conversation. This removes barriers of health literacy, language, and access that currently prevent care-seeking.' },
+        { param: 'σI', effect: '×1.15', description: 'Accelerates transition from informal to formal care by 15% (relative) - e.g., from 20% to 23% weekly transition rate. AI can detect urgency through conversation patterns, track symptom progression, send timely reminders, and directly connect patients to appropriate facilities, reducing dangerous delays in care-seeking.' }
       ]
     },
     { 
       key: 'chwAI', 
       name: 'CHW Decision Support', 
-      description: 'AI tools that help community health workers diagnose and treat patients more effectively',
+      description: 'Advanced AI assistant that provides CHWs with real-time clinical guidance, automated documentation, and predictive risk assessment through mobile devices',
       effects: [
-        { param: 'μ₀', effect: '+0.05', description: 'Better resolution at community level (5% increase based on iCCM studies in Uganda and Ethiopia)' },
-        { param: 'δ₀', effect: '×0.92', description: 'Lower death rate at community level (8% reduction based on WHO iCCM effectiveness reviews)' },
-        { param: 'ρ₀', effect: '×0.92', description: 'Fewer unnecessary referrals (8% reduction based on clinical decision support studies in Malawi)' }
+        { param: 'μ₀', effect: '+0.05', description: 'Improves resolution at community level by 5 percentage points (absolute) - e.g., from 50% to 55% weekly resolution. AI enables CHWs to handle more complex cases safely by providing step-by-step protocols, drug dosing calculators, and confidence scoring. This expands the scope of conditions CHWs can manage effectively.' },
+        { param: 'δ₀', effect: '×0.92', description: 'Reduces mortality at community level by 8% (relative) - e.g., from 3% to 2.76% weekly mortality. AI helps identify high-risk patients through predictive models, ensures protocol compliance for critical conditions, and triggers automatic escalation for danger signs that might be missed by human assessment alone.' },
+        { param: 'ρ₀', effect: '×0.92', description: 'Reduces unnecessary referrals by 8% (relative) - e.g., from 75% to 69% referral rate. ML models trained on local data can better distinguish between cases needing referral vs. those manageable at community level, while providing CHWs confidence through second opinions and risk scores.' }
       ]
     },
     { 
       key: 'diagnosticAI', 
       name: 'Diagnostic AI', 
-      description: 'AI-powered diagnostic tools at primary care facilities to improve diagnosis accuracy and treatment decisions',
+      description: 'Suite of AI diagnostic tools including computer vision for medical imaging, LLM-based differential diagnosis, and ML-powered lab result interpretation',
       effects: [
-        { param: 'μ₁', effect: '+0.06', description: 'Better resolution at primary care (6% increase based on X-ray AI studies in India and Ghana)' },
-        { param: 'δ₁', effect: '×0.92', description: 'Lower death rate at primary care (8% reduction based on tuberculosis AI diagnostic studies)' },
-        { param: 'ρ₁', effect: '×0.92', description: 'Fewer unnecessary referrals (8% reduction based on clinical AI decision support trials)' }
+        { param: 'μ₁', effect: '+0.06', description: 'Improves resolution at primary care by 6 percentage points (absolute) - e.g., from 60% to 66% weekly resolution. This is transformative: AI enables earlier and more accurate diagnosis through pattern recognition across multiple data types (symptoms, images, labs), catching conditions that would typically require specialist referral.' },
+        { param: 'δ₁', effect: '×0.92', description: 'Reduces mortality at primary care by 8% (relative) - e.g., from 2% to 1.84% weekly mortality. Early detection of serious conditions (TB, cancer, sepsis) through AI screening, plus reduced diagnostic errors from AI double-checking, prevents deaths from delayed or missed diagnoses.' },
+        { param: 'ρ₁', effect: '×0.92', description: 'Reduces unnecessary referrals by 8% (relative) - e.g., from 25% to 23% referral rate. AI provides specialist-level diagnostic capability at primary care, handles complex differential diagnosis, and gives clinicians confidence to manage cases they would otherwise refer out of uncertainty.' }
       ] 
     },
     { 
       key: 'bedManagementAI', 
       name: 'Bed Management AI', 
-      description: 'AI tools that optimize patient flow and bed allocation in hospitals to reduce length of stay',
+      description: 'Intelligent hospital operations system using predictive analytics for patient flow, automated discharge planning, and dynamic resource allocation',
       effects: [
-        { param: 'μ₂', effect: '+0.03', description: 'Faster discharge from district hospital (3% increase based on bed management studies in Kenya and South Africa)' },
-        { param: 'μ₃', effect: '+0.03', description: 'Faster discharge from tertiary hospital (3% increase based on patient flow optimization studies)' }
+        { param: 'μ₂', effect: '+0.03', description: 'Improves discharge efficiency from district hospitals by 3 percentage points (absolute) - e.g., from 70% to 73% weekly discharge rate. AI predicts discharge readiness, automates discharge documentation, coordinates post-discharge care, and identifies patients suitable for early discharge with home monitoring.' },
+        { param: 'μ₃', effect: '+0.03', description: 'Improves discharge efficiency from tertiary hospitals by 3 percentage points (absolute) - e.g., from 80% to 83% weekly discharge rate. ML models optimize bed turnover by predicting length of stay, preventing unnecessary delays, coordinating complex discharges, and managing step-down care transitions more effectively.' }
       ]
     },
     { 
       key: 'hospitalDecisionAI', 
       name: 'Hospital Decision Support', 
-      description: 'AI tools that help hospital staff make better treatment and clinical management decisions',
+      description: 'Comprehensive clinical AI system providing real-time treatment recommendations, early warning scores, and evidence-based protocol guidance at the point of care',
       effects: [
-        { param: 'δ₂', effect: '×0.90', description: 'Lower death rate at district hospital (10% reduction based on clinical decision support studies in Tanzania)' },
-        { param: 'δ₃', effect: '×0.90', description: 'Lower death rate at tertiary hospital (10% reduction based on sepsis prediction AI studies)' }
+        { param: 'δ₂', effect: '×0.90', description: 'Reduces mortality at district hospitals by 10% (relative) - e.g., from 5% to 4.5% weekly mortality. AI provides 24/7 specialist-equivalent decision support, catches deteriorating patients hours earlier through continuous monitoring, and ensures evidence-based treatment even when specialists are unavailable.' },
+        { param: 'δ₃', effect: '×0.90', description: 'Reduces mortality at tertiary hospitals by 10% (relative) - e.g., from 8% to 7.2% weekly mortality. AI prevents medical errors through drug interaction checking and protocol verification, optimizes complex treatment plans using latest evidence, and provides predictive alerts for complications before clinical signs appear.' }
       ]
     },
     { 
       key: 'selfCareAI', 
       name: 'Self-Care Apps', 
-      description: 'AI-enhanced apps that help patients self-manage their conditions and know when to seek care',
+      description: 'Personalized health companion apps using LLMs for health coaching, medication adherence, chronic disease management, and preventive care guidance',
       effects: [
-        { param: 'μI', effect: '+0.08', description: 'Better informal care resolution (8% increase based on mHealth app studies in Bangladesh and India)' },
-        { param: 'δI', effect: '×0.85', description: 'Lower death rate in informal care (15% reduction based on medication adherence app studies)' }
+        { param: 'μI', effect: '+0.08', description: 'Improves informal care resolution by 8 percentage points (absolute) - e.g., from 30% to 38% weekly resolution. AI provides personalized treatment adherence support, symptom tracking with actionable insights, and adaptive health education that improves self-management of minor illnesses and chronic conditions.' },
+        { param: 'δI', effect: '×0.85', description: 'Reduces mortality in informal care by 15% (relative) - e.g., from 2% to 1.7% weekly mortality. AI apps detect warning signs early through passive monitoring, ensure medication compliance for chronic diseases, provide emergency guidance, and nudge users to seek care when algorithms detect serious conditions.' }
       ]
     }
   ];

@@ -10,7 +10,6 @@ import {
   Scenario
 } from '../lib/store';
 import { formatNumber, calculateSuggestedFeasibility } from '../lib/utils';
-import BubbleChartView from './BubbleChartView';
 
 const ScenarioManager: React.FC = () => {
   const [scenarios, setScenarios] = useAtom(scenariosAtom);
@@ -23,7 +22,6 @@ const ScenarioManager: React.FC = () => {
   const [editingName, setEditingName] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [showDetails, setShowDetails] = useState<string | null>(null);
-  const [showBubbleChart, setShowBubbleChart] = useState(false);
   
   // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -204,11 +202,6 @@ const ScenarioManager: React.FC = () => {
     reader.readAsText(file);
   };
   
-  const handleCompareScenarios = () => {
-    // Toggle bubble chart view for comparing scenarios
-    setShowBubbleChart(!showBubbleChart);
-  };
-  
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
       <div className="flex justify-between items-center mb-4">
@@ -237,14 +230,6 @@ const ScenarioManager: React.FC = () => {
               ref={fileInputRef}
             />
           </label>
-          {scenarios.length > 1 && (
-            <button 
-              onClick={handleCompareScenarios}
-              className="btn bg-indigo-500 text-white hover:bg-indigo-600 text-sm"
-            >
-              {showBubbleChart ? "Hide Comparison" : "Compare Scenarios"}
-            </button>
-          )}
         </div>
       </div>
       
@@ -256,9 +241,11 @@ const ScenarioManager: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          {showBubbleChart && scenarios.length > 1 && (
-            <div className="mb-6">
-              <BubbleChartView />
+          {scenarios.length > 1 && (
+            <div className="bg-blue-50 dark:bg-blue-900 p-3 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Tip:</strong> You can compare your scenarios using the "IPM Bubble Chart" and "Impact vs Feasibility" tabs above.
+              </p>
             </div>
           )}
           
@@ -311,7 +298,7 @@ const ScenarioManager: React.FC = () => {
                                 {scenario.name}
                               </h5>
                               <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {scenario.parameters.geography || 'Custom'} · 
+                                {scenario.parameters.healthSystemStrength || 'Custom'} · 
                                 {getActiveInterventions(scenario).length 
                                   ? ` ${getActiveInterventions(scenario).length} interventions` 
                                   : ' No interventions'}
@@ -361,7 +348,7 @@ const ScenarioManager: React.FC = () => {
                       <div className="p-3 bg-gray-50 dark:bg-gray-700 text-sm border-t border-gray-200 dark:border-gray-600">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           <div>
-                            <p><strong>Geography:</strong> {scenario.parameters.geography || 'Custom'}</p>
+                            <p><strong>Health System:</strong> {scenario.parameters.healthSystemStrength || 'Custom'}</p>
                             <p><strong>Disease:</strong> {scenario.parameters.disease || 'Custom'}</p>
                             <p><strong>Population:</strong> {formatNumber(scenario.parameters.population || 0)}</p>
                             

@@ -8,14 +8,16 @@ import EquationExplainer from '../components/EquationExplainer';
 import ScenarioManager from '../components/ScenarioManager';
 import AIInterventionManager from '../components/AIInterventionManager';
 import BubbleChartView from '../components/BubbleChartView';
+import ImpactFeasibilityBubbleChart from '../components/ImpactFeasibilityBubbleChart';
 import { useAtom } from 'jotai';
-import { simulationResultsAtom, aiInterventionsAtom } from '../lib/store';
+import { simulationResultsAtom, aiInterventionsAtom, scenariosAtom } from '../lib/store';
 
-type TabType = 'dashboard' | 'scenarios' | 'interventions' | 'sensitivity' | 'parameters' | 'equations' | 'comparison';
+type TabType = 'dashboard' | 'scenarios' | 'interventions' | 'sensitivity' | 'parameters' | 'equations' | 'ipm-bubble' | 'impact-bubble';
 
 export default function Home() {
   const [results] = useAtom(simulationResultsAtom);
   const [aiInterventions] = useAtom(aiInterventionsAtom);
+  const [scenarios] = useAtom(scenariosAtom);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [preSimulationTab, setPreSimulationTab] = useState<'dashboard' | 'scenarios' | 'parameters' | 'equations' | 'interventions'>('dashboard');
   
@@ -121,8 +123,10 @@ export default function Home() {
         return <ParametersPanel />;
       case 'equations':
         return <EquationExplainer />;
-      case 'comparison':
+      case 'ipm-bubble':
         return <BubbleChartView />;
+      case 'impact-bubble':
+        return <ImpactFeasibilityBubbleChart />;
       default:
         return <Dashboard />;
     }
@@ -177,7 +181,10 @@ export default function Home() {
                     { id: 'sensitivity', name: 'Sensitivity' },
                     { id: 'parameters', name: 'Parameters' },
                     { id: 'equations', name: 'Equations' },
-                    { id: 'comparison', name: 'Bubble Chart' },
+                    ...(scenarios.length > 1 ? [
+                      { id: 'ipm-bubble', name: 'IPM Bubble Chart' },
+                      { id: 'impact-bubble', name: 'Impact vs Feasibility' }
+                    ] : [])
                   ].map((tab) => (
                     <button
                       key={tab.id}

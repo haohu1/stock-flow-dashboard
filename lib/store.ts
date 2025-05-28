@@ -400,6 +400,8 @@ export interface Scenario {
   // Add multi-disease support
   selectedDiseases?: string[];
   diseaseResultsMap?: Record<string, SimulationResults | null>;
+  // Add bubble chart type tracking
+  bubbleChartType?: 'ipm' | 'impact-feasibility';
 }
 
 export const scenariosAtom = atom<Scenario[]>([]);

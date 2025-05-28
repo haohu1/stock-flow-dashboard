@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAtom } from 'jotai';
 import { scenariosAtom, Scenario, updateScenarioAtom } from '../lib/store';
-import { formatNumber, calculateSuggestedFeasibility } from '../lib/utils';
+import { formatNumber, estimateTimeToScale } from '../lib/utils';
 import * as d3 from 'd3';
 import { baselineResultsMapAtom } from '../lib/store';
 
@@ -10,32 +10,19 @@ const BubbleChartView: React.FC = () => {
   const [, updateScenario] = useAtom(updateScenarioAtom);
   const [baselineMap] = useAtom(baselineResultsMapAtom);
   const [sizeMetric, setSizeMetric] = useState<'dalys' | 'deaths'>('dalys');
-  const [editableScenarios, setEditableScenarios] = useState<Map<string, { feasibility: number }>>(new Map());
   const [selectedDiseases, setSelectedDiseases] = useState<Set<string>>(new Set());
   const [availableDiseases, setAvailableDiseases] = useState<string[]>([]);
   const chartRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // Initialize feasibility values and update available diseases when scenarios change
+  // Initialize available diseases when scenarios change
   useEffect(() => {
-    const newEditableScenarios = new Map<string, { feasibility: number }>();
     const diseaseSet = new Set<string>();
 
     scenarios.forEach(scenario => {
       const disease = scenario.parameters.disease || 'Unknown';
       diseaseSet.add(disease);
-
-      // For editableScenarios (sliders), prioritize scenario.feasibility from global state.
-      // Fallback to calculating a suggested one if not present.
-      const activeInterventions = Object.values(scenario.aiInterventions).filter(Boolean).length;
-      const calculatedFeasibility = calculateSuggestedFeasibility(activeInterventions);
-      
-      newEditableScenarios.set(scenario.id, { 
-        feasibility: scenario.feasibility !== undefined ? scenario.feasibility : calculatedFeasibility 
-      });
     });
-    
-    setEditableScenarios(newEditableScenarios);
     
     const diseaseList = Array.from(diseaseSet).sort();
     setAvailableDiseases(diseaseList);
@@ -43,24 +30,7 @@ const BubbleChartView: React.FC = () => {
     if (selectedDiseases.size === 0 && diseaseList.length > 0) {
       setSelectedDiseases(new Set(diseaseList));
     }
-  }, [scenarios, selectedDiseases]); // Dependency array remains focused on global scenarios changes.
-
-  // Handle feasibility value change
-  const handleFeasibilityChange = (scenarioId: string, value: number) => {
-    const newEditableScenarios = new Map(editableScenarios);
-    newEditableScenarios.set(scenarioId, { 
-      ...newEditableScenarios.get(scenarioId),
-      feasibility: value 
-    });
-    setEditableScenarios(newEditableScenarios);
-    
-    // Also persist the feasibility to the scenario store
-    const scenario = scenarios.find(s => s.id === scenarioId);
-    if (scenario) {
-      const updatedScenario = { ...scenario, feasibility: value };
-      updateScenario(updatedScenario);
-    }
-  };
+  }, [scenarios, selectedDiseases]);
   
   // Handle disease filter toggle
   const toggleDiseaseFilter = (disease: string) => {
@@ -99,7 +69,6 @@ const BubbleChartView: React.FC = () => {
     // Get valid scenarios
     const validScenarios = scenarios.filter(s => {
       return s.results && 
-             editableScenarios.has(s.id) && 
              selectedDiseases.has(s.parameters.disease || 'Unknown');
     });
     
@@ -203,38 +172,16 @@ const BubbleChartView: React.FC = () => {
       // Get the specific disease for this scenario
       const disease = scenario.parameters.disease || 'Unknown';
       
-      // Debug baseline data
-      const isImported = scenario.id.startsWith('imported-');
-      if (isImported) {
-        console.log(`DEBUG [Imported=${isImported}] - Scenario: ${scenario.name} (${disease})`);
-        console.log(`  baselineMap has disease? ${!!baselineMap[disease]}`);
-        console.log(`  scenario.baselineResults exists? ${!!scenario.baselineResults}`);
-        
-        if (scenario.baselineResults) {
-          console.log(`  Baseline DALYs: ${scenario.baselineResults.dalys}, Deaths: ${scenario.baselineResults.cumulativeDeaths}`);
-          console.log(`  Current DALYs: ${scenario.results.dalys}, Deaths: ${scenario.results.cumulativeDeaths}`);
-        }
-        
-        if (baselineMap[disease]) {
-          console.log(`  diseaseBaseline DALYs: ${baselineMap[disease]?.dalys}, Deaths: ${baselineMap[disease]?.cumulativeDeaths}`);
-        }
-      }
-      
       // ENHANCED BASELINE SELECTION LOGIC
-      // First try disease-specific baseline from the baselineMap
-      // Then fall back to scenario's own baseline if available
-      // Then check if any baseline exists in baselineMap for fallback
       let diseaseBaseline = null;
       
       // 1. First choice: Disease-specific baseline from baselineMap
       if (baselineMap[disease]) {
         diseaseBaseline = baselineMap[disease];
-        if (isImported) console.log(`  Using disease-specific baseline from baselineMap for ${disease}`);
       } 
       // 2. Second choice: Scenario's own baselineResults
       else if (scenario.baselineResults) {
         diseaseBaseline = scenario.baselineResults;
-        if (isImported) console.log(`  Using scenario's own baselineResults for ${disease}`);
       }
       // 3. Last resort: Use first available baseline from baselineMap
       else if (Object.keys(baselineMap).length > 0) {
@@ -258,15 +205,9 @@ const BubbleChartView: React.FC = () => {
       if (sizeMetric === 'dalys') {
         const dalysAverted = diseaseBaseline.dalys - scenario.results.dalys;
         
-        // Log extreme values
-        if (Math.abs(dalysAverted) > 1000000) {
-          console.warn(`Large DALY difference detected for ${scenario.name} (${disease}): ${dalysAverted}`);
-          console.warn(`  Baseline DALYs: ${diseaseBaseline.dalys}, Current DALYs: ${scenario.results.dalys}`);
-          
-          // Cap extremely large values to prevent visual distortion
-          const cappedValue = Math.min(Math.abs(dalysAverted), 10000000);
-          console.log(`  Capping extremely large value to: ${cappedValue}`);
-          return dalysAverted > 0 ? cappedValue : 0; // Only return positive values
+        // Cap extremely large values to prevent visual distortion
+        if (Math.abs(dalysAverted) > 10000000) {
+          return dalysAverted > 0 ? 10000000 : 0;
         }
         
         // For averted values, higher is better, so return max of 0 or the actual value
@@ -274,15 +215,9 @@ const BubbleChartView: React.FC = () => {
       } else {
         const deathsAverted = diseaseBaseline.cumulativeDeaths - scenario.results.cumulativeDeaths;
         
-        // Log extreme values
-        if (Math.abs(deathsAverted) > 10000) {
-          console.warn(`Large deaths difference detected for ${scenario.name} (${disease}): ${deathsAverted}`);
-          console.warn(`  Baseline deaths: ${diseaseBaseline.cumulativeDeaths}, Current deaths: ${scenario.results.cumulativeDeaths}`);
-          
-          // Cap extremely large values to prevent visual distortion
-          const cappedValue = Math.min(Math.abs(deathsAverted), 100000);
-          console.log(`  Capping extremely large value to: ${cappedValue}`);
-          return deathsAverted > 0 ? cappedValue : 0; // Only return positive values
+        // Cap extremely large values to prevent visual distortion
+        if (Math.abs(deathsAverted) > 100000) {
+          return deathsAverted > 0 ? 100000 : 0;
         }
         
         // For averted values, higher is better, so return max of 0 or the actual value
@@ -325,7 +260,7 @@ const BubbleChartView: React.FC = () => {
       .attr("stroke", "currentColor");
     
     // Add vertical grid lines
-    const xTicks = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
+    const xTicks = [0, 0.25, 0.5, 0.75, 1];
     svg.append("g")
       .attr("class", "grid-lines")
       .style("opacity", 0.1)
@@ -338,12 +273,22 @@ const BubbleChartView: React.FC = () => {
       .attr("x2", d => xScale(d))
       .attr("y1", 0)
       .attr("y2", innerHeight)
-      .attr("stroke", "currentColor");
+      .attr("stroke", "currentColor")
+      .attr("stroke-dasharray", d => d === 0.5 ? "5,5" : "2,2");
     
     // Add X axis
     svg.append("g")
       .attr("transform", `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(xScale).ticks(5))
+      .call(d3.axisBottom(xScale)
+        .tickValues([0, 0.25, 0.5, 0.75, 1])
+        .tickFormat(d => {
+          const val = Number(d);
+          if (val === 0) return "3+ years";
+          if (val === 0.25) return "2 years";
+          if (val === 0.5) return "1 year";
+          if (val === 0.75) return "3 months";
+          return "Immediate";
+        }))
       .style("font-size", "11px");
     
     // Add X axis label
@@ -351,7 +296,7 @@ const BubbleChartView: React.FC = () => {
       .attr("text-anchor", "middle")
       .attr("x", innerWidth / 2)
       .attr("y", innerHeight + 40)
-      .text("Feasibility (0 = early stage, 1 = close to launch)")
+      .text("Time to Scale (Feasibility)")
       .attr("fill", "currentColor")
       .style("font-size", "12px");
     
@@ -427,18 +372,14 @@ const BubbleChartView: React.FC = () => {
     // Force simulation to prevent overlapping bubbles
     // Create a typed version of the data for simulation
     const simulationNodes = validScenarios.map(scenario => {
-      // For D3 node positioning, directly use scenario.feasibility if available.
-      // Fallback to calculating a suggested one ONLY if scenario.feasibility is undefined.
-      const activeInterventions = Object.values(scenario.aiInterventions).filter(Boolean).length;
-      const feasibilityForNode = scenario.feasibility !== undefined 
+      // Use the shared time-to-scale estimation
+      const timeToScale = scenario.feasibility !== undefined 
         ? scenario.feasibility 
-        : calculateSuggestedFeasibility(activeInterventions);
-
-      // console.log(`Scenario: ${scenario.name}, Feasibility for Node: ${feasibilityForNode}, Original scenario.feasibility: ${scenario.feasibility}`);
+        : estimateTimeToScale(scenario.aiInterventions);
 
       return {
         ...scenario,
-        x: xScale(feasibilityForNode),
+        x: xScale(timeToScale),
         y: getYPosition(scenario),
         r: sizeScale(getSizeValue(scenario))
       };
@@ -517,14 +458,23 @@ const BubbleChartView: React.FC = () => {
           .style("stroke-width", 2)
           .style("fill-opacity", 1);
         
+        // Get time to scale for display
+        const timeToScale = data.feasibility !== undefined 
+          ? data.feasibility 
+          : estimateTimeToScale(data.aiInterventions);
+        
         // Set content first
         tooltipDiv.innerHTML = `
           <div>
             <div style="font-weight: bold; font-size: 16px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid ${prefersDarkMode || bodyHasDarkClass ? '#374151' : '#eee'};">${data.name}</div>
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
-                <td style="padding: 4px 8px 4px 0; color: ${prefersDarkMode || bodyHasDarkClass ? '#9CA3AF' : '#6B7280'};">Feasibility:</td>
-                <td style="padding: 4px 0; text-align: right; font-weight: 500;">${(editableScenarios.get(data.id)?.feasibility || 0).toFixed(2)}</td>
+                <td style="padding: 4px 8px 4px 0; color: ${prefersDarkMode || bodyHasDarkClass ? '#9CA3AF' : '#6B7280'};">Time to Scale:</td>
+                <td style="padding: 4px 0; text-align: right; font-weight: 500;">
+                  ${timeToScale < 0.25 ? '2+ years' : 
+                    timeToScale < 0.5 ? '1-2 years' :
+                    timeToScale < 0.75 ? '3-12 months' : 'Immediate'}
+                </td>
               </tr>
               <tr>
                 <td style="padding: 4px 8px 4px 0; color: ${prefersDarkMode || bodyHasDarkClass ? '#9CA3AF' : '#6B7280'};">Cost-effectiveness:</td>
@@ -550,10 +500,10 @@ const BubbleChartView: React.FC = () => {
                 <td style="padding: 4px 0; text-align: right; font-weight: 500;">${data.parameters.disease}</td>
               </tr>
               ` : ''}
-              ${data.parameters.geography ? `
+              ${data.parameters.healthSystemStrength ? `
               <tr>
-                <td style="padding: 4px 8px 4px 0; color: ${prefersDarkMode || bodyHasDarkClass ? '#9CA3AF' : '#6B7280'};">Geography:</td>
-                <td style="padding: 4px 0; text-align: right; font-weight: 500;">${data.parameters.geography}</td>
+                <td style="padding: 4px 8px 4px 0; color: ${prefersDarkMode || bodyHasDarkClass ? '#9CA3AF' : '#6B7280'};">Health System:</td>
+                <td style="padding: 4px 0; text-align: right; font-weight: 500;">${data.parameters.healthSystemStrength}</td>
               </tr>
               ` : ''}
             </table>
@@ -722,7 +672,7 @@ const BubbleChartView: React.FC = () => {
         document.body.removeChild(tooltip);
       }
     };
-  }, [scenarios, editableScenarios, sizeMetric, selectedDiseases]);
+  }, [scenarios, sizeMetric, selectedDiseases]);
 
   // If no scenarios or only one scenario, show a message
   if (scenarios.length <= 1) {
@@ -738,7 +688,7 @@ const BubbleChartView: React.FC = () => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Scenario Comparison Chart</h3>
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-white">IPM Bubble Chart</h3>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <label className="text-sm text-gray-600 dark:text-gray-400">Bubble size:</label>
@@ -790,37 +740,6 @@ const BubbleChartView: React.FC = () => {
       
       <div className="mb-6 relative">
         <div ref={chartRef} className="w-full h-[500px]"></div>
-      </div>
-      
-      <div className="mt-4">
-        <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">Adjust Feasibility Values</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {scenarios.map(scenario => (
-            scenario.results && editableScenarios.has(scenario.id) && (
-              <div key={scenario.id} className="border rounded-md p-3 bg-gray-50 dark:bg-gray-700">
-                <div className="flex flex-col">
-                  <label className="text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                    {scenario.name}
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      value={editableScenarios.get(scenario.id)?.feasibility || 0.5}
-                      onChange={(e) => handleFeasibilityChange(scenario.id, parseFloat(e.target.value))}
-                      className="flex-1 mr-2"
-                    />
-                    <span className="text-xs w-16 text-right">
-                      {(editableScenarios.get(scenario.id)?.feasibility || 0).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )
-          ))}
-        </div>
       </div>
     </div>
   );

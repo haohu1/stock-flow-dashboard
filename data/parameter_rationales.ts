@@ -31,7 +31,7 @@ export const diseaseRationales: Record<string, ParameterRationale[]> = {
       sources: ['WHO TB screening guidelines', 'LMIC TB program evaluations']
     }
   ],
-  pneumonia: [
+  childhood_pneumonia: [
     {
       key: 'lambda',
       rationale: '90% annual incidence in children reflects the very high burden of respiratory infections in LMICs. Children in low-resource settings face multiple risk factors including indoor air pollution and malnutrition.',

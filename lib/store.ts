@@ -14,9 +14,9 @@ import { calculateSuggestedFeasibility, formatNumber } from './utils';
 
 // Selected health system strength and disease
 export const selectedHealthSystemStrengthAtom = atom<string>('moderate_urban_system');
-export const selectedDiseaseAtom = atom<string>('pneumonia');
+export const selectedDiseaseAtom = atom<string>('childhood_pneumonia');
 // New atom for multi-disease selection
-export const selectedDiseasesAtom = atom<string[]>(['pneumonia']);
+export const selectedDiseasesAtom = atom<string[]>(['childhood_pneumonia']);
 
 // Population settings
 export const populationSizeAtom = atom<number>(1000000);
@@ -924,7 +924,7 @@ export const loadScenarioAtom = atom(
         } else {
           // Fallback to the single disease from parameters if available
           console.log('Empty selectedDiseases array, falling back to parameters.disease');
-          const fallbackDisease = scenario.parameters.disease || 'pneumonia';
+          const fallbackDisease = scenario.parameters.disease || 'childhood_pneumonia';
           set(selectedDiseasesAtom, [fallbackDisease]);
           set(selectedDiseaseAtom, fallbackDisease);
         }

@@ -314,7 +314,7 @@ const AIInterventionManager: React.FC = () => {
     if (!disease) return '';
     
     const explanations: {[key: string]: {[param: string]: string}} = {
-      pneumonia: {
+      childhood_pneumonia: {
         'diagnosticAI_μ₁': 'AI chest X-ray reading for pneumonia has 90%+ accuracy, enabling more cases to be resolved at primary care',
         'diagnosticAI_δ₁': 'Early pneumonia detection via AI prevents progression to severe disease',
         'chwAI_μ₀': 'AI helps CHWs count respiratory rates accurately, critical for pneumonia diagnosis',

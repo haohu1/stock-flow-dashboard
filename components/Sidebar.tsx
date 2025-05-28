@@ -51,8 +51,7 @@ const Sidebar: React.FC = () => {
     const options = [
       // Infectious Diseases
       { id: 'tuberculosis', name: 'Tuberculosis', group: 'Infectious Diseases', checked: selectedDiseases.includes('tuberculosis') },
-      { id: 'pneumonia', name: 'Pneumonia', group: 'Infectious Diseases', checked: selectedDiseases.includes('pneumonia') },
-      { id: 'infant_pneumonia', name: 'Infant Pneumonia', group: 'Infectious Diseases', checked: selectedDiseases.includes('infant_pneumonia') },
+      { id: 'childhood_pneumonia', name: 'Childhood Pneumonia', group: 'Infectious Diseases', checked: selectedDiseases.includes('childhood_pneumonia') },
       { id: 'malaria', name: 'Malaria', group: 'Infectious Diseases', checked: selectedDiseases.includes('malaria') },
       { id: 'fever', name: 'Fever of Unknown Origin', group: 'Infectious Diseases', checked: selectedDiseases.includes('fever') },
       { id: 'diarrhea', name: 'Diarrheal Disease', group: 'Infectious Diseases', checked: selectedDiseases.includes('diarrhea') },
@@ -317,8 +316,7 @@ const Sidebar: React.FC = () => {
         >
           <optgroup label="Infectious Diseases">
             <option value="tuberculosis">Tuberculosis</option>
-            <option value="pneumonia">Pneumonia</option>
-            <option value="infant_pneumonia">Infant Pneumonia</option>
+            <option value="childhood_pneumonia">Childhood Pneumonia</option>
             <option value="malaria">Malaria</option>
             <option value="fever">Fever of Unknown Origin</option>
             <option value="diarrhea">Diarrheal Disease</option>
@@ -342,14 +340,11 @@ const Sidebar: React.FC = () => {
             {selectedDisease === 'tuberculosis' && (
               <p>Tuberculosis in South Africa has a very high incidence (615 per 100,000 population annually), reflecting one of the highest TB burdens globally. Features extremely low spontaneous resolution if untreated (0.5% weekly) or with informal care (2% weekly) and higher mortality rates than global averages (0.4% weekly if untreated). Complicated by high HIV co-infection rates. Requires sustained treatment with resolution rates of 4-6% weekly depending on care level. CHW role focuses on DOTS support with high referral rate (85%).</p>
             )}
-            {selectedDisease === 'pneumonia' && (
-              <p>Pneumonia is an acute respiratory infection with high incidence (0.9 episodes per child-year) primarily affecting young children. Features limited spontaneous resolution if untreated (6% weekly) and somewhat better with informal care (10% weekly) but significant mortality if untreated (5% weekly). CHWs providing antibiotics achieve high resolution rates (70% weekly) for non-severe cases. Hospital care needed for severe cases with mortality rates of 1.5-2% weekly despite treatment.</p>
+            {selectedDisease === 'childhood_pneumonia' && (
+              <p>Childhood pneumonia is an acute respiratory infection with high incidence (0.9 episodes per child-year) primarily affecting young children. Features limited spontaneous resolution if untreated (6% weekly) and somewhat better with informal care (10% weekly) but significant mortality if untreated (5% weekly). CHWs providing antibiotics achieve high resolution rates (70% weekly) for non-severe cases. Hospital care needed for severe cases with mortality rates of 1.5-2% weekly despite treatment.</p>
             )}
             {selectedDisease === 'urti' && (
               <p>Upper Respiratory Tract Infection with very high incidence (2 episodes per person-year). Features very high spontaneous resolution even without any care (65% weekly) and with minimal additional benefit from informal care (70% weekly) or healthcare intervention. Extremely low mortality (0.001-0.002% weekly) and minimal referral requirements (5% from CHW level). Represents a high-volume, low-severity condition affecting all ages.</p>
-            )}
-            {selectedDisease === 'infant_pneumonia' && (
-              <p>Severe respiratory infection affecting infants (&lt;1 year) with very high incidence (1.2 episodes per infant-year). Minimal spontaneous resolution if untreated (4% weekly) and slightly better with informal care (10% weekly). Much higher mortality (6% if untreated) than adult pneumonia. CHWs treating non-severe cases achieve 50% weekly resolution. Hospital care for severe cases still carries 2-2.5% weekly mortality despite treatment. Requires prompt medical intervention.</p>
             )}
             {selectedDisease === 'fever' && (
               <p>Fever of unknown origin has moderate-high incidence (0.6 episodes per person-year) affecting all ages. Significant spontaneous resolution for many non-specific fevers (25% weekly) even without care, and better with informal care (30% weekly), but requires diagnostic evaluation to rule out serious conditions. Mortality ranges from 1.5% weekly if untreated to 0.1% weekly at tertiary care. Primary care can diagnose and provide empiric treatment with good outcomes (70% weekly resolution).</p>

@@ -586,7 +586,7 @@ export const diseaseProfiles = {
     rho1: 0.45,               // moderate referral primary to district for complications/MDR suspicion (45%)
     rho2: 0.30                // referral district to tertiary for specialized MDR/complex care (30%)
   },
-  pneumonia: { // Primarily non-severe childhood pneumonia
+  childhood_pneumonia: { // Primarily non-severe childhood pneumonia
     lambda: 0.90,             // very high incidence in under-fives (episodes per child-year)
     disabilityWeight: 0.28,   // moderate disability
     meanAgeOfInfection: 3,    // primarily affects young children
@@ -665,26 +665,6 @@ export const diseaseProfiles = {
     rho0: 0.50,               // CHW referral to primary (danger signs, dehydration, persistent) (50%)
     rho1: 0.30,               // primary care referral to district (severe dehydration, not responding) (30%)
     rho2: 0.10                // district referral to tertiary (highly complex cases) (10%)
-  },
-  infant_pneumonia: { // Pneumonia specifically in infants (<1 year old), often more severe
-    lambda: 1.20,             // very high incidence in infants (episodes per infant-year)
-    disabilityWeight: 0.35,   // moderate-high disability
-    meanAgeOfInfection: 0.5,  // infants (6 months average age)
-    muI: 0.10,                // some spontaneous resolution (viral, very mild bacterial) (10% per week)
-    muU: 0.04,                // minimal spontaneous resolution if untreated (4% per week)
-    mu0: 0.50,                // CHW with antibiotics for non-severe infant pneumonia/PSBI (Amox DT) (50% per week)
-    mu1: 0.70,                // primary care with antibiotics for non-severe (70% per week)
-    mu2: 0.75,                // district hospital for severe infant pneumonia (75% per week)
-    mu3: 0.85,                // tertiary care for very severe/complicated infant pneumonia (85% per week)
-    deltaI: 0.04,             // mortality with informal care for infant pneumonia (4% per week)
-    deltaU: 0.06,             // mortality if completely untreated (6% per week)
-    delta0: 0.015,            // mortality under CHW care (covers misclassification, delay, severity) (1.5% per week)
-    delta1: 0.008,            // mortality under primary care (appropriately treated non-severe) (0.8% per week)
-    delta2: 0.025,            // mortality for severe infant pneumonia at district hospital (2.5% per week)
-    delta3: 0.02,             // mortality for very severe/complicated at tertiary (2% per week)
-    rho0: 0.65,               // CHW referral to primary for danger signs/non-response in infants (65%)
-    rho1: 0.45,               // primary care referral to district for severe cases (45%)
-    rho2: 0.30                // district referral to tertiary for highly complex cases (30%)
   },
   anemia: { // Focus on Iron Deficiency Anemia in women/children
     lambda: 0.20,             // 20% annual incidence of symptomatic anemia needing attention
@@ -905,7 +885,7 @@ export const defaultAIBaseEffects: AIBaseEffects = {
 
 // Disease-specific AI effect rationales
 export const diseaseAIRationales: {[disease: string]: string} = {
-  pneumonia: "AI excels at chest X-ray interpretation for pneumonia detection. CHW AI helps with respiratory rate counting and danger sign recognition, critical for child pneumonia. Self-care AI has limited impact as pneumonia requires medical treatment.",
+  childhood_pneumonia: "AI excels at chest X-ray interpretation for pneumonia detection. CHW AI helps with respiratory rate counting and danger sign recognition, critical for child pneumonia. Self-care AI has limited impact as pneumonia requires medical treatment.",
   
   malaria: "AI shows exceptional performance in microscopy and RDT interpretation. CHWs equipped with AI can better manage ACT dosing and identify severe cases. Self-care apps help with prevention education and early symptom recognition.",
   
@@ -919,7 +899,6 @@ export const diseaseAIRationales: {[disease: string]: string} = {
   
   hiv_management_chronic: "Adherence is paramount in HIV care - AI apps showing 25% improvement through personalized reminders and side effect support. CHW AI helps with adherence counseling and identifying treatment failure early.",
   
-  infant_pneumonia: "CHW AI dramatically improves outcomes through accurate respiratory rate counting and danger sign recognition in infants. Effects are stronger than adult pneumonia due to the critical nature of early detection in infants.",
   
   urti: "Minimal AI impact as most URTIs are self-limiting viral infections. Small benefits from self-care guidance on symptomatic relief. Diagnostic AI has limited value as treatment rarely changes based on diagnosis.",
   
@@ -932,8 +911,8 @@ export const diseaseAIRationales: {[disease: string]: string} = {
 
 // Disease-specific AI effects
 export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
-  // Pneumonia - diagnostic AI highly effective for X-ray interpretation
-  pneumonia: {
+  // Childhood pneumonia - diagnostic AI highly effective for X-ray interpretation
+  childhood_pneumonia: {
     diagnosticAI: {
       mu1Effect: 0.12,      // 12% increase in resolution (early detection via AI X-ray)
       delta1Effect: 0.85,   // 15% mortality reduction (early treatment)
@@ -1067,23 +1046,6 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     }
   },
   
-  // Infant pneumonia - high impact potential
-  infant_pneumonia: {
-    chwAI: {
-      mu0Effect: 0.15,      // 15% increase (respiratory rate, danger signs)
-      delta0Effect: 0.75,   // 25% mortality reduction
-      rho0Effect: 1.05      // 5% increase in appropriate referrals (severe infant cases need escalation)
-    },
-    diagnosticAI: {
-      mu1Effect: 0.10,      // 10% increase (early detection)
-      delta1Effect: 0.80,   // 20% mortality reduction
-      rho1Effect: 1.05      // 5% increase in appropriate referrals (severe cases to district)
-    },
-    selfCareAI: {
-      muIEffect: 0.08,      // 8% increase (parent education)
-      deltaIEffect: 0.80    // 20% mortality reduction (danger signs)
-    }
-  },
   
   // Simple conditions - minimal AI impact
   urti: {

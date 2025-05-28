@@ -11,20 +11,29 @@ interface ImpactFeasibilityData {
   timeToScale: number; // 0-1 where 0 is immediate, 1 is long-term
   populationImpact: number; // Total DALYs averted
   percentDeathsAverted: number; // Percentage of deaths averted
-  quadrant: 'quick-wins' | 'strategic' | 'fill-ins' | 'long-shots';
+  quadrant: 'big-bets' | 'moonshots' | 'quick-wins' | 'incremental';
 }
+
+// Helper function to get display names for quadrants
+const getQuadrantDisplayName = (quadrant: ImpactFeasibilityData['quadrant']): string => {
+  switch (quadrant) {
+    case 'big-bets': return 'Big Bets';
+    case 'moonshots': return 'Moonshots';
+    case 'quick-wins': return 'Quick Wins';
+    case 'incremental': return 'Incremental';
+    default: return quadrant;
+  }
+};
 
 const ImpactFeasibilityBubbleChart: React.FC = () => {
   const [scenarios] = useAtom(scenariosAtom);
-  const [, updateScenario] = useAtom(updateScenarioAtom);
   const [baselineMap] = useAtom(baselineResultsMapAtom);
   const [timeToScaleParams] = useAtom(aiTimeToScaleParametersAtom);
   const [yAxisMetric, setYAxisMetric] = useState<'dalys' | 'percent-deaths'>('percent-deaths');
   const [selectedDiseases, setSelectedDiseases] = useState<Set<string>>(new Set());
   const [availableDiseases, setAvailableDiseases] = useState<string[]>([]);
-  const [showLabels, setShowLabels] = useState(false);
+  const [showLabels, setShowLabels] = useState(true);
   const chartRef = useRef<HTMLDivElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
 
   // Initialize disease filters
   useEffect(() => {
@@ -95,13 +104,13 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     const timeThreshold = 0.5; // 0-1 scale
     
     if (impact >= impactThreshold && timeToScale >= timeThreshold) {
-      return 'quick-wins'; // High impact, quick to implement
+      return 'big-bets'; // High impact, quick to implement
     } else if (impact >= impactThreshold && timeToScale < timeThreshold) {
-      return 'strategic'; // High impact, takes time
+      return 'moonshots'; // High impact, takes time
     } else if (impact < impactThreshold && timeToScale >= timeThreshold) {
-      return 'fill-ins'; // Low impact, quick to implement
+      return 'quick-wins'; // Low impact, quick to implement
     } else {
-      return 'long-shots'; // Low impact, takes time
+      return 'incremental'; // Low impact, takes time
     }
   };
 
@@ -118,6 +127,18 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     }
     
     setSelectedDiseases(newSelectedDiseases);
+  };
+
+  // Select all diseases
+  const selectAllDiseases = () => {
+    setSelectedDiseases(new Set(availableDiseases));
+  };
+
+  // Clear all diseases (keep at least one selected)
+  const clearAllDiseases = () => {
+    if (availableDiseases.length > 0) {
+      setSelectedDiseases(new Set([availableDiseases[0]]));
+    }
   };
 
   // Create the visualization
@@ -183,10 +204,10 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     
     // Add quadrant backgrounds with dynamic positioning
     const quadrantData = [
-      { x: 0, y: impactThresholdY, width: timeThresholdX, height: innerHeight - impactThresholdY, quadrant: 'long-shots', label: 'Long shots' },
-      { x: timeThresholdX, y: impactThresholdY, width: innerWidth - timeThresholdX, height: innerHeight - impactThresholdY, quadrant: 'fill-ins', label: 'Fill-ins' },
-      { x: 0, y: 0, width: timeThresholdX, height: impactThresholdY, quadrant: 'strategic', label: 'Strategic priorities' },
-      { x: timeThresholdX, y: 0, width: innerWidth - timeThresholdX, height: impactThresholdY, quadrant: 'quick-wins', label: 'Quick wins' }
+      { x: 0, y: impactThresholdY, width: timeThresholdX, height: innerHeight - impactThresholdY, quadrant: 'incremental', label: 'Incremental' },
+      { x: timeThresholdX, y: impactThresholdY, width: innerWidth - timeThresholdX, height: innerHeight - impactThresholdY, quadrant: 'quick-wins', label: 'Quick Wins' },
+      { x: 0, y: 0, width: timeThresholdX, height: impactThresholdY, quadrant: 'moonshots', label: 'Moonshots' },
+      { x: timeThresholdX, y: 0, width: innerWidth - timeThresholdX, height: impactThresholdY, quadrant: 'big-bets', label: 'Big Bets' }
     ];
     
     svg.selectAll(".quadrant")
@@ -420,7 +441,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
               <tr>
                 <td style="padding: 4px 8px 4px 0; color: #6B7280;">Quadrant:</td>
                 <td style="padding: 4px 0; text-align: right; font-weight: 500; color: ${colorScale(data.quadrant)};">
-                  ${data.quadrant.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  ${getQuadrantDisplayName(data.quadrant)}
                 </td>
               </tr>
               <tr>
@@ -568,7 +589,23 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       
       {/* Disease filters */}
       <div className="mb-4 bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Disease:</h4>
+        <div className="flex justify-between items-center mb-2">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Disease:</h4>
+          <div className="flex gap-2">
+            <button
+              onClick={selectAllDiseases}
+              className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+            >
+              Select All
+            </button>
+            <button
+              onClick={clearAllDiseases}
+              className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors"
+            >
+              Clear All
+            </button>
+          </div>
+        </div>
         <div className="flex flex-wrap gap-2">
           {availableDiseases.map(disease => (
             <label key={disease} className="inline-flex items-center">
@@ -590,25 +627,25 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       {/* Quadrant descriptions */}
       <div className="mt-6 grid grid-cols-2 gap-4 text-sm">
         <div className="p-3 bg-green-50 dark:bg-green-900 rounded-lg">
-          <h4 className="font-semibold text-green-800 dark:text-green-200 mb-1">Quick Wins</h4>
+          <h4 className="font-semibold text-green-800 dark:text-green-200 mb-1">Big Bets</h4>
           <p className="text-green-700 dark:text-green-300">
             High impact interventions that can be deployed quickly. Priority for immediate investment.
           </p>
         </div>
         <div className="p-3 bg-yellow-50 dark:bg-yellow-900 rounded-lg">
-          <h4 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-1">Strategic Priorities</h4>
+          <h4 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-1">Moonshots</h4>
           <p className="text-yellow-700 dark:text-yellow-300">
             High impact but require more time to implement. Worth long-term investment.
           </p>
         </div>
         <div className="p-3 bg-blue-50 dark:bg-blue-900 rounded-lg">
-          <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-1">Fill-ins</h4>
+          <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-1">Quick Wins</h4>
           <p className="text-blue-700 dark:text-blue-300">
             Lower impact but quick to deploy. Consider for incremental improvements.
           </p>
         </div>
         <div className="p-3 bg-red-50 dark:bg-red-900 rounded-lg">
-          <h4 className="font-semibold text-red-800 dark:text-red-200 mb-1">Long Shots</h4>
+          <h4 className="font-semibold text-red-800 dark:text-red-200 mb-1">Incremental</h4>
           <p className="text-red-700 dark:text-red-300">
             Lower impact and slow to implement. Generally lower priority.
           </p>

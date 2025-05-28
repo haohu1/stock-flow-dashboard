@@ -237,7 +237,7 @@ const interventionInfo: InterventionInfo[] = [
     effects: [
       { param: 'μ₀', effect: '+0.05', description: 'Improves resolution at community level. AI enables CHWs to handle more complex cases safely by providing step-by-step protocols, drug dosing calculators, and confidence scoring. This expands the scope of conditions CHWs can manage effectively.' },
       { param: 'δ₀', effect: '×0.92', description: 'Reduces mortality at community level. AI helps identify high-risk patients through predictive models, ensures protocol compliance for critical conditions, and triggers automatic escalation for danger signs that might be missed by human assessment alone.' },
-      { param: 'ρ₀', effect: '×0.92', description: 'Reduces unnecessary referrals from CHW to primary care. ML models trained on local data can better distinguish between cases needing referral vs. those manageable at community level, while providing CHWs confidence through second opinions and risk scores.' }
+      { param: 'ρ₀', effect: '×0.92', description: 'Optimizes referrals from CHW to primary care. AI can reduce unnecessary referrals by improving diagnostic confidence for manageable cases, or increase appropriate referrals by identifying severity requiring escalation. Effect varies by disease complexity and CHW scope.' }
     ]
   },
   { 
@@ -247,7 +247,7 @@ const interventionInfo: InterventionInfo[] = [
     effects: [
       { param: 'μ₁', effect: '+0.06', description: 'Improves resolution at primary care level. AI enables earlier and more accurate diagnosis through pattern recognition across multiple data types (symptoms, images, labs), catching conditions that would typically require specialist referral.' },
       { param: 'δ₁', effect: '×0.92', description: 'Reduces mortality at primary care level. Early detection of serious conditions (TB, cancer, sepsis) through AI screening, plus reduced diagnostic errors from AI double-checking, prevents deaths from delayed or missed diagnoses.' },
-      { param: 'ρ₁', effect: '×0.92', description: 'Reduces unnecessary referrals from primary to secondary care. AI provides specialist-level diagnostic capability at primary care, handles complex differential diagnosis, and gives clinicians confidence to manage cases they would otherwise refer out of uncertainty.' }
+      { param: 'ρ₁', effect: '×0.92', description: 'Optimizes referrals from primary to secondary care. AI can reduce unnecessary referrals by providing specialist-level diagnostic confidence for manageable cases, or increase appropriate referrals by identifying high-risk conditions requiring specialist care. Effect varies by disease complexity.' }
     ] 
   },
   { 

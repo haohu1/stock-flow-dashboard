@@ -885,28 +885,28 @@ export const defaultAIBaseEffects: AIBaseEffects = {
 
 // Disease-specific AI effect rationales
 export const diseaseAIRationales: {[disease: string]: string} = {
-  childhood_pneumonia: "AI excels at chest X-ray interpretation for pneumonia detection. CHW AI helps with respiratory rate counting and danger sign recognition, critical for child pneumonia. Self-care AI has limited impact as pneumonia requires medical treatment.",
+  childhood_pneumonia: "AI provides exceptional chest X-ray interpretation with 90%+ accuracy, enabling 30% higher resolution rates at primary care. CHW AI dramatically improves respiratory rate counting accuracy and danger sign recognition, achieving 20% higher resolution rates. Effects are larger than adult pneumonia due to critical importance of early detection in children.",
   
-  malaria: "AI shows exceptional performance in microscopy and RDT interpretation. CHWs equipped with AI can better manage ACT dosing and identify severe cases. Self-care apps help with prevention education and early symptom recognition.",
+  malaria: "AI microscopy and RDT interpretation achieve 95%+ accuracy, enabling 25-30% higher resolution rates through confident diagnosis and ACT dosing. CHW AI reduces unnecessary referrals by 25% while improving treatment success. Represents ideal use case for point-of-care diagnostic AI.",
   
-  diarrhea: "Self-care AI is highly effective for ORS preparation guidance, preventing dehydration deaths. CHW AI assists with dehydration assessment using visual cues. Triage AI promotes early care-seeking for danger signs like bloody diarrhea.",
+  diarrhea: "Self-care AI excels at ORS preparation guidance with 30% mortality reduction. CHW AI improves dehydration assessment through visual cue interpretation, achieving 20% higher resolution. Diagnostic AI provides 25% improvement through electrolyte and severity assessment.",
   
-  tuberculosis: "CAD4TB and similar AI tools show 90%+ sensitivity for TB screening via chest X-rays. AI helps detect drug resistance patterns and supports critical medication adherence through daily reminders and side effect management.",
+  tuberculosis: "CAD4TB X-ray AI enables 35% higher resolution at primary care through confident diagnosis. CHW AI focuses on identifying suspects for X-ray screening (25% increase in appropriate referrals). Largest AI diagnostic improvement reflects exceptional technology-disease match.",
   
-  high_risk_pregnancy_low_anc: "AI significantly improves facility delivery rates through birth preparedness messaging. Ultrasound AI detects complications early. Hospital AI protocols are especially effective for hemorrhage management, the leading cause of maternal mortality.",
+  high_risk_pregnancy_low_anc: "CHW AI has limited resolution role (8% improvement) but increases referrals 30% for complications. Ultrasound AI at primary care achieves 20% higher resolution while increasing referrals 20% for specialist care. Conservative CHW approach reflects scope limitations for pregnancy complications.",
   
-  congestive_heart_failure: "Self-care AI cannot resolve CHF episodes at home (0% effect) as medical intervention is essential. Triage AI helps patients recognize decompensation early. Bed management AI optimizes fluid balance monitoring in hospitals.",
+  congestive_heart_failure: "Conservative AI effects reflect need for medical management - only 3-5% resolution improvements. However, AI increases referrals 15-25% by identifying decompensation requiring escalation. Self-care AI provides no resolution benefit (0%) as CHF cannot be managed at home.",
   
-  hiv_management_chronic: "Adherence is paramount in HIV care - AI apps showing 25% improvement through personalized reminders and side effect support. CHW AI helps with adherence counseling and identifying treatment failure early.",
+  hiv_management_chronic: "Adherence-focused AI achieves 20% higher CHW resolution and 15% higher primary care resolution through personalized medication reminders and side effect management. CHW AI increases referrals 10% for appropriate escalation while diagnostic AI reduces referrals 15% through confident management.",
   
   
-  urti: "Minimal AI impact as most URTIs are self-limiting viral infections. Small benefits from self-care guidance on symptomatic relief. Diagnostic AI has limited value as treatment rarely changes based on diagnosis.",
+  urti: "AI provides high confidence for 'do not refer' decisions - 30% referral reduction at both CHW and primary levels. Modest resolution improvements (5-8%) reflect self-limiting nature. AI excels at distinguishing viral URTIs from serious bacterial infections.",
   
-  fever: "AI helps differentiate serious causes from benign fever through pattern recognition. Diagnostic AI improves differential diagnosis. Self-care AI provides appropriate home management guidance for uncomplicated cases.",
+  fever: "AI differential diagnosis achieves 12-15% resolution improvements through better identification of underlying causes. Moderate referral reduction (15%) reflects variable complexity. CHW AI helps with initial assessment while diagnostic AI improves syndrome classification.",
   
-  anemia: "Point-of-care hemoglobin testing with AI interpretation improves diagnosis. CHW AI guides appropriate iron supplementation. Limited self-care impact as dietary changes alone rarely resolve clinical anemia.",
+  anemia: "Point-of-care hemoglobin testing AI enables 15-20% resolution improvements through accurate diagnosis and iron supplementation guidance. Baseline 20% referral reduction reflects diagnostic confidence. CHW AI particularly effective for iron deficiency management protocols.",
   
-  hiv_opportunistic: "Early OI detection through AI pattern recognition is critical. Hospital AI helps manage complex drug interactions in OI treatment. Triage AI recognizes urgent symptoms like cryptococcal meningitis presentations."
+  hiv_opportunistic: "Uses weighted average approach for mixed simple/complex OI cases. CHW AI helps with cotrimoxazole adherence and simple OIs but increases referrals 35% for complex cases. Diagnostic AI achieves 30% higher resolution through better OI differentiation while increasing referrals 20% for specialist care needs."
 };
 
 // Disease-specific AI effects

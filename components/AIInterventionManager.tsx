@@ -235,9 +235,9 @@ const interventionInfo: InterventionInfo[] = [
     name: 'CHW Decision Support', 
     description: 'Advanced AI assistant that provides CHWs with real-time clinical guidance, automated documentation, and predictive risk assessment through mobile devices',
     effects: [
-      { param: 'μ₀', effect: '+0.05', description: 'Improves resolution at community level. AI enables CHWs to handle more complex cases safely by providing step-by-step protocols, drug dosing calculators, and confidence scoring. This expands the scope of conditions CHWs can manage effectively.' },
+      { param: 'μ₀', effect: '+0.15', description: 'Improves resolution at community level. Systematic baseline: 15 percentage point increase in weekly resolution rate. AI enables CHWs to handle more complex cases safely through clinical protocols, drug dosing guidance, and confidence scoring.' },
       { param: 'δ₀', effect: '×0.92', description: 'Reduces mortality at community level. AI helps identify high-risk patients through predictive models, ensures protocol compliance for critical conditions, and triggers automatic escalation for danger signs that might be missed by human assessment alone.' },
-      { param: 'ρ₀', effect: '×0.92', description: 'Optimizes referrals from CHW to primary care. AI can reduce unnecessary referrals by improving diagnostic confidence for manageable cases, or increase appropriate referrals by identifying severity requiring escalation. Effect varies by disease complexity and CHW scope.' }
+      { param: 'ρ₀', effect: '×0.80', description: 'Optimizes referrals from CHW to primary care. Systematic baseline: ±20% referral optimization. AI can reduce unnecessary referrals by improving diagnostic confidence, or increase appropriate referrals by identifying severity requiring escalation. Direction varies by disease complexity.' }
     ]
   },
   { 
@@ -245,9 +245,9 @@ const interventionInfo: InterventionInfo[] = [
     name: 'Diagnostic AI', 
     description: 'Suite of AI diagnostic tools including computer vision for medical imaging, LLM-based differential diagnosis, and ML-powered lab result interpretation',
     effects: [
-      { param: 'μ₁', effect: '+0.06', description: 'Improves resolution at primary care level. AI enables earlier and more accurate diagnosis through pattern recognition across multiple data types (symptoms, images, labs), catching conditions that would typically require specialist referral.' },
+      { param: 'μ₁', effect: '+0.20', description: 'Improves resolution at primary care level. Systematic baseline: 20 percentage point increase in weekly resolution rate. AI enables earlier and more accurate diagnosis through pattern recognition across symptoms, medical imaging, and lab results.' },
       { param: 'δ₁', effect: '×0.92', description: 'Reduces mortality at primary care level. Early detection of serious conditions (TB, cancer, sepsis) through AI screening, plus reduced diagnostic errors from AI double-checking, prevents deaths from delayed or missed diagnoses.' },
-      { param: 'ρ₁', effect: '×0.92', description: 'Optimizes referrals from primary to secondary care. AI can reduce unnecessary referrals by providing specialist-level diagnostic confidence for manageable cases, or increase appropriate referrals by identifying high-risk conditions requiring specialist care. Effect varies by disease complexity.' }
+      { param: 'ρ₁', effect: '×0.80', description: 'Optimizes referrals from primary to secondary care. Systematic baseline: ±20% referral optimization. AI can reduce unnecessary referrals through diagnostic confidence, or increase appropriate referrals by identifying high-risk conditions requiring specialist care. Direction varies by disease complexity.' }
     ] 
   },
   { 
@@ -589,13 +589,13 @@ const AIInterventionManager: React.FC = () => {
       const baseValue = parseFloat(baseEffect.substring(1));
       // For multiplicative effects less than 1, closer to 1 means less effect
       // For effects like ×0.85, a magnitude of 0 should give ×1.0 (no effect)
-      // and a magnitude of 2 should give ×0.70 (double effect)
+      // and a magnitude of 5 should give ×0.50 (5x effect)
       if (baseValue < 1) {
         const effect = 1 - ((1 - baseValue) * magnitude);
         return `×${effect.toFixed(2)}`;
       } else {
         // For effects like ×1.25, a magnitude of 0 should give ×1.0 (no effect)
-        // and a magnitude of 2 should give ×1.50 (double effect)
+        // and a magnitude of 5 should give ×2.50 (5x effect)
         const effect = 1 + ((baseValue - 1) * magnitude);
         return `×${effect.toFixed(2)}`;
       }
@@ -1201,7 +1201,7 @@ const AIInterventionManager: React.FC = () => {
                       Parameter Effects:
                     </p>
                     <InfoTooltip 
-                      content="These show the baseline effects this AI intervention has on model parameters. The magnitude sliders below multiply these base effects (0 = no effect, 1 = default effect, 2 = double effect). Default values are based on literature review of AI pilot studies in LMICs and WHO guidelines."
+                      content="These show the baseline effects this AI intervention has on model parameters. The magnitude sliders below multiply these base effects (0 = no effect, 1 = default effect, 5 = maximum 5x effect). Default values use systematic baseline approach: 15% CHW resolution improvement, 20% diagnostic improvement, ±20% referral optimization with disease-specific clinical modifiers."
                     />
                   </div>
                   <ul className={`space-y-2 ${isActive ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500 dark:text-gray-500'}`}>
@@ -1240,7 +1240,7 @@ const AIInterventionManager: React.FC = () => {
                               <div className="flex items-center gap-1">
                                 <span>Default</span>
                                 <InfoTooltip 
-                                  content={`Effect magnitude: 0 = disabled, 1 = default effect (${effect.effect}), 2 = double strength. The effect is ${effect.effect.startsWith('+') ? 'added to' : 'multiplied with'} the baseline parameter from the Parameters tab.`}
+                                  content={`Effect magnitude: 0 = disabled, 1 = default effect (${effect.effect}), 5 = maximum 5x strength. The effect is ${effect.effect.startsWith('+') ? 'added to' : 'multiplied with'} the baseline parameter from the Parameters tab. Resolution rates (μ) use absolute percentage point increases. Mortality/referral rates (δ,ρ) use relative percentage changes.`}
                                 />
                               </div>
                               <span>Stronger</span>

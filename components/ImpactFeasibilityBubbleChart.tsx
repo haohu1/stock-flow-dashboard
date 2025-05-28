@@ -184,9 +184,17 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .domain([0, maxImpact * 1.1])
       .range([innerHeight, 0]);
     
-    // Size scale for bubbles
+    // Size scale for bubbles - use all scenarios for consistent sizing
+    const allImpactData = scenarios
+      .map(calculateImpactData)
+      .filter((d): d is ImpactFeasibilityData => d !== null);
+    
+    const maxPopulationImpact = allImpactData.length > 0 
+      ? Math.max(...allImpactData.map(d => d.populationImpact))
+      : 1000; // fallback value
+    
     const sizeScale = d3.scaleSqrt()
-      .domain([0, Math.max(...impactData.map(d => d.populationImpact))])
+      .domain([0, maxPopulationImpact])
       .range([5, 50]);
     
     // Color scale for quadrants

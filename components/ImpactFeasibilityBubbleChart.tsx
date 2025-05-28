@@ -64,15 +64,17 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       ? (deathsAverted / diseaseBaseline.cumulativeDeaths) * 100 
       : 0;
     
-    // Time to scale - use feasibility directly (higher feasibility = quicker to implement)
-    const timeToScale = scenario.feasibility !== undefined 
-      ? scenario.feasibility // Keep original scale: 0 = slow, 1 = quick
-      : scenario.timeToScaleParams 
-        ? estimateTimeToScale(scenario.aiInterventions, scenario.timeToScaleParams)
-        : estimateTimeToScale(scenario.aiInterventions, timeToScaleParams);
+    // Time to scale - use scenario's timeToScaleParams if available, otherwise use current params
+    const timeToScale = scenario.timeToScaleParams 
+      ? estimateTimeToScale(scenario.aiInterventions, scenario.timeToScaleParams)
+      : estimateTimeToScale(scenario.aiInterventions, timeToScaleParams);
     
     // Determine impact value based on selected metric
     const impactValue = yAxisMetric === 'dalys' ? impactPer1000 : percentDeathsAverted;
+    
+    // Determine bubble size based on selected metric
+    // When showing %, use absolute numbers; when showing per capita, use totals
+    const populationImpact = yAxisMetric === 'dalys' ? dalysAverted : deathsAverted;
     
     // Determine quadrant based on impact and time to scale
     const quadrant = determineQuadrant(impactValue, timeToScale, yAxisMetric);
@@ -81,7 +83,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       scenario,
       impact: impactValue,
       timeToScale,
-      populationImpact: dalysAverted,
+      populationImpact,
       percentDeathsAverted,
       quadrant
     };
@@ -422,15 +424,11 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
                 </td>
               </tr>
               <tr>
-                <td style="padding: 4px 8px 4px 0; color: #6B7280;">Impact (DALYs/1000):</td>
+                <td style="padding: 4px 8px 4px 0; color: #6B7280;">Impact:</td>
                 <td style="padding: 4px 0; text-align: right; font-weight: 500;">
-                  ${(data.populationImpact / (data.scenario.parameters.population || 1000000) * 1000).toFixed(2)}
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 4px 8px 4px 0; color: #6B7280;">Deaths Averted (%):</td>
-                <td style="padding: 4px 0; text-align: right; font-weight: 500;">
-                  ${data.percentDeathsAverted.toFixed(1)}%
+                  ${yAxisMetric === 'dalys' 
+                    ? `${data.impact.toFixed(2)} DALYs/1000`
+                    : `${data.percentDeathsAverted.toFixed(1)}%`}
                 </td>
               </tr>
               <tr>
@@ -442,7 +440,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
                 </td>
               </tr>
               <tr>
-                <td style="padding: 4px 8px 4px 0; color: #6B7280;">Total DALYs Averted:</td>
+                <td style="padding: 4px 8px 4px 0; color: #6B7280;">${yAxisMetric === 'dalys' ? 'Total DALYs Averted' : 'Total Deaths Averted'}:</td>
                 <td style="padding: 4px 0; text-align: right; font-weight: 500;">
                   ${formatNumber(data.populationImpact)}
                 </td>
@@ -510,7 +508,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .attr("y", 20)
       .attr("font-size", "12px")
       .attr("fill", "currentColor")
-      .text("Total DALYs");
+      .text(yAxisMetric === 'dalys' ? "Total DALYs" : "Total Deaths");
     
     legend.append("text")
       .attr("x", 0)

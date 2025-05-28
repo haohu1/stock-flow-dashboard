@@ -46,6 +46,18 @@ const ScenarioManager: React.FC = () => {
     return groups;
   }, {} as Record<string, Scenario[]>);
   
+  // Sort scenarios within each group by creation time (newest first)
+  Object.keys(groupedScenarios).forEach(disease => {
+    groupedScenarios[disease].sort((a, b) => {
+      // Extract timestamp from scenario ID for sorting (newest first)
+      const getTimestamp = (id: string) => {
+        const match = id.match(/scenario-(\d+)/);
+        return match ? parseInt(match[1]) : 0;
+      };
+      return getTimestamp(b.id) - getTimestamp(a.id);
+    });
+  });
+  
   // Get a list of active AI interventions for a scenario
   const getActiveInterventions = (scenario: Scenario) => {
     return Object.entries(scenario.aiInterventions)

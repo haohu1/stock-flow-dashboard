@@ -374,11 +374,9 @@ const BubbleChartView: React.FC = () => {
     // Create a typed version of the data for simulation
     const simulationNodes = validScenarios.map(scenario => {
       // Use the shared time-to-scale estimation
-      const timeToScale = scenario.feasibility !== undefined 
-        ? scenario.feasibility 
-        : scenario.timeToScaleParams
-          ? estimateTimeToScale(scenario.aiInterventions, scenario.timeToScaleParams)
-          : estimateTimeToScale(scenario.aiInterventions, timeToScaleParams);
+      const timeToScale = scenario.timeToScaleParams
+        ? estimateTimeToScale(scenario.aiInterventions, scenario.timeToScaleParams)
+        : estimateTimeToScale(scenario.aiInterventions, timeToScaleParams);
 
       return {
         ...scenario,
@@ -462,11 +460,9 @@ const BubbleChartView: React.FC = () => {
           .style("fill-opacity", 1);
         
         // Get time to scale for display
-        const timeToScale = data.feasibility !== undefined 
-          ? data.feasibility 
-          : data.timeToScaleParams
-            ? estimateTimeToScale(data.aiInterventions, data.timeToScaleParams)
-            : estimateTimeToScale(data.aiInterventions, timeToScaleParams);
+        const timeToScale = data.timeToScaleParams
+          ? estimateTimeToScale(data.aiInterventions, data.timeToScaleParams)
+          : estimateTimeToScale(data.aiInterventions, timeToScaleParams);
         
         // Set content first
         tooltipDiv.innerHTML = `

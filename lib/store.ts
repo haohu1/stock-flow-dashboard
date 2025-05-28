@@ -504,9 +504,6 @@ export const addScenarioAtom = atom(
       baseName = `Scenario ${scenarioNumber}`;
     }
     
-    // Calculate initial feasibility for the new scenario(s)
-    const initialFeasibility = calculateSuggestedFeasibility(activeAIInterventions.length);
-
     // Check if we should create separate scenarios for each disease
     if (selectedDiseases.length > 1 && Object.keys(resultsMap).length > 1) {
       console.log('Creating separate scenarios for each disease');
@@ -579,7 +576,6 @@ export const addScenarioAtom = atom(
           // Store just this disease
           selectedDiseases: [diseaseName],
           diseaseResultsMap: diseaseResultsCopy,
-          feasibility: initialFeasibility,
           timeToScaleParams: timeToScaleParams
         };
         
@@ -703,7 +699,6 @@ export const addScenarioAtom = atom(
         // Store the multi-disease data
         selectedDiseases: [...selectedDiseases],
         diseaseResultsMap: diseaseResultsMapCopy,
-        feasibility: initialFeasibility,
         timeToScaleParams: timeToScaleParams
       };
       

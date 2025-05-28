@@ -176,7 +176,17 @@ const Dashboard: React.FC = () => {
             {scenariosExpanded && (
               <>
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {scenarios.map(scenario => (
+                  {scenarios
+                    .slice()
+                    .sort((a, b) => {
+                      // Extract timestamp from scenario ID for sorting (newest first)
+                      const getTimestamp = (id: string) => {
+                        const match = id.match(/scenario-(\d+)/);
+                        return match ? parseInt(match[1]) : 0;
+                      };
+                      return getTimestamp(b.id) - getTimestamp(a.id);
+                    })
+                    .map(scenario => (
                     <button
                       key={scenario.id}
                       onClick={() => loadScenario(scenario.id)}
@@ -379,7 +389,17 @@ const Dashboard: React.FC = () => {
           {scenariosExpanded && (
             <>
               <div className="flex flex-wrap gap-2 mb-4">
-                {scenarios.map(scenario => (
+                {scenarios
+                  .slice()
+                  .sort((a, b) => {
+                    // Extract timestamp from scenario ID for sorting (newest first)
+                    const getTimestamp = (id: string) => {
+                      const match = id.match(/scenario-(\d+)/);
+                      return match ? parseInt(match[1]) : 0;
+                    };
+                    return getTimestamp(b.id) - getTimestamp(a.id);
+                  })
+                  .map(scenario => (
                   <button
                     key={scenario.id}
                     onClick={() => loadScenario(scenario.id)}

@@ -569,7 +569,17 @@ const Sidebar: React.FC = () => {
         <div className="mb-6">
           <h3 className="text-md font-semibold mb-2 text-gray-700 dark:text-gray-300">Saved Scenarios</h3>
           <div className="space-y-1 max-h-40 overflow-y-auto">
-            {scenarios.map((scenario) => (
+            {scenarios
+              .slice()
+              .sort((a, b) => {
+                // Extract timestamp from scenario ID for sorting (newest first)
+                const getTimestamp = (id: string) => {
+                  const match = id.match(/scenario-(\d+)/);
+                  return match ? parseInt(match[1]) : 0;
+                };
+                return getTimestamp(b.id) - getTimestamp(a.id);
+              })
+              .map((scenario) => (
               <button
                 key={scenario.id}
                 onClick={() => handleLoadScenario(scenario.id)}

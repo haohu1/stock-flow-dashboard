@@ -154,8 +154,8 @@ export const getDerivedParamsForDisease = (
     }
   }
 
-  // Apply AI interventions
-  return applyAIInterventions(params, aiInterventions, effectMagnitudes, aiCostParams);
+  // Apply AI interventions with disease-specific effects
+  return applyAIInterventions(params, aiInterventions, effectMagnitudes, aiCostParams, undefined, disease);
 };
 
 // Update parameters when health system strength or disease changes, but preserve custom user changes
@@ -218,11 +218,11 @@ export const aiCostParametersAtom = atom<AICostParameters>({
 // Time-to-scale parameters with default values from utils.ts estimateTimeToScale function
 export const aiTimeToScaleParametersAtom = atom<AITimeToScaleParameters>({
   triageAI: 0.75,        // 3-6 months
-  chwAI: 0.65,           // 6-9 months  
+  chwAI: 0.50,           // 1 year
   diagnosticAI: 0.60,    // 6-12 months
-  bedManagementAI: 0.65, // 6-9 months
-  hospitalDecisionAI: 0.55, // 9-12 months
-  selfCareAI: 0.85       // 1-3 months
+  bedManagementAI: 0.40, // 1.5-2 years
+  hospitalDecisionAI: 0.40, // 1.5-2 years
+  selfCareAI: 0.75       // 3-6 months
 });
 
 // AI intervention effect magnitudes

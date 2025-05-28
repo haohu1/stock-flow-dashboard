@@ -7,10 +7,11 @@ import {
   selectedAIScenarioAtom,
   aiCostParametersAtom,
   aiTimeToScaleParametersAtom,
+  selectedDiseaseAtom,
   AICostParameters,
   AITimeToScaleParameters
 } from '../lib/store';
-import { AIInterventions } from '../models/stockAndFlowModel';
+import { AIInterventions, diseaseSpecificAIEffects, defaultAIBaseEffects, diseaseAIRationales } from '../models/stockAndFlowModel';
 import InfoTooltip from './InfoTooltip';
 import { getParameterRationale } from '../data/parameter_rationales';
 
@@ -218,6 +219,66 @@ const AIScenarioPresets: AIInterventionConfig[] = [
   }
 ];
 
+// Define intervention info before the component
+const interventionInfo: InterventionInfo[] = [
+  { 
+    key: 'triageAI', 
+    name: 'AI Triage', 
+    description: 'LLM-powered conversational AI that provides personalized health guidance, symptom assessment, and care navigation through natural language interaction',
+    effects: [
+      { param: 'φ₀', effect: '+0.08', description: 'Increases initial formal care seeking. LLMs provide 24/7 multilingual support, understand complex symptoms in context, and build trust through empathetic conversation. This removes barriers of health literacy, language, and access that currently prevent care-seeking.' },
+      { param: 'σI', effect: '×1.15', description: 'Accelerates transition from informal to formal care. AI can detect urgency through conversation patterns, track symptom progression, send timely reminders, and directly connect patients to appropriate facilities, reducing dangerous delays in care-seeking.' }
+    ]
+  },
+  { 
+    key: 'chwAI', 
+    name: 'CHW Decision Support', 
+    description: 'Advanced AI assistant that provides CHWs with real-time clinical guidance, automated documentation, and predictive risk assessment through mobile devices',
+    effects: [
+      { param: 'μ₀', effect: '+0.05', description: 'Improves resolution at community level. AI enables CHWs to handle more complex cases safely by providing step-by-step protocols, drug dosing calculators, and confidence scoring. This expands the scope of conditions CHWs can manage effectively.' },
+      { param: 'δ₀', effect: '×0.92', description: 'Reduces mortality at community level. AI helps identify high-risk patients through predictive models, ensures protocol compliance for critical conditions, and triggers automatic escalation for danger signs that might be missed by human assessment alone.' },
+      { param: 'ρ₀', effect: '×0.92', description: 'Reduces unnecessary referrals from CHW to primary care. ML models trained on local data can better distinguish between cases needing referral vs. those manageable at community level, while providing CHWs confidence through second opinions and risk scores.' }
+    ]
+  },
+  { 
+    key: 'diagnosticAI', 
+    name: 'Diagnostic AI', 
+    description: 'Suite of AI diagnostic tools including computer vision for medical imaging, LLM-based differential diagnosis, and ML-powered lab result interpretation',
+    effects: [
+      { param: 'μ₁', effect: '+0.06', description: 'Improves resolution at primary care level. AI enables earlier and more accurate diagnosis through pattern recognition across multiple data types (symptoms, images, labs), catching conditions that would typically require specialist referral.' },
+      { param: 'δ₁', effect: '×0.92', description: 'Reduces mortality at primary care level. Early detection of serious conditions (TB, cancer, sepsis) through AI screening, plus reduced diagnostic errors from AI double-checking, prevents deaths from delayed or missed diagnoses.' },
+      { param: 'ρ₁', effect: '×0.92', description: 'Reduces unnecessary referrals from primary to secondary care. AI provides specialist-level diagnostic capability at primary care, handles complex differential diagnosis, and gives clinicians confidence to manage cases they would otherwise refer out of uncertainty.' }
+    ] 
+  },
+  { 
+    key: 'bedManagementAI', 
+    name: 'Bed Management AI', 
+    description: 'Intelligent hospital operations system using predictive analytics for patient flow, automated discharge planning, and dynamic resource allocation',
+    effects: [
+      { param: 'μ₂', effect: '+0.03', description: 'Improves discharge efficiency from district hospitals. AI predicts discharge readiness, automates discharge documentation, coordinates post-discharge care, and identifies patients suitable for early discharge with home monitoring.' },
+      { param: 'μ₃', effect: '+0.03', description: 'Improves discharge efficiency from tertiary hospitals. ML models optimize bed turnover by predicting length of stay, preventing unnecessary delays, coordinating complex discharges, and managing step-down care transitions more effectively.' }
+    ]
+  },
+  { 
+    key: 'hospitalDecisionAI', 
+    name: 'Hospital Decision Support', 
+    description: 'Comprehensive clinical AI system providing real-time treatment recommendations, early warning scores, and evidence-based protocol guidance at the point of care',
+    effects: [
+      { param: 'δ₂', effect: '×0.90', description: 'Reduces mortality at district hospitals. AI provides 24/7 specialist-equivalent decision support, catches deteriorating patients hours earlier through continuous monitoring, and ensures evidence-based treatment even when specialists are unavailable.' },
+      { param: 'δ₃', effect: '×0.90', description: 'Reduces mortality at tertiary hospitals. AI prevents medical errors through drug interaction checking and protocol verification, optimizes complex treatment plans using latest evidence, and provides predictive alerts for complications before clinical signs appear.' }
+    ]
+  },
+  { 
+    key: 'selfCareAI', 
+    name: 'Self-Care Apps', 
+    description: 'Personalized health companion apps using LLMs for health coaching, medication adherence, chronic disease management, and preventive care guidance',
+    effects: [
+      { param: 'μI', effect: '+0.08', description: 'Improves resolution in informal care settings. AI provides personalized treatment adherence support, symptom tracking with actionable insights, and adaptive health education that improves self-management of minor illnesses and chronic conditions.' },
+      { param: 'δI', effect: '×0.85', description: 'Reduces mortality in informal care settings. AI apps detect warning signs early through passive monitoring, ensure medication compliance for chronic diseases, provide emergency guidance, and nudge users to seek care when algorithms detect serious conditions.' }
+    ]
+  }
+];
+
 const AIInterventionManager: React.FC = () => {
   const [aiInterventions, setAIInterventions] = useAtom(aiInterventionsAtom);
   const [effectMagnitudes, setEffectMagnitudes] = useAtom(effectMagnitudesAtom);
@@ -225,6 +286,7 @@ const AIInterventionManager: React.FC = () => {
   const [selectedPreset, setSelectedPreset] = useAtom(selectedAIScenarioAtom);
   const [aiCostParams, setAiCostParams] = useAtom(aiCostParametersAtom);
   const [timeToScaleParams, setTimeToScaleParams] = useAtom(aiTimeToScaleParametersAtom);
+  const [selectedDisease] = useAtom(selectedDiseaseAtom);
   const [showCostSettings, setShowCostSettings] = useState(false);
   const [showTimeToScaleSettings, setShowTimeToScaleSettings] = useState(false);
   const [showEffectMagnitudes, setShowEffectMagnitudes] = useState(false);
@@ -246,6 +308,120 @@ const AIInterventionManager: React.FC = () => {
   useEffect(() => {
     setLocalSelectedScenario(selectedPreset);
   }, [selectedPreset]);
+  
+  // Helper function to explain why a disease has different AI effects
+  const getDiseaseDifferenceExplanation = (interventionKey: string, param: string, disease: string | null, defaultValue: string, customValue: string): string => {
+    if (!disease) return '';
+    
+    const explanations: {[key: string]: {[param: string]: string}} = {
+      pneumonia: {
+        'diagnosticAI_μ₁': 'AI chest X-ray reading for pneumonia has 90%+ accuracy, enabling more cases to be resolved at primary care',
+        'diagnosticAI_δ₁': 'Early pneumonia detection via AI prevents progression to severe disease',
+        'chwAI_μ₀': 'AI helps CHWs count respiratory rates accurately, critical for pneumonia diagnosis',
+        'selfCareAI_μI': 'Pneumonia requires antibiotics - self-care apps have minimal impact on resolution'
+      },
+      malaria: {
+        'diagnosticAI_μ₁': 'AI microscopy and RDT interpretation dramatically improves malaria diagnosis accuracy',
+        'chwAI_μ₀': 'AI-guided RDT use and ACT dosing enables CHWs to treat uncomplicated malaria effectively',
+        'selfCareAI_μI': 'Apps help with prevention and early symptom recognition but limited treatment impact'
+      },
+      diarrhea: {
+        'selfCareAI_μI': 'AI apps excel at ORS preparation guidance - the primary treatment for dehydration',
+        'selfCareAI_δI': 'Proper ORS use prevents most diarrhea deaths from dehydration',
+        'chwAI_μ₀': 'AI helps assess dehydration severity using visual cues',
+        'triageAI_φ₀': 'Apps identify danger signs like bloody diarrhea requiring immediate care'
+      },
+      tuberculosis: {
+        'diagnosticAI_μ₁': 'CAD4TB X-ray AI has 90%+ sensitivity, catching cases human readers miss',
+        'diagnosticAI_δ₁': 'Early TB detection prevents transmission and improves treatment outcomes',
+        'selfCareAI_μI': 'Daily adherence reminders critical for 6-month TB treatment success',
+        'hospitalDecisionAI_δ₂': 'AI helps detect MDR-TB patterns requiring different treatment'
+      },
+      congestive_heart_failure: {
+        'selfCareAI_μI': 'CHF cannot be resolved at home - requires medical management (0% effect)',
+        'selfCareAI_δI': 'No mortality benefit as CHF exacerbations need hospital care',
+        'triageAI_φ₀': 'AI helps patients recognize early decompensation signs',
+        'bedManagementAI_μ₂': 'AI optimizes diuretic dosing and fluid balance in hospitals'
+      },
+      high_risk_pregnancy_low_anc: {
+        'triageAI_φ₀': 'Birth preparedness messaging dramatically increases facility delivery rates',
+        'diagnosticAI_μ₁': 'Ultrasound AI detects complications like pre-eclampsia early',
+        'hospitalDecisionAI_δ₂': 'AI hemorrhage protocols address the #1 cause of maternal mortality',
+        'selfCareAI_μI': 'Apps track danger signs but cannot resolve pregnancy complications'
+      }
+    };
+    
+    const key = `${interventionKey}_${param}`;
+    const explanation = explanations[disease]?.[key] || '';
+    
+    if (explanation) {
+      return `${explanation} (Default: ${defaultValue}, Disease-specific: ${customValue})`;
+    }
+    
+    return `Disease-specific effect for ${disease.replace(/_/g, ' ')}. Default: ${defaultValue}, Custom: ${customValue}`;
+  };
+
+  // Helper function to get disease-specific effects
+  const getDiseaseSpecificEffect = (interventionKey: string, effectParam: string): { value: string, isCustom: boolean, description?: string } => {
+    // Map UI parameter names to model effect names
+    const paramToEffectMap: {[key: string]: string} = {
+      'φ₀': 'phi0Effect',
+      'σI': 'sigmaIEffect',
+      'μ₀': 'mu0Effect',
+      'δ₀': 'delta0Effect',
+      'ρ₀': 'rho0Effect',
+      'μ₁': 'mu1Effect',
+      'δ₁': 'delta1Effect',
+      'ρ₁': 'rho1Effect',
+      'μ₂': 'mu2Effect',
+      'μ₃': 'mu3Effect',
+      'δ₂': 'delta2Effect',
+      'δ₃': 'delta3Effect',
+      'μI': 'muIEffect',
+      'δI': 'deltaIEffect'
+    };
+    
+    const effectName = paramToEffectMap[effectParam];
+    
+    const diseaseEffects = selectedDisease && diseaseSpecificAIEffects[selectedDisease];
+    const interventionEffects = diseaseEffects && diseaseEffects[interventionKey as keyof typeof defaultAIBaseEffects];
+    
+    if (interventionEffects && effectName && interventionEffects[effectName as keyof typeof interventionEffects]) {
+      const effectValue = interventionEffects[effectName as keyof typeof interventionEffects];
+      
+      // Format the effect value
+      let formattedValue = '';
+      if (typeof effectValue === 'number') {
+        // Check if it's a multiplier (for delta and rho effects)
+        if (effectParam.startsWith('δ') || effectParam.startsWith('ρ') || effectParam === 'σI') {
+          formattedValue = `×${effectValue.toFixed(2)}`;
+        } else {
+          // Additive effects (mu and phi)
+          formattedValue = `+${effectValue.toFixed(2)}`;
+        }
+      } else {
+        formattedValue = effectValue.toString();
+      }
+      
+      // Find the default effect value from interventionInfo
+      const intervention = interventionInfo.find(i => i.key === interventionKey);
+      const defaultEffectInfo = intervention?.effects.find(e => e.param === effectParam);
+      const defaultEffect = defaultEffectInfo?.effect || '';
+      
+      // Compare the formatted value with the default to determine if it's custom
+      const isCustom = formattedValue !== defaultEffect;
+      
+      const customDescription = selectedDisease && isCustom ? 
+        `Disease-specific effect for ${selectedDisease.replace(/_/g, ' ')}. Default: ${defaultEffect}` : undefined;
+      
+      return { value: formattedValue, isCustom, description: customDescription };
+    }
+    
+    // Return default effect
+    const intervention = interventionInfo.find(i => i.key === interventionKey);
+    const effect = intervention?.effects.find(e => e.param === effectParam);
+    return { value: effect?.effect || '', isCustom: false };
+  };
   
   // Load saved configurations from localStorage on component mount
   useEffect(() => {
@@ -393,20 +569,24 @@ const AIInterventionManager: React.FC = () => {
     const effectKey = `${interventionKey}_${param}`;
     const magnitude = effectMagnitudes[effectKey];
     
-    // If no custom magnitude is set, return the default effect
-    if (magnitude === undefined) return defaultEffect;
+    // Get the disease-specific base effect if available
+    const diseaseEffect = getDiseaseSpecificEffect(interventionKey, param);
+    const baseEffect = diseaseEffect.isCustom ? diseaseEffect.value : defaultEffect;
+    
+    // If no custom magnitude is set, return the base effect
+    if (magnitude === undefined) return baseEffect;
     
     // If magnitude is 0, explicitly show no effect
     if (magnitude === 0) return "None";
     
     // Otherwise, adjust the effect based on the magnitude
-    if (defaultEffect.startsWith('+')) {
+    if (baseEffect.startsWith('+')) {
       // For additive effects (+0.15 etc.)
-      const baseValue = parseFloat(defaultEffect.substring(1));
+      const baseValue = parseFloat(baseEffect.substring(1));
       return `+${(baseValue * magnitude).toFixed(2)}`;
-    } else if (defaultEffect.startsWith('×')) {
+    } else if (baseEffect.startsWith('×')) {
       // For multiplicative effects (×0.85 etc.)
-      const baseValue = parseFloat(defaultEffect.substring(1));
+      const baseValue = parseFloat(baseEffect.substring(1));
       // For multiplicative effects less than 1, closer to 1 means less effect
       // For effects like ×0.85, a magnitude of 0 should give ×1.0 (no effect)
       // and a magnitude of 2 should give ×0.70 (double effect)
@@ -421,67 +601,9 @@ const AIInterventionManager: React.FC = () => {
       }
     }
     
-    return defaultEffect;
+    return baseEffect;
   };
   
-  const interventionInfo: InterventionInfo[] = [
-    { 
-      key: 'triageAI', 
-      name: 'AI Triage', 
-      description: 'LLM-powered conversational AI that provides personalized health guidance, symptom assessment, and care navigation through natural language interaction',
-      effects: [
-        { param: 'φ₀', effect: '+0.08', description: 'Increases formal care seeking by 8 percentage points (absolute) - e.g., from 45% to 53%. LLMs provide 24/7 multilingual support, understand complex symptoms in context, and build trust through empathetic conversation. This removes barriers of health literacy, language, and access that currently prevent care-seeking.' },
-        { param: 'σI', effect: '×1.15', description: 'Accelerates transition from informal to formal care by 15% (relative) - e.g., from 20% to 23% weekly transition rate. AI can detect urgency through conversation patterns, track symptom progression, send timely reminders, and directly connect patients to appropriate facilities, reducing dangerous delays in care-seeking.' }
-      ]
-    },
-    { 
-      key: 'chwAI', 
-      name: 'CHW Decision Support', 
-      description: 'Advanced AI assistant that provides CHWs with real-time clinical guidance, automated documentation, and predictive risk assessment through mobile devices',
-      effects: [
-        { param: 'μ₀', effect: '+0.05', description: 'Improves resolution at community level by 5 percentage points (absolute) - e.g., from 50% to 55% weekly resolution. AI enables CHWs to handle more complex cases safely by providing step-by-step protocols, drug dosing calculators, and confidence scoring. This expands the scope of conditions CHWs can manage effectively.' },
-        { param: 'δ₀', effect: '×0.92', description: 'Reduces mortality at community level by 8% (relative) - e.g., from 3% to 2.76% weekly mortality. AI helps identify high-risk patients through predictive models, ensures protocol compliance for critical conditions, and triggers automatic escalation for danger signs that might be missed by human assessment alone.' },
-        { param: 'ρ₀', effect: '×0.92', description: 'Reduces unnecessary referrals by 8% (relative) - e.g., from 75% to 69% referral rate. ML models trained on local data can better distinguish between cases needing referral vs. those manageable at community level, while providing CHWs confidence through second opinions and risk scores.' }
-      ]
-    },
-    { 
-      key: 'diagnosticAI', 
-      name: 'Diagnostic AI', 
-      description: 'Suite of AI diagnostic tools including computer vision for medical imaging, LLM-based differential diagnosis, and ML-powered lab result interpretation',
-      effects: [
-        { param: 'μ₁', effect: '+0.06', description: 'Improves resolution at primary care by 6 percentage points (absolute) - e.g., from 60% to 66% weekly resolution. This is transformative: AI enables earlier and more accurate diagnosis through pattern recognition across multiple data types (symptoms, images, labs), catching conditions that would typically require specialist referral.' },
-        { param: 'δ₁', effect: '×0.92', description: 'Reduces mortality at primary care by 8% (relative) - e.g., from 2% to 1.84% weekly mortality. Early detection of serious conditions (TB, cancer, sepsis) through AI screening, plus reduced diagnostic errors from AI double-checking, prevents deaths from delayed or missed diagnoses.' },
-        { param: 'ρ₁', effect: '×0.92', description: 'Reduces unnecessary referrals by 8% (relative) - e.g., from 25% to 23% referral rate. AI provides specialist-level diagnostic capability at primary care, handles complex differential diagnosis, and gives clinicians confidence to manage cases they would otherwise refer out of uncertainty.' }
-      ] 
-    },
-    { 
-      key: 'bedManagementAI', 
-      name: 'Bed Management AI', 
-      description: 'Intelligent hospital operations system using predictive analytics for patient flow, automated discharge planning, and dynamic resource allocation',
-      effects: [
-        { param: 'μ₂', effect: '+0.03', description: 'Improves discharge efficiency from district hospitals by 3 percentage points (absolute) - e.g., from 70% to 73% weekly discharge rate. AI predicts discharge readiness, automates discharge documentation, coordinates post-discharge care, and identifies patients suitable for early discharge with home monitoring.' },
-        { param: 'μ₃', effect: '+0.03', description: 'Improves discharge efficiency from tertiary hospitals by 3 percentage points (absolute) - e.g., from 80% to 83% weekly discharge rate. ML models optimize bed turnover by predicting length of stay, preventing unnecessary delays, coordinating complex discharges, and managing step-down care transitions more effectively.' }
-      ]
-    },
-    { 
-      key: 'hospitalDecisionAI', 
-      name: 'Hospital Decision Support', 
-      description: 'Comprehensive clinical AI system providing real-time treatment recommendations, early warning scores, and evidence-based protocol guidance at the point of care',
-      effects: [
-        { param: 'δ₂', effect: '×0.90', description: 'Reduces mortality at district hospitals by 10% (relative) - e.g., from 5% to 4.5% weekly mortality. AI provides 24/7 specialist-equivalent decision support, catches deteriorating patients hours earlier through continuous monitoring, and ensures evidence-based treatment even when specialists are unavailable.' },
-        { param: 'δ₃', effect: '×0.90', description: 'Reduces mortality at tertiary hospitals by 10% (relative) - e.g., from 8% to 7.2% weekly mortality. AI prevents medical errors through drug interaction checking and protocol verification, optimizes complex treatment plans using latest evidence, and provides predictive alerts for complications before clinical signs appear.' }
-      ]
-    },
-    { 
-      key: 'selfCareAI', 
-      name: 'Self-Care Apps', 
-      description: 'Personalized health companion apps using LLMs for health coaching, medication adherence, chronic disease management, and preventive care guidance',
-      effects: [
-        { param: 'μI', effect: '+0.08', description: 'Improves informal care resolution by 8 percentage points (absolute) - e.g., from 30% to 38% weekly resolution. AI provides personalized treatment adherence support, symptom tracking with actionable insights, and adaptive health education that improves self-management of minor illnesses and chronic conditions.' },
-        { param: 'δI', effect: '×0.85', description: 'Reduces mortality in informal care by 15% (relative) - e.g., from 2% to 1.7% weekly mortality. AI apps detect warning signs early through passive monitoring, ensure medication compliance for chronic diseases, provide emergency guidance, and nudge users to seek care when algorithms detect serious conditions.' }
-      ]
-    }
-  ];
   
   // Reset all effect magnitudes to default values
   const resetAllEffectMagnitudes = () => {
@@ -759,11 +881,11 @@ const AIInterventionManager: React.FC = () => {
               // Reset to default values
               setTimeToScaleParams({
                 triageAI: 0.75,
-                chwAI: 0.65,
+                chwAI: 0.50,
                 diagnosticAI: 0.60,
-                bedManagementAI: 0.65,
-                hospitalDecisionAI: 0.55,
-                selfCareAI: 0.85
+                bedManagementAI: 0.40,
+                hospitalDecisionAI: 0.40,
+                selfCareAI: 0.75
               });
             }}
             className="px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 rounded"
@@ -1006,6 +1128,29 @@ const AIInterventionManager: React.FC = () => {
           />
         </div>
         
+        {selectedDisease && diseaseSpecificAIEffects[selectedDisease] && (
+          <div className="mb-4 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">
+                  Disease-specific AI effects are active for <strong>{selectedDisease.replace(/_/g, ' ')}</strong>
+                </p>
+                {diseaseAIRationales[selectedDisease] && (
+                  <p className="text-xs text-purple-700 dark:text-purple-300 leading-relaxed">
+                    <strong>Why effects differ:</strong> {diseaseAIRationales[selectedDisease]}
+                  </p>
+                )}
+                <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
+                  Effects marked with purple badges and values differ from default based on disease-specific evidence.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {interventionInfo.map((intervention) => {
           const isActive = aiInterventions[intervention.key];
@@ -1060,16 +1205,33 @@ const AIInterventionManager: React.FC = () => {
                     />
                   </div>
                   <ul className={`space-y-2 ${isActive ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500 dark:text-gray-500'}`}>
-                    {intervention.effects.map((effect, i) => (
-                      <li key={i} className="border-b border-gray-100 dark:border-gray-700 pb-1">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="font-medium">{effect.param}</span>
-                          <span className={`font-mono px-1.5 py-0.5 rounded ${
-                            isActive ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' : 
-                                      'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-                          }`}>{isActive ? getEffectValue(intervention.key, effect.param, effect.effect) : effect.effect}</span>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{effect.description}</p>
+                    {intervention.effects.map((effect, i) => {
+                      const diseaseEffect = getDiseaseSpecificEffect(intervention.key, effect.param);
+                      const isDiseaseSpecific = diseaseEffect.isCustom;
+                      
+                      return (
+                        <li key={i} className="border-b border-gray-100 dark:border-gray-700 pb-1">
+                          <div className="flex justify-between items-center mb-1">
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium">{effect.param}</span>
+                              {isDiseaseSpecific && (
+                                <span className="inline-flex items-center gap-1">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100">
+                                    {selectedDisease?.replace(/_/g, ' ')}
+                                  </span>
+                                  <InfoTooltip 
+                                    content={getDiseaseDifferenceExplanation(intervention.key, effect.param, selectedDisease, effect.effect, diseaseEffect.value)}
+                                  />
+                                </span>
+                              )}
+                            </div>
+                            <span className={`font-mono px-1.5 py-0.5 rounded ${
+                              isDiseaseSpecific ? 'bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200' :
+                              (isActive ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' : 
+                                        'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400')
+                            }`}>{isActive ? getEffectValue(intervention.key, effect.param, effect.effect) : (isDiseaseSpecific ? diseaseEffect.value : effect.effect)}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{effect.description}</p>
                         
                         {isActive && (
                           <div className="mt-2">
@@ -1100,7 +1262,8 @@ const AIInterventionManager: React.FC = () => {
                           </div>
                         )}
                       </li>
-                    ))}
+                    );
+                  })}
                   </ul>
                 </div>
               </div>

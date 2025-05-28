@@ -798,6 +798,11 @@ export interface AIInterventions {
   selfCareAI: boolean;        // Enhanced self-care apps
 }
 
+// Disease-specific AI effects interface
+export interface DiseaseSpecificAIEffects {
+  [disease: string]: Partial<AIBaseEffects>;
+}
+
 // AI cost parameters interface
 export interface AICostParameters {
   triageAI: { fixed: number, variable: number };
@@ -898,13 +903,265 @@ export const defaultAIBaseEffects: AIBaseEffects = {
   }
 };
 
+// Disease-specific AI effect rationales
+export const diseaseAIRationales: {[disease: string]: string} = {
+  pneumonia: "AI excels at chest X-ray interpretation for pneumonia detection. CHW AI helps with respiratory rate counting and danger sign recognition, critical for child pneumonia. Self-care AI has limited impact as pneumonia requires medical treatment.",
+  
+  malaria: "AI shows exceptional performance in microscopy and RDT interpretation. CHWs equipped with AI can better manage ACT dosing and identify severe cases. Self-care apps help with prevention education and early symptom recognition.",
+  
+  diarrhea: "Self-care AI is highly effective for ORS preparation guidance, preventing dehydration deaths. CHW AI assists with dehydration assessment using visual cues. Triage AI promotes early care-seeking for danger signs like bloody diarrhea.",
+  
+  tuberculosis: "CAD4TB and similar AI tools show 90%+ sensitivity for TB screening via chest X-rays. AI helps detect drug resistance patterns and supports critical medication adherence through daily reminders and side effect management.",
+  
+  high_risk_pregnancy_low_anc: "AI significantly improves facility delivery rates through birth preparedness messaging. Ultrasound AI detects complications early. Hospital AI protocols are especially effective for hemorrhage management, the leading cause of maternal mortality.",
+  
+  congestive_heart_failure: "Self-care AI cannot resolve CHF episodes at home (0% effect) as medical intervention is essential. Triage AI helps patients recognize decompensation early. Bed management AI optimizes fluid balance monitoring in hospitals.",
+  
+  hiv_management_chronic: "Adherence is paramount in HIV care - AI apps showing 25% improvement through personalized reminders and side effect support. CHW AI helps with adherence counseling and identifying treatment failure early.",
+  
+  infant_pneumonia: "CHW AI dramatically improves outcomes through accurate respiratory rate counting and danger sign recognition in infants. Effects are stronger than adult pneumonia due to the critical nature of early detection in infants.",
+  
+  urti: "Minimal AI impact as most URTIs are self-limiting viral infections. Small benefits from self-care guidance on symptomatic relief. Diagnostic AI has limited value as treatment rarely changes based on diagnosis.",
+  
+  fever: "AI helps differentiate serious causes from benign fever through pattern recognition. Diagnostic AI improves differential diagnosis. Self-care AI provides appropriate home management guidance for uncomplicated cases.",
+  
+  anemia: "Point-of-care hemoglobin testing with AI interpretation improves diagnosis. CHW AI guides appropriate iron supplementation. Limited self-care impact as dietary changes alone rarely resolve clinical anemia.",
+  
+  hiv_opportunistic: "Early OI detection through AI pattern recognition is critical. Hospital AI helps manage complex drug interactions in OI treatment. Triage AI recognizes urgent symptoms like cryptococcal meningitis presentations."
+};
+
+// Disease-specific AI effects
+export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
+  // Pneumonia - diagnostic AI highly effective for X-ray interpretation
+  pneumonia: {
+    diagnosticAI: {
+      mu1Effect: 0.12,      // 12% increase in resolution (early detection via AI X-ray)
+      delta1Effect: 0.85,   // 15% mortality reduction (early treatment)
+      rho1Effect: 0.85      // 15% reduction in referrals (confident diagnosis)
+    },
+    chwAI: {
+      mu0Effect: 0.08,      // 8% increase (better respiratory rate counting)
+      delta0Effect: 0.85,   // 15% mortality reduction (danger sign recognition)
+      rho0Effect: 0.88      // 12% referral reduction
+    },
+    selfCareAI: {
+      muIEffect: 0.02,      // 2% - limited self-care impact for pneumonia
+      deltaIEffect: 0.95    // 5% mortality reduction (early care seeking)
+    }
+  },
+  
+  // Malaria - excellent for RDT interpretation and treatment guidance
+  malaria: {
+    diagnosticAI: {
+      mu1Effect: 0.15,      // 15% increase (AI microscopy, RDT reading)
+      delta1Effect: 0.80,   // 20% mortality reduction
+      rho1Effect: 0.85      // 15% referral reduction
+    },
+    chwAI: {
+      mu0Effect: 0.10,      // 10% increase (RDT guidance, ACT dosing)
+      delta0Effect: 0.85,   // 15% mortality reduction
+      rho0Effect: 0.85      // 15% referral reduction
+    },
+    selfCareAI: {
+      muIEffect: 0.05,      // 5% - moderate impact (prevention education)
+      deltaIEffect: 0.90    // 10% mortality reduction
+    }
+  },
+  
+  // Diarrhea - self-care AI very effective for ORS preparation
+  diarrhea: {
+    selfCareAI: {
+      muIEffect: 0.20,      // 20% increase (ORS preparation guidance)
+      deltaIEffect: 0.70    // 30% mortality reduction (prevent dehydration)
+    },
+    chwAI: {
+      mu0Effect: 0.12,      // 12% increase (dehydration assessment)
+      delta0Effect: 0.80,   // 20% mortality reduction
+      rho0Effect: 0.85      // 15% referral reduction
+    },
+    triageAI: {
+      phi0Effect: 0.12,     // 12% increase in care seeking (danger signs)
+      sigmaIEffect: 1.25    // 25% faster transition to formal care
+    }
+  },
+  
+  // TB - diagnostic AI excellent for chest X-ray screening
+  tuberculosis: {
+    diagnosticAI: {
+      mu1Effect: 0.18,      // 18% increase (CAD4TB X-ray screening)
+      delta1Effect: 0.75,   // 25% mortality reduction (early detection)
+      rho1Effect: 0.80      // 20% referral reduction
+    },
+    hospitalDecisionAI: {
+      delta2Effect: 0.85,   // 15% mortality reduction (MDR-TB detection)
+      delta3Effect: 0.85    // 15% mortality reduction
+    },
+    selfCareAI: {
+      muIEffect: 0.15,      // 15% increase (adherence support critical)
+      deltaIEffect: 0.80    // 20% mortality reduction
+    }
+  },
+  
+  // Maternal health - comprehensive AI support
+  high_risk_pregnancy_low_anc: {
+    triageAI: {
+      phi0Effect: 0.20,     // 20% increase in facility delivery
+      sigmaIEffect: 1.30    // 30% faster transition
+    },
+    diagnosticAI: {
+      mu1Effect: 0.12,      // 12% increase (ultrasound AI)
+      delta1Effect: 0.75,   // 25% mortality reduction
+      rho1Effect: 1.10      // 10% increase in appropriate referrals (high-risk cases need specialist care)
+    },
+    hospitalDecisionAI: {
+      delta2Effect: 0.70,   // 30% mortality reduction (hemorrhage protocols)
+      delta3Effect: 0.70    // 30% mortality reduction
+    },
+    selfCareAI: {
+      muIEffect: 0.10,      // 10% increase (pregnancy monitoring)
+      deltaIEffect: 0.75    // 25% mortality reduction (danger signs)
+    }
+  },
+  
+  // Congestive heart failure - limited AI impact
+  congestive_heart_failure: {
+    selfCareAI: {
+      muIEffect: 0.00,      // 0% - no resolution in informal care
+      deltaIEffect: 1.0     // No mortality reduction (needs medical care)
+    },
+    triageAI: {
+      phi0Effect: 0.15,     // 15% increase in care seeking
+      sigmaIEffect: 1.20    // 20% faster transition (referral guidance)
+    },
+    chwAI: {
+      mu0Effect: 0.02,      // 2% increase (limited CHW role)
+      delta0Effect: 0.95,   // 5% mortality reduction
+      rho0Effect: 1.15      // 15% increase in referrals (AI identifies decompensation)
+    },
+    diagnosticAI: {
+      mu1Effect: 0.03,      // 3% increase (basic assessment)
+      delta1Effect: 0.90,   // 10% mortality reduction
+      rho1Effect: 1.10      // 10% increase in referrals (complex cases need specialist care)
+    },
+    bedManagementAI: {
+      mu2Effect: 0.05,      // 5% increase (optimal fluid management)
+      mu3Effect: 0.05       // 5% increase
+    }
+  },
+  
+  // HIV management - adherence focus
+  hiv_management_chronic: {
+    selfCareAI: {
+      muIEffect: 0.25,      // 25% increase (adherence is critical)
+      deltaIEffect: 0.75    // 25% mortality reduction
+    },
+    chwAI: {
+      mu0Effect: 0.15,      // 15% increase (adherence counseling)
+      delta0Effect: 0.85,   // 15% mortality reduction
+      rho0Effect: 1.05      // 5% increase in referrals (appropriate escalation)
+    },
+    diagnosticAI: {
+      mu1Effect: 0.10,      // 10% increase (viral load prediction)
+      delta1Effect: 0.85,   // 15% mortality reduction
+      rho1Effect: 0.90      // 10% referral reduction
+    }
+  },
+  
+  // Infant pneumonia - high impact potential
+  infant_pneumonia: {
+    chwAI: {
+      mu0Effect: 0.15,      // 15% increase (respiratory rate, danger signs)
+      delta0Effect: 0.75,   // 25% mortality reduction
+      rho0Effect: 1.05      // 5% increase in appropriate referrals (severe infant cases need escalation)
+    },
+    diagnosticAI: {
+      mu1Effect: 0.10,      // 10% increase (early detection)
+      delta1Effect: 0.80,   // 20% mortality reduction
+      rho1Effect: 1.05      // 5% increase in appropriate referrals (severe cases to district)
+    },
+    selfCareAI: {
+      muIEffect: 0.08,      // 8% increase (parent education)
+      deltaIEffect: 0.80    // 20% mortality reduction (danger signs)
+    }
+  },
+  
+  // Simple conditions - minimal AI impact
+  urti: {
+    selfCareAI: {
+      muIEffect: 0.05,      // 5% - minor improvement
+      deltaIEffect: 0.95    // 5% mortality reduction
+    },
+    diagnosticAI: {
+      mu1Effect: 0.02,      // 2% - limited benefit
+      delta1Effect: 0.98,   // 2% mortality reduction
+      rho1Effect: 0.95      // 5% referral reduction
+    }
+  },
+  
+  // Fever - moderate AI benefit
+  fever: {
+    triageAI: {
+      phi0Effect: 0.10,     // 10% increase in care seeking (identify serious causes)
+      sigmaIEffect: 1.20    // 20% faster transition
+    },
+    diagnosticAI: {
+      mu1Effect: 0.08,      // 8% increase (better differential diagnosis)
+      delta1Effect: 0.88,   // 12% mortality reduction
+      rho1Effect: 0.88      // 12% referral reduction
+    },
+    selfCareAI: {
+      muIEffect: 0.05,      // 5% increase (symptomatic care guidance)
+      deltaIEffect: 0.92    // 8% mortality reduction
+    }
+  },
+  
+  // Anemia - targeted AI benefits
+  anemia: {
+    diagnosticAI: {
+      mu1Effect: 0.10,      // 10% increase (point-of-care hemoglobin testing)
+      delta1Effect: 0.90,   // 10% mortality reduction
+      rho1Effect: 0.85      // 15% referral reduction
+    },
+    chwAI: {
+      mu0Effect: 0.08,      // 8% increase (iron supplementation guidance)
+      delta0Effect: 0.95,   // 5% mortality reduction
+      rho0Effect: 0.85      // 15% referral reduction
+    },
+    selfCareAI: {
+      muIEffect: 0.03,      // 3% increase (dietary guidance)
+      deltaIEffect: 0.98    // 2% mortality reduction
+    }
+  },
+  
+  // HIV opportunistic infections - specialized AI support
+  hiv_opportunistic: {
+    diagnosticAI: {
+      mu1Effect: 0.15,      // 15% increase (early OI detection)
+      delta1Effect: 0.80,   // 20% mortality reduction
+      rho1Effect: 0.85      // 15% referral reduction
+    },
+    hospitalDecisionAI: {
+      delta2Effect: 0.85,   // 15% mortality reduction (complex OI management)
+      delta3Effect: 0.80    // 20% mortality reduction
+    },
+    triageAI: {
+      phi0Effect: 0.12,     // 12% increase in care seeking
+      sigmaIEffect: 1.25    // 25% faster transition (urgent OI symptoms)
+    }
+  },
+  
+  // Default for any disease not specifically configured
+  default: defaultAIBaseEffects
+};
+
 // Apply AI intervention effects to parameters
 export const applyAIInterventions = (
   baseParams: ModelParameters,
   interventions: AIInterventions,
   effectMagnitudes: {[key: string]: number} = {},
   costParams: AICostParameters = defaultAICostParameters,
-  baseEffects: AIBaseEffects = defaultAIBaseEffects
+  baseEffects: AIBaseEffects = defaultAIBaseEffects,
+  disease?: string
 ): ModelParameters => {
   const modifiedParams = { ...baseParams };
   
@@ -914,6 +1171,14 @@ export const applyAIInterventions = (
   
   // Initialize all AI activation flags to false
   modifiedParams.selfCareAIActive = false;
+  
+  // Get disease-specific effects or use defaults
+  const getDiseaseEffects = (interventionType: keyof AIBaseEffects): any => {
+    if (disease && diseaseSpecificAIEffects[disease] && diseaseSpecificAIEffects[disease][interventionType]) {
+      return diseaseSpecificAIEffects[disease][interventionType];
+    }
+    return baseEffects[interventionType];
+  };
 
   // Helper function to apply magnitude to an effect
   const applyMagnitude = (key: string, baseEffect: number, isMultiplier: boolean = false): number => {
@@ -942,45 +1207,51 @@ export const applyAIInterventions = (
 
   if (interventions.triageAI) {
     // Triage AI improves formal care seeking and transitions from informal care
-    modifiedParams.phi0 += applyMagnitude('triageAI_φ₀', baseEffects.triageAI.phi0Effect);
-    modifiedParams.sigmaI *= applyMagnitude('triageAI_σI', baseEffects.triageAI.sigmaIEffect, true);
+    const triageEffects = getDiseaseEffects('triageAI');
+    modifiedParams.phi0 += applyMagnitude('triageAI_φ₀', triageEffects.phi0Effect);
+    modifiedParams.sigmaI *= applyMagnitude('triageAI_σI', triageEffects.sigmaIEffect, true);
     modifiedParams.aiFixedCost += costParams.triageAI.fixed;
     modifiedParams.aiVariableCost += costParams.triageAI.variable;
   }
   
   if (interventions.chwAI) {
-    modifiedParams.mu0 += applyMagnitude('chwAI_μ₀', baseEffects.chwAI.mu0Effect);
-    modifiedParams.delta0 *= applyMagnitude('chwAI_δ₀', baseEffects.chwAI.delta0Effect, true);
-    modifiedParams.rho0 *= applyMagnitude('chwAI_ρ₀', baseEffects.chwAI.rho0Effect, true);
+    const chwEffects = getDiseaseEffects('chwAI');
+    modifiedParams.mu0 += applyMagnitude('chwAI_μ₀', chwEffects.mu0Effect);
+    modifiedParams.delta0 *= applyMagnitude('chwAI_δ₀', chwEffects.delta0Effect, true);
+    modifiedParams.rho0 *= applyMagnitude('chwAI_ρ₀', chwEffects.rho0Effect, true);
     modifiedParams.aiFixedCost += costParams.chwAI.fixed;
     modifiedParams.aiVariableCost += costParams.chwAI.variable;
   }
   
   if (interventions.diagnosticAI) {
-    modifiedParams.mu1 += applyMagnitude('diagnosticAI_μ₁', baseEffects.diagnosticAI.mu1Effect);
-    modifiedParams.delta1 *= applyMagnitude('diagnosticAI_δ₁', baseEffects.diagnosticAI.delta1Effect, true);
-    modifiedParams.rho1 *= applyMagnitude('diagnosticAI_ρ₁', baseEffects.diagnosticAI.rho1Effect, true);
+    const diagnosticEffects = getDiseaseEffects('diagnosticAI');
+    modifiedParams.mu1 += applyMagnitude('diagnosticAI_μ₁', diagnosticEffects.mu1Effect);
+    modifiedParams.delta1 *= applyMagnitude('diagnosticAI_δ₁', diagnosticEffects.delta1Effect, true);
+    modifiedParams.rho1 *= applyMagnitude('diagnosticAI_ρ₁', diagnosticEffects.rho1Effect, true);
     modifiedParams.aiFixedCost += costParams.diagnosticAI.fixed;
     modifiedParams.aiVariableCost += costParams.diagnosticAI.variable;
   }
   
   if (interventions.bedManagementAI) {
-    modifiedParams.mu2 += applyMagnitude('bedManagementAI_μ₂', baseEffects.bedManagementAI.mu2Effect);
-    modifiedParams.mu3 += applyMagnitude('bedManagementAI_μ₃', baseEffects.bedManagementAI.mu3Effect);
+    const bedMgmtEffects = getDiseaseEffects('bedManagementAI');
+    modifiedParams.mu2 += applyMagnitude('bedManagementAI_μ₂', bedMgmtEffects.mu2Effect);
+    modifiedParams.mu3 += applyMagnitude('bedManagementAI_μ₃', bedMgmtEffects.mu3Effect);
     modifiedParams.aiFixedCost += costParams.bedManagementAI.fixed;
     modifiedParams.aiVariableCost += costParams.bedManagementAI.variable;
   }
   
   if (interventions.hospitalDecisionAI) {
-    modifiedParams.delta2 *= applyMagnitude('hospitalDecisionAI_δ₂', baseEffects.hospitalDecisionAI.delta2Effect, true);
-    modifiedParams.delta3 *= applyMagnitude('hospitalDecisionAI_δ₃', baseEffects.hospitalDecisionAI.delta3Effect, true);
+    const hospitalEffects = getDiseaseEffects('hospitalDecisionAI');
+    modifiedParams.delta2 *= applyMagnitude('hospitalDecisionAI_δ₂', hospitalEffects.delta2Effect, true);
+    modifiedParams.delta3 *= applyMagnitude('hospitalDecisionAI_δ₃', hospitalEffects.delta3Effect, true);
     modifiedParams.aiFixedCost += costParams.hospitalDecisionAI.fixed;
     modifiedParams.aiVariableCost += costParams.hospitalDecisionAI.variable;
   }
   
   if (interventions.selfCareAI) {
-    modifiedParams.muI += applyMagnitude('selfCareAI_μI', baseEffects.selfCareAI.muIEffect);
-    modifiedParams.deltaI *= applyMagnitude('selfCareAI_δI', baseEffects.selfCareAI.deltaIEffect, true);
+    const selfCareEffects = getDiseaseEffects('selfCareAI');
+    modifiedParams.muI += applyMagnitude('selfCareAI_μI', selfCareEffects.muIEffect);
+    modifiedParams.deltaI *= applyMagnitude('selfCareAI_δI', selfCareEffects.deltaIEffect, true);
     modifiedParams.aiFixedCost += costParams.selfCareAI.fixed;
     modifiedParams.aiVariableCost += costParams.selfCareAI.variable;
     modifiedParams.selfCareAIActive = true; // Set the flag indicating self-care AI is active

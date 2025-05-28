@@ -914,14 +914,14 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
   // Childhood pneumonia - diagnostic AI highly effective for X-ray interpretation
   childhood_pneumonia: {
     diagnosticAI: {
-      mu1Effect: 0.12,      // 12% increase in resolution (early detection via AI X-ray)
+      mu1Effect: 0.30,      // 30% increase in resolution (X-ray AI confidence)
       delta1Effect: 0.85,   // 15% mortality reduction (early treatment)
-      rho1Effect: 0.85      // 15% reduction in referrals (confident diagnosis)
+      rho1Effect: 0.75      // 25% reduction in referrals (confident diagnosis)
     },
     chwAI: {
-      mu0Effect: 0.08,      // 8% increase (better respiratory rate counting)
+      mu0Effect: 0.20,      // 20% increase (respiratory rate counting + protocols)
       delta0Effect: 0.85,   // 15% mortality reduction (danger sign recognition)
-      rho0Effect: 0.88      // 12% referral reduction
+      rho0Effect: 0.80      // 20% referral reduction
     },
     selfCareAI: {
       muIEffect: 0.02,      // 2% - limited self-care impact for pneumonia
@@ -932,14 +932,14 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
   // Malaria - excellent for RDT interpretation and treatment guidance
   malaria: {
     diagnosticAI: {
-      mu1Effect: 0.15,      // 15% increase (AI microscopy, RDT reading)
+      mu1Effect: 0.30,      // 30% increase (AI microscopy, RDT reading)
       delta1Effect: 0.80,   // 20% mortality reduction
-      rho1Effect: 0.85      // 15% referral reduction
+      rho1Effect: 0.75      // 25% referral reduction
     },
     chwAI: {
-      mu0Effect: 0.10,      // 10% increase (RDT guidance, ACT dosing)
+      mu0Effect: 0.25,      // 25% increase (RDT guidance, ACT dosing)
       delta0Effect: 0.85,   // 15% mortality reduction
-      rho0Effect: 0.85      // 15% referral reduction
+      rho0Effect: 0.75      // 25% referral reduction
     },
     selfCareAI: {
       muIEffect: 0.05,      // 5% - moderate impact (prevention education)
@@ -954,9 +954,14 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       deltaIEffect: 0.70    // 30% mortality reduction (prevent dehydration)
     },
     chwAI: {
-      mu0Effect: 0.12,      // 12% increase (dehydration assessment)
+      mu0Effect: 0.20,      // 20% increase (dehydration assessment)
       delta0Effect: 0.80,   // 20% mortality reduction
-      rho0Effect: 0.85      // 15% referral reduction
+      rho0Effect: 0.80      // 20% referral reduction
+    },
+    diagnosticAI: {
+      mu1Effect: 0.25,      // 25% increase (dehydration + electrolyte assessment)
+      delta1Effect: 0.85,   // 15% mortality reduction
+      rho1Effect: 0.80      // 20% referral reduction
     },
     triageAI: {
       phi0Effect: 0.12,     // 12% increase in care seeking (danger signs)
@@ -966,10 +971,15 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
   
   // TB - diagnostic AI excellent for chest X-ray screening
   tuberculosis: {
+    chwAI: {
+      mu0Effect: 0.08,      // 8% increase (limited - DOTS support only)
+      delta0Effect: 0.90,   // 10% mortality reduction
+      rho0Effect: 1.25      // 25% increase referrals (identify suspects needing X-ray)
+    },
     diagnosticAI: {
-      mu1Effect: 0.18,      // 18% increase (CAD4TB X-ray screening)
+      mu1Effect: 0.35,      // 35% increase (CAD4TB X-ray screening)
       delta1Effect: 0.75,   // 25% mortality reduction (early detection)
-      rho1Effect: 0.80      // 20% referral reduction
+      rho1Effect: 0.75      // 25% referral reduction (X-ray confidence)
     },
     hospitalDecisionAI: {
       delta2Effect: 0.85,   // 15% mortality reduction (MDR-TB detection)
@@ -983,14 +993,19 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
   
   // Maternal health - comprehensive AI support
   high_risk_pregnancy_low_anc: {
+    chwAI: {
+      mu0Effect: 0.08,      // 8% increase (limited CHW role for complications)
+      delta0Effect: 0.90,   // 10% mortality reduction
+      rho0Effect: 1.30      // 30% increase referrals (complications need specialist care)
+    },
+    diagnosticAI: {
+      mu1Effect: 0.20,      // 20% increase (ultrasound AI)
+      delta1Effect: 0.75,   // 25% mortality reduction
+      rho1Effect: 1.20      // 20% increase in appropriate referrals (high-risk cases need specialist care)
+    },
     triageAI: {
       phi0Effect: 0.20,     // 20% increase in facility delivery
       sigmaIEffect: 1.30    // 30% faster transition
-    },
-    diagnosticAI: {
-      mu1Effect: 0.12,      // 12% increase (ultrasound AI)
-      delta1Effect: 0.75,   // 25% mortality reduction
-      rho1Effect: 1.10      // 10% increase in appropriate referrals (high-risk cases need specialist care)
     },
     hospitalDecisionAI: {
       delta2Effect: 0.70,   // 30% mortality reduction (hemorrhage protocols)
@@ -1049,27 +1064,37 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
   
   // Simple conditions - minimal AI impact
   urti: {
+    chwAI: {
+      mu0Effect: 0.08,      // 8% increase (symptom assessment)
+      delta0Effect: 0.98,   // 2% mortality reduction
+      rho0Effect: 0.70      // 30% referral reduction (high confidence benign)
+    },
+    diagnosticAI: {
+      mu1Effect: 0.05,      // 5% increase (rule out serious causes)
+      delta1Effect: 0.98,   // 2% mortality reduction
+      rho1Effect: 0.70      // 30% referral reduction (high confidence benign)
+    },
     selfCareAI: {
       muIEffect: 0.05,      // 5% - minor improvement
       deltaIEffect: 0.95    // 5% mortality reduction
-    },
-    diagnosticAI: {
-      mu1Effect: 0.02,      // 2% - limited benefit
-      delta1Effect: 0.98,   // 2% mortality reduction
-      rho1Effect: 0.95      // 5% referral reduction
     }
   },
   
   // Fever - moderate AI benefit
   fever: {
+    chwAI: {
+      mu0Effect: 0.12,      // 12% increase (symptom evaluation)
+      delta0Effect: 0.90,   // 10% mortality reduction
+      rho0Effect: 0.85      // 15% referral reduction
+    },
+    diagnosticAI: {
+      mu1Effect: 0.15,      // 15% increase (better differential diagnosis)
+      delta1Effect: 0.88,   // 12% mortality reduction
+      rho1Effect: 0.85      // 15% referral reduction
+    },
     triageAI: {
       phi0Effect: 0.10,     // 10% increase in care seeking (identify serious causes)
       sigmaIEffect: 1.20    // 20% faster transition
-    },
-    diagnosticAI: {
-      mu1Effect: 0.08,      // 8% increase (better differential diagnosis)
-      delta1Effect: 0.88,   // 12% mortality reduction
-      rho1Effect: 0.88      // 12% referral reduction
     },
     selfCareAI: {
       muIEffect: 0.05,      // 5% increase (symptomatic care guidance)
@@ -1079,15 +1104,15 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
   
   // Anemia - targeted AI benefits
   anemia: {
-    diagnosticAI: {
-      mu1Effect: 0.10,      // 10% increase (point-of-care hemoglobin testing)
-      delta1Effect: 0.90,   // 10% mortality reduction
-      rho1Effect: 0.85      // 15% referral reduction
-    },
     chwAI: {
-      mu0Effect: 0.08,      // 8% increase (iron supplementation guidance)
+      mu0Effect: 0.15,      // 15% increase (iron supplementation guidance)
       delta0Effect: 0.95,   // 5% mortality reduction
-      rho0Effect: 0.85      // 15% referral reduction
+      rho0Effect: 0.80      // 20% referral reduction
+    },
+    diagnosticAI: {
+      mu1Effect: 0.20,      // 20% increase (point-of-care hemoglobin testing)
+      delta1Effect: 0.90,   // 10% mortality reduction
+      rho1Effect: 0.80      // 20% referral reduction
     },
     selfCareAI: {
       muIEffect: 0.03,      // 3% increase (dietary guidance)
@@ -1095,20 +1120,25 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     }
   },
   
-  // HIV opportunistic infections - specialized AI support
+  // HIV opportunistic infections - weighted average for mixed complexity
   hiv_opportunistic: {
+    chwAI: {
+      mu0Effect: 0.08,      // 8% increase (cotrimoxazole adherence + simple OI management)
+      delta0Effect: 0.90,   // 10% mortality reduction
+      rho0Effect: 1.35      // 35% increase referrals (complex cases outweigh simple ones)
+    },
     diagnosticAI: {
-      mu1Effect: 0.15,      // 15% increase (early OI detection)
-      delta1Effect: 0.80,   // 20% mortality reduction
-      rho1Effect: 0.85      // 15% referral reduction
+      mu1Effect: 0.30,      // 30% increase (better OI recognition and differentiation)
+      delta1Effect: 0.85,   // 15% mortality reduction
+      rho1Effect: 1.20      // 20% increase referrals (complex OIs need specialist care)
+    },
+    triageAI: {
+      phi0Effect: 0.15,     // 15% increase in care seeking (symptom recognition)
+      sigmaIEffect: 1.30    // 30% faster transition (urgent OI symptoms)
     },
     hospitalDecisionAI: {
       delta2Effect: 0.85,   // 15% mortality reduction (complex OI management)
       delta3Effect: 0.80    // 20% mortality reduction
-    },
-    triageAI: {
-      phi0Effect: 0.12,     // 12% increase in care seeking
-      sigmaIEffect: 1.25    // 25% faster transition (urgent OI symptoms)
     }
   },
   

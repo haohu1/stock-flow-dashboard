@@ -23,6 +23,7 @@ import {
 import SimulationChart from './SimulationChart';
 import CumulativeOutcomesChart from './CumulativeOutcomesChart';
 import ResultsTable from './ResultsTable';
+import QueueVisualization from './QueueVisualization';
 import { formatNumber } from '../lib/utils';
 import { SimulationResults } from '../models/stockAndFlowModel';
 
@@ -619,6 +620,16 @@ const Dashboard: React.FC = () => {
               </ul>
             </div>
           </div>
+
+          {/* Queue Visualization - only show if there are queues */}
+          {results && results.weeklyStates.some(state => 
+            state.queues && (state.queues.L0 + state.queues.L1 + state.queues.L2 + state.queues.L3) > 0
+          ) && (
+            <QueueVisualization 
+              weeklyStates={results.weeklyStates} 
+              title="Healthcare System Queue Sizes"
+            />
+          )}
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Summary</h3>

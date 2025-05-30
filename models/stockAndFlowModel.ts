@@ -18,6 +18,14 @@ export interface StockAndFlowState {
   };
   newCases: number;
   episodesTouched: number;
+  // Queue tracking for capacity constraints
+  queues?: {
+    L0: number;  // patients waiting for CHW
+    L1: number;  // patients waiting for primary care
+    L2: number;  // patients waiting for district hospital
+    L3: number;  // patients waiting for tertiary hospital
+  };
+  queueRelatedDeaths?: number; // Cumulative deaths due to queue delays
 }
 
 export interface ModelParameters {
@@ -71,6 +79,36 @@ export interface ModelParameters {
   discountRate: number;       // annual discount rate for economic calculations
   yearsOfLifeLost: number;    // base YLL parameter (will be adjusted by meanAgeOfInfection)
   regionalLifeExpectancy: number; // region-specific life expectancy
+  
+  // System capacity parameters
+  systemCongestion?: number;   // 0-1, where 0 = no congestion, 1 = completely full
+  congestionMortalityMultiplier?: number; // How much mortality increases due to congestion (e.g., 1.5 = 50% increase)
+  
+  // Disease-specific capacity parameters
+  capacityShare?: number;      // This disease's share of overall health system capacity
+  competitionSensitivity?: number; // How much this disease is affected by congestion
+  clinicalPriority?: number;   // Priority for resource allocation (0-1)
+  
+  // Queue dynamics parameters
+  queueAbandonmentRate?: number; // Weekly rate of patients abandoning queues
+  queueBypassRate?: number;      // Weekly rate of patients seeking alternative care
+  queueClearanceRate?: number;   // Fraction of queue that can be cleared per week
+  
+  // AI routing parameters
+  visitReduction?: number;       // Reduction in initial visits (self-care AI effect)
+  directRoutingImprovement?: number; // Probability of bypassing lower levels when appropriate
+  
+  // AI queue-reduction parameters
+  queuePreventionRate?: number;        // Triage AI: prevents inappropriate visits
+  smartRoutingRate?: number;           // Triage AI: routes directly to correct level
+  resolutionBoost?: number;            // CHW AI: additional resolution at L0
+  referralOptimization?: number;       // CHW AI: further reduction in referrals
+  pointOfCareResolution?: number;      // Diagnostic AI: additional resolution at L1
+  referralPrecision?: number;          // Diagnostic AI: further reduction in referrals
+  lengthOfStayReduction?: number;      // Bed Management AI: reduction in patient days
+  dischargeOptimization?: number;      // Bed Management AI: faster discharge
+  treatmentEfficiency?: number;        // Hospital Decision AI: faster recovery
+  resourceUtilization?: number;        // Hospital Decision AI: better bed utilization
 }
 
 export interface SimulationConfig {
@@ -93,6 +131,22 @@ export interface SimulationResults {
   dalys: number;
   icer?: number;              // only populated when comparing to baseline
   rawIcerValue?: number;      // raw calculated ICER value before any adjustments
+  
+  // Capacity utilization metrics
+  averageQueueLength?: {
+    L0: number;
+    L1: number;
+    L2: number;
+    L3: number;
+  };
+  peakQueueLength?: {
+    L0: number;
+    L1: number;
+    L2: number;
+    L3: number;
+  };
+  totalQueuedPatients?: number; // Total patients who experienced queuing
+  queueRelatedDeaths?: number;  // Deaths attributed to queue delays
 }
 
 // Initialize model with default state
@@ -124,6 +178,13 @@ const initializeState = (
     },
     newCases: weeklyIncidence,
     episodesTouched: 0,
+    queues: {
+      L0: 0,
+      L1: 0,
+      L2: 0,
+      L3: 0,
+    },
+    queueRelatedDeaths: 0,
   };
   
   return { ...defaultState, ...initialState };
@@ -136,11 +197,16 @@ const runWeek = (
   population: number
 ): StockAndFlowState => {
   // Calculate weekly incidence
-  const weeklyIncidence = (params.lambda * population) / 52;
+  let weeklyIncidence = (params.lambda * population) / 52;
   
-  // Calculate flow from new cases
-  const directToFormal = params.phi0 * weeklyIncidence;
-  const stayUntreated = (1 - params.phi0) * weeklyIncidence;
+  // Apply visit reduction if self-care AI is active
+  const visitReduction = params.visitReduction || 0;
+  const effectiveIncidence = weeklyIncidence * (1 - visitReduction);
+  const avoidedVisits = weeklyIncidence * visitReduction; // These resolve at home
+  
+  // Calculate flow from new cases (using effective incidence after visit reduction)
+  const directToFormal = params.phi0 * effectiveIncidence;
+  const stayUntreated = (1 - params.phi0) * effectiveIncidence;
   
   // Use the configurable parameter to determine how many untreated patients move to informal care
   const toInformalCare = (1 - params.informalCareRatio) * stayUntreated;
@@ -157,9 +223,26 @@ const runWeek = (
   const informalDeaths = params.deltaI * state.I;
   const remainingInformal = state.I - informalToFormal - informalResolved - informalDeaths;
   
-  // Calculate distribution from F (formal care) to L0 only
-  // All formal care patients go to CHW (L0) level first
-  const formalToL0 = state.F; // 100% of formal care goes to L0
+  // Calculate distribution from F (formal care) with smart routing
+  const directRoutingImprovement = params.directRoutingImprovement || 0;
+  const congestion = params.systemCongestion || 0;
+  
+  // With smart routing, some patients can bypass congested lower levels
+  let formalToL0 = state.F;
+  let formalToL1Direct = 0;
+  let formalToL2Direct = 0;
+  
+  if (directRoutingImprovement > 0 && congestion > 0.5) {
+    // When system is congested (>50%), route some patients directly to higher levels
+    const bypassProbability = directRoutingImprovement * congestion;
+    
+    // 60% of bypassed patients go to L1, 40% to L2
+    const bypassedPatients = state.F * bypassProbability;
+    formalToL1Direct = bypassedPatients * 0.6;
+    formalToL2Direct = bypassedPatients * 0.4;
+    formalToL0 = state.F - bypassedPatients;
+  }
+  
   const remainingFormal = 0;  // No patients remain in formal care
   
   // Calculate transitions from L0 (community health workers)
@@ -186,31 +269,133 @@ const runWeek = (
   const remainingL3 = state.L3 - l3Resolved - l3Deaths;
   
   // Calculate new patient totals for the next week
-  const newU = trulyUntreated + remainingUntreated;
+  const newUBeforeQueues = trulyUntreated + remainingUntreated;
   
   // Include patients who move to informal care
-  const newI = toInformalCare + remainingInformal;
+  const newIBeforeQueues = toInformalCare + remainingInformal;
   
   // Update formal care entry point (new entries + remaining from previous week)
   const newF = directToFormal + informalToFormal + remainingFormal;
   
-  // Update levels - now L0 gets all formal care entries
-  const newL0 = formalToL0 + remainingL0;
-  const newL1 = l0Referral + remainingL1;
-  const newL2 = l1Referral + remainingL2;
-  const newL3 = l2Referral + remainingL3;
+  // Apply capacity constraints if system congestion is specified
+  const congestionMortalityMult = params.congestionMortalityMultiplier || 1.5;
   
-  const newR = state.R + untreatedResolved + informalResolved + l0Resolved + l1Resolved + l2Resolved + l3Resolved; // Include untreated resolved
-  const newD = state.D + untreatedDeaths + informalDeaths + l0Deaths + l1Deaths + l2Deaths + l3Deaths;
+  // Get disease-specific capacity parameters
+  const capacityShare = params.capacityShare || 0.1; // Default 10% share
+  const competitionSensitivity = params.competitionSensitivity || 1.0;
+  const clinicalPriority = params.clinicalPriority || 0.5;
   
-  // Calculate new patient days
+  // Calculate capacity-constrained flows
+  // System congestion reduces the ability to admit new patients
+  // Disease-specific effects: higher competition sensitivity = more affected by congestion
+  const effectiveCongestion = Math.min(1, congestion * competitionSensitivity);
+  const capacityMultiplier = 1 - effectiveCongestion;
+  
+  // Calculate desired flows (before capacity constraints)
+  const desiredL0Flow = formalToL0;
+  const desiredL1Flow = l0Referral;
+  const desiredL2Flow = l1Referral;
+  const desiredL3Flow = l2Referral;
+  
+  // Apply capacity constraints to flows
+  const actualL0Flow = desiredL0Flow * capacityMultiplier;
+  const actualL1Flow = desiredL1Flow * capacityMultiplier;
+  const actualL2Flow = desiredL2Flow * capacityMultiplier;
+  const actualL3Flow = desiredL3Flow * capacityMultiplier;
+  
+  // Calculate queued patients (those who couldn't enter due to capacity)
+  // Apply triage AI queue prevention - reduces inappropriate visits that would otherwise queue
+  const queuePreventionEffect = params.queuePreventionRate || 0;
+  
+  let queuedL0 = desiredL0Flow - actualL0Flow;
+  let queuedL1 = desiredL1Flow - actualL1Flow;
+  let queuedL2 = desiredL2Flow - actualL2Flow;
+  let queuedL3 = desiredL3Flow - actualL3Flow;
+  
+  // Triage AI prevents some inappropriate visits from entering queues
+  if (queuePreventionEffect > 0) {
+    queuedL0 *= (1 - queuePreventionEffect);
+    queuedL1 *= (1 - queuePreventionEffect);
+    queuedL2 *= (1 - queuePreventionEffect);
+    queuedL3 *= (1 - queuePreventionEffect);
+  }
+  
+  // Initialize queues if not present
+  const currentQueues = state.queues || { L0: 0, L1: 0, L2: 0, L3: 0 };
+  
+  // Queue dynamics parameters with defaults
+  const queueAbandonmentRate = params.queueAbandonmentRate || 0.05; // Default: 5% of queued patients abandon per week
+  const queueBypassRate = params.queueBypassRate || 0.10; // Default: 10% of queued patients seek alternative care
+  
+  // Process existing queues - some get served as capacity becomes available
+  const queueClearanceRate = params.queueClearanceRate || 0.3; // Default: 30% of queue can be cleared per week if capacity available
+  
+  // Queue mortality - higher for higher priority diseases and longer waits
+  const baseMortality = params.delta1 || 0.02;
+  const queueMortalityL0 = currentQueues.L0 * baseMortality * (congestionMortalityMult - 1) * competitionSensitivity;
+  const queueMortalityL1 = currentQueues.L1 * baseMortality * (congestionMortalityMult - 1) * competitionSensitivity;
+  const queueMortalityL2 = currentQueues.L2 * params.delta2 * (congestionMortalityMult - 1) * competitionSensitivity;
+  const queueMortalityL3 = currentQueues.L3 * params.delta3 * (congestionMortalityMult - 1) * competitionSensitivity;
+  const queueMortality = queueMortalityL0 + queueMortalityL1 + queueMortalityL2 + queueMortalityL3;
+  
+  // Queue abandonment - patients give up and return to untreated
+  const queueAbandonL0 = currentQueues.L0 * queueAbandonmentRate;
+  const queueAbandonL1 = currentQueues.L1 * queueAbandonmentRate;
+  const queueAbandonL2 = currentQueues.L2 * queueAbandonmentRate;
+  const queueAbandonL3 = currentQueues.L3 * queueAbandonmentRate;
+  
+  // Queue bypass - patients seek informal care instead
+  const queueBypassL0 = currentQueues.L0 * queueBypassRate;
+  const queueBypassL1 = currentQueues.L1 * queueBypassRate;
+  const queueBypassL2 = currentQueues.L2 * queueBypassRate;
+  const queueBypassL3 = currentQueues.L3 * queueBypassRate;
+  
+  // Clear some queue based on freed capacity (priority-based)
+  // AI interventions improve queue clearance rates
+  const resolutionBoostEffect = params.resolutionBoost || 0;        // CHW AI
+  const pointOfCareEffect = params.pointOfCareResolution || 0;      // Diagnostic AI
+  const lengthOfStayEffect = params.lengthOfStayReduction || 0;     // Bed Management AI
+  const dischargeOptEffect = params.dischargeOptimization || 0;     // Bed Management AI
+  const treatmentEffEffect = params.treatmentEfficiency || 0;       // Hospital Decision AI
+  const resourceUtilEffect = params.resourceUtilization || 0;      // Hospital Decision AI
+  
+  let availableCapacityL0 = Math.max(0, (1 - effectiveCongestion) * queueClearanceRate);
+  let availableCapacityL1 = Math.max(0, (1 - effectiveCongestion) * queueClearanceRate);
+  let availableCapacityL2 = Math.max(0, (1 - effectiveCongestion) * queueClearanceRate);
+  let availableCapacityL3 = Math.max(0, (1 - effectiveCongestion) * queueClearanceRate);
+  
+  // Apply AI improvements to queue clearance
+  availableCapacityL0 *= (1 + resolutionBoostEffect);              // CHW AI improves L0 throughput
+  availableCapacityL1 *= (1 + pointOfCareEffect);                  // Diagnostic AI improves L1 throughput
+  availableCapacityL2 *= (1 + lengthOfStayEffect + dischargeOptEffect + treatmentEffEffect); // Multiple hospital AIs
+  availableCapacityL3 *= (1 + lengthOfStayEffect + dischargeOptEffect + treatmentEffEffect + resourceUtilEffect); // All hospital AIs
+  
+  const queueClearedL0 = Math.min(currentQueues.L0 * availableCapacityL0, currentQueues.L0 - queueMortalityL0 - queueAbandonL0 - queueBypassL0);
+  const queueClearedL1 = Math.min(currentQueues.L1 * availableCapacityL1, currentQueues.L1 - queueMortalityL1 - queueAbandonL1 - queueBypassL1);
+  const queueClearedL2 = Math.min(currentQueues.L2 * availableCapacityL2, currentQueues.L2 - queueMortalityL2 - queueAbandonL2 - queueBypassL2);
+  const queueClearedL3 = Math.min(currentQueues.L3 * availableCapacityL3, currentQueues.L3 - queueMortalityL3 - queueAbandonL3 - queueBypassL3);
+  
+  // Update levels with capacity-constrained flows plus cleared queues and direct routing
+  const newL0 = actualL0Flow + remainingL0 + queueClearedL0;
+  const newL1 = actualL1Flow + remainingL1 + queueClearedL1 + formalToL1Direct;
+  const newL2 = actualL2Flow + remainingL2 + queueClearedL2 + formalToL2Direct;
+  const newL3 = actualL3Flow + remainingL3 + queueClearedL3;
+  
+  // Add abandoned patients back to untreated and bypassed to informal
+  const totalAbandoned = queueAbandonL0 + queueAbandonL1 + queueAbandonL2 + queueAbandonL3;
+  const totalBypassed = queueBypassL0 + queueBypassL1 + queueBypassL2 + queueBypassL3;
+  
+  const newR = state.R + untreatedResolved + informalResolved + l0Resolved + l1Resolved + l2Resolved + l3Resolved + avoidedVisits; // Include untreated resolved and avoided visits
+  const newD = state.D + untreatedDeaths + informalDeaths + l0Deaths + l1Deaths + l2Deaths + l3Deaths + queueMortality;
+  
+  // Calculate new patient days - apply length of stay reduction from AI
   const newPatientDays = {
     I: state.patientDays.I + state.I,
     F: state.patientDays.F + state.F,
-    L0: state.patientDays.L0 + state.L0,
-    L1: state.patientDays.L1 + state.L1,
-    L2: state.patientDays.L2 + state.L2,
-    L3: state.patientDays.L3 + state.L3,
+    L0: state.patientDays.L0 + state.L0 * (1 - (resolutionBoostEffect * 0.5)), // CHW AI reduces time at L0
+    L1: state.patientDays.L1 + state.L1 * (1 - (pointOfCareEffect * 0.5)),     // Diagnostic AI reduces time at L1
+    L2: state.patientDays.L2 + state.L2 * (1 - lengthOfStayEffect),            // Bed Management AI reduces length of stay
+    L3: state.patientDays.L3 + state.L3 * (1 - lengthOfStayEffect),            // Bed Management AI reduces length of stay
   };
   
   // Calculate episodes touched by AI
@@ -219,6 +404,10 @@ const runWeek = (
                           directToFormal + 
                           informalToFormal + 
                           (selfCareActive ? state.I : 0);  // Count all informal care patients if selfCareAI is active
+  
+  // Final U and I states include patients who abandoned or bypassed queues
+  const newU = newUBeforeQueues + totalAbandoned;
+  const newI = newIBeforeQueues + totalBypassed;
   
   return {
     U: newU,
@@ -233,6 +422,13 @@ const runWeek = (
     patientDays: newPatientDays,
     newCases: weeklyIncidence,
     episodesTouched,
+    queues: {
+      L0: Math.max(0, currentQueues.L0 + queuedL0 - queueMortalityL0 - queueAbandonL0 - queueBypassL0 - queueClearedL0),
+      L1: Math.max(0, currentQueues.L1 + queuedL1 - queueMortalityL1 - queueAbandonL1 - queueBypassL1 - queueClearedL1),
+      L2: Math.max(0, currentQueues.L2 + queuedL2 - queueMortalityL2 - queueAbandonL2 - queueBypassL2 - queueClearedL2),
+      L3: Math.max(0, currentQueues.L3 + queuedL3 - queueMortalityL3 - queueAbandonL3 - queueBypassL3 - queueClearedL3),
+    },
+    queueRelatedDeaths: (state.queueRelatedDeaths || 0) + queueMortality,
   };
 };
 
@@ -339,6 +535,39 @@ export const runSimulation = (
   const finalState = weeklyStates[weeklyStates.length - 1];
   const { totalCost, dalys } = calculateEconomics(finalState, params);
   
+  // Calculate capacity utilization metrics
+  let totalQueueLengths = { L0: 0, L1: 0, L2: 0, L3: 0 };
+  let peakQueues = { L0: 0, L1: 0, L2: 0, L3: 0 };
+  let weeksWithQueues = 0;
+  
+  weeklyStates.forEach(state => {
+    if (state.queues) {
+      totalQueueLengths.L0 += state.queues.L0;
+      totalQueueLengths.L1 += state.queues.L1;
+      totalQueueLengths.L2 += state.queues.L2;
+      totalQueueLengths.L3 += state.queues.L3;
+      
+      peakQueues.L0 = Math.max(peakQueues.L0, state.queues.L0);
+      peakQueues.L1 = Math.max(peakQueues.L1, state.queues.L1);
+      peakQueues.L2 = Math.max(peakQueues.L2, state.queues.L2);
+      peakQueues.L3 = Math.max(peakQueues.L3, state.queues.L3);
+      
+      if (state.queues.L0 + state.queues.L1 + state.queues.L2 + state.queues.L3 > 0) {
+        weeksWithQueues++;
+      }
+    }
+  });
+  
+  const averageQueueLength = weeksWithQueues > 0 ? {
+    L0: totalQueueLengths.L0 / config.numWeeks,
+    L1: totalQueueLengths.L1 / config.numWeeks,
+    L2: totalQueueLengths.L2 / config.numWeeks,
+    L3: totalQueueLengths.L3 / config.numWeeks,
+  } : undefined;
+  
+  const totalQueuedPatients = totalQueueLengths.L0 + totalQueueLengths.L1 + 
+                             totalQueueLengths.L2 + totalQueueLengths.L3;
+  
   return {
     weeklyStates,
     cumulativeDeaths: finalState.D,
@@ -347,6 +576,11 @@ export const runSimulation = (
     averageTimeToResolution: calculateTimeToResolution(weeklyStates, params),
     totalCost,
     dalys,
+    // Capacity metrics
+    averageQueueLength,
+    peakQueueLength: (peakQueues.L0 + peakQueues.L1 + peakQueues.L2 + peakQueues.L3) > 0 ? peakQueues : undefined,
+    totalQueuedPatients: totalQueuedPatients > 0 ? totalQueuedPatients : undefined,
+    queueRelatedDeaths: finalState.queueRelatedDeaths || undefined,
   };
 };
 
@@ -564,7 +798,11 @@ export const diseaseProfiles = {
     delta3: 0.01,             // low mortality risk at tertiary hospital (1% per week)
     rho0: 0.70,               // high referral from CHW to primary (70%)
     rho1: 0.55,               // substantial referral from primary to district (55%)
-    rho2: 0.35                // moderate referral to tertiary for advanced care (35%)
+    rho2: 0.35,               // moderate referral to tertiary for advanced care (35%)
+    // Capacity and competition parameters
+    capacityShare: 0.08,      // CHF patients use ~8% of overall health system capacity
+    competitionSensitivity: 1.3, // CHF patients are more affected by congestion (elderly, complex needs)
+    clinicalPriority: 0.85    // High priority due to acute decompensation risk
   },
   tuberculosis: {
     lambda: 0.00615,          // 0.615% annual incidence (615 per 100,000), reflecting South African TB burden
@@ -584,7 +822,11 @@ export const diseaseProfiles = {
     delta3: 0.0008,           // mortality for complex/MDR-TB at tertiary (0.08% per week)
     rho0: 0.85,               // high referral CHW to primary for diagnosis/treatment (85%)
     rho1: 0.45,               // moderate referral primary to district for complications/MDR suspicion (45%)
-    rho2: 0.30                // referral district to tertiary for specialized MDR/complex care (30%)
+    rho2: 0.30,               // referral district to tertiary for specialized MDR/complex care (30%)
+    // Capacity and competition parameters
+    capacityShare: 0.05,      // TB patients use ~5% of overall health system capacity
+    competitionSensitivity: 0.9, // TB patients less affected by congestion (scheduled visits)
+    clinicalPriority: 0.7     // Moderate priority (chronic condition with scheduled care)
   },
   childhood_pneumonia: { // Primarily non-severe childhood pneumonia
     lambda: 0.90,             // very high incidence in under-fives (episodes per child-year)
@@ -604,7 +846,11 @@ export const diseaseProfiles = {
     delta3: 0.015,            // mortality for very severe/complicated at tertiary (1.5% per week)
     rho0: 0.60,               // CHW referral to primary for danger signs/non-response (60%)
     rho1: 0.30,               // primary care referral to district for severe cases (30%)
-    rho2: 0.20                // district referral to tertiary for highly complex cases (20%)
+    rho2: 0.20,               // district referral to tertiary for highly complex cases (20%)
+    // Capacity and competition parameters
+    capacityShare: 0.15,      // Childhood pneumonia uses ~15% of health system capacity (high volume)
+    competitionSensitivity: 1.5, // Children more affected by congestion (urgent needs, less able to wait)
+    clinicalPriority: 0.9     // Very high priority (acute respiratory distress in children)
   },
   malaria: { // Uncomplicated and severe malaria in Nigeria (high-burden setting)
     lambda: 0.20,             // 20% annual incidence in endemic regions of Nigeria (higher than national avg of ~6%)
@@ -624,7 +870,11 @@ export const diseaseProfiles = {
     delta3: 0.05,             // Mortality for complicated cases at tertiary centers (5% weekly, 2%-10% range)
     rho0: 0.25,               // CHW referral to primary (danger signs/severe cases) - lower than previous estimate
     rho1: 0.20,               // Primary care referral to district (severe malaria) - lower than previous estimate
-    rho2: 0.10                // District to tertiary referral (very complicated cases) - lower rate as suggested
+    rho2: 0.10,               // District to tertiary referral (very complicated cases) - lower rate as suggested
+    // Capacity and competition parameters
+    capacityShare: 0.10,      // Malaria uses ~10% of health system capacity in endemic areas
+    competitionSensitivity: 1.2, // Malaria patients moderately affected by congestion
+    clinicalPriority: 0.8     // High priority (rapid progression possible)
   },
   fever: { // Fever of Unknown Origin (non-specific)
     lambda: 0.60,             // moderate-high incidence (episodes per person-year)
@@ -644,7 +894,11 @@ export const diseaseProfiles = {
     delta3: 0.001,            // mortality at tertiary (0.1% per week)
     rho0: 0.30,               // CHW referral to primary (persistent/severe fever) (30%)
     rho1: 0.20,               // primary care referral to district (unclear diagnosis, non-response) (20%)
-    rho2: 0.10                // district referral to tertiary (complex cases) (10%)
+    rho2: 0.10,               // district referral to tertiary (complex cases) (10%)
+    // Capacity and competition parameters
+    capacityShare: 0.12,      // Fever uses ~12% of health system capacity (common presentation)
+    competitionSensitivity: 1.0, // Standard sensitivity to congestion
+    clinicalPriority: 0.6     // Moderate priority (often self-limiting)
   },
   diarrhea: { // Acute diarrheal disease, primarily in children
     lambda: 1.50,             // very high incidence especially in children (episodes per child-year)
@@ -664,7 +918,11 @@ export const diseaseProfiles = {
     delta3: 0.005,            // mortality for very severe cases at tertiary (0.5% per week)
     rho0: 0.50,               // CHW referral to primary (danger signs, dehydration, persistent) (50%)
     rho1: 0.30,               // primary care referral to district (severe dehydration, not responding) (30%)
-    rho2: 0.10                // district referral to tertiary (highly complex cases) (10%)
+    rho2: 0.10,               // district referral to tertiary (highly complex cases) (10%)
+    // Capacity and competition parameters
+    capacityShare: 0.18,      // Diarrhea uses ~18% of health system capacity (very high volume in children)
+    competitionSensitivity: 1.4, // Children with diarrhea highly affected by congestion (dehydration risk)
+    clinicalPriority: 0.85    // High priority (rapid dehydration in children)
   },
   anemia: { // Focus on Iron Deficiency Anemia in women/children
     lambda: 0.20,             // 20% annual incidence of symptomatic anemia needing attention
@@ -684,7 +942,11 @@ export const diseaseProfiles = {
     delta3: 0.0008,           // low, similar to L2 (0.08% weekly)
     rho0: 0.40,               // moderate CHW referral for symptomatic/severe cases or non-response (40%)
     rho1: 0.30,               // moderate primary referral for investigation or severe cases (30%)
-    rho2: 0.15                // lower district referral for highly specialized investigation (15%)
+    rho2: 0.15,               // lower district referral for highly specialized investigation (15%)
+    // Capacity and competition parameters
+    capacityShare: 0.04,      // Anemia uses ~4% of health system capacity
+    competitionSensitivity: 0.8, // Less affected by congestion (chronic condition)
+    clinicalPriority: 0.5     // Lower priority (rarely acute)
   },
   hiv_management_chronic: { // Chronic care for stable HIV on ART
     lambda: 0.005,            // 0.5% annual new diagnoses needing linkage to chronic ART care (South Africa)
@@ -704,7 +966,11 @@ export const diseaseProfiles = {
     delta3: 0.02,             // high mortality for advanced disease at tertiary (2% weekly)
     rho0: 0.90,               // high CHW referral for ART initiation (90%)
     rho1: 0.18,               // low primary referral if stable, higher if complications (18%)
-    rho2: 0.5                 // moderate secondary to tertiary referral (50%)
+    rho2: 0.5,                // moderate secondary to tertiary referral (50%)
+    // Capacity and competition parameters
+    capacityShare: 0.06,      // HIV chronic care uses ~6% of health system capacity
+    competitionSensitivity: 0.7, // Less affected by congestion (scheduled appointments)
+    clinicalPriority: 0.7     // Moderate priority (stable chronic care)
   },
   high_risk_pregnancy_low_anc: { // High-risk pregnancy with limited/no antenatal care
     lambda: 0.02,             // 2% of women of reproductive age annually experience this (very rough estimate)
@@ -724,7 +990,11 @@ export const diseaseProfiles = {
     delta3: 0.001,            // lowest mortality at tertiary (0.1% weekly)
     rho0: 0.90,               // very high CHW referral for any HRP sign (90%)
     rho1: 0.70,               // high primary referral for actual complications (70%)
-    rho2: 0.40                // moderate district to tertiary for most severe (40%)
+    rho2: 0.40,               // moderate district to tertiary for most severe (40%)
+    // Capacity and competition parameters
+    capacityShare: 0.03,      // High-risk pregnancy uses ~3% of health system capacity
+    competitionSensitivity: 2.0, // Extremely affected by congestion (obstetric emergencies)
+    clinicalPriority: 0.95    // Very high priority (maternal/fetal emergencies)
   },
   urti: { // Upper Respiratory Tract Infection
     lambda: 2.0,              // very high incidence (2 episodes per person-year)
@@ -744,7 +1014,11 @@ export const diseaseProfiles = {
     delta3: 0.000001,         // negligible (0.0001% weekly)
     rho0: 0.05,               // low CHW referral, only if danger signs or prolonged (5%)
     rho1: 0.02,               // very low primary referral, only if atypical/severe (2%)
-    rho2: 0.01                // very low district referral (1%)
+    rho2: 0.01,               // very low district referral (1%)
+    // Capacity and competition parameters
+    capacityShare: 0.20,      // URTIs use ~20% of health system capacity (very high volume)
+    competitionSensitivity: 0.6, // Less affected by congestion (can wait)
+    clinicalPriority: 0.3     // Low priority (self-limiting)
   },
   hiv_opportunistic: { // HIV-related opportunistic infections (South African context)
     lambda: 0.04,             // 4% annual incidence among PLHIV (higher in South Africa with ~13.5% HIV prevalence)
@@ -764,7 +1038,11 @@ export const diseaseProfiles = {
     delta3: 0.02,             // High mortality for advanced disease at tertiary (2% weekly)
     rho0: 0.90,               // Very high CHW referral for OIs (90%)
     rho1: 0.60,               // High primary referral for severe/complex OIs (60%)
-    rho2: 0.5                 // Moderate district to tertiary referral (50%)
+    rho2: 0.5,                // Moderate district to tertiary referral (50%)
+    // Capacity and competition parameters
+    capacityShare: 0.04,      // HIV OIs use ~4% of health system capacity
+    competitionSensitivity: 1.6, // Highly affected by congestion (immunocompromised)
+    clinicalPriority: 0.9     // Very high priority (life-threatening infections)
   }
 };
 
@@ -798,28 +1076,49 @@ export interface AIBaseEffects {
   triageAI: {
     phi0Effect: number;      // Base increase in formal care seeking
     sigmaIEffect: number;    // Base multiplier for informal to formal transition
+    queuePreventionRate?: number;     // Prevents inappropriate visits (0-1)
+    smartRoutingRate?: number;        // Routes directly to correct level (0-1)
   };
   chwAI: {
     mu0Effect: number;       // Base increase in resolution at CHW level
     delta0Effect: number;    // Base multiplier for mortality reduction at CHW
     rho0Effect: number;      // Base multiplier for referral reduction from CHW
+    resolutionBoost?: number;         // Additional resolution at L0 to reduce L1 queue (0-1)
+    referralOptimization?: number;    // Further reduction in unnecessary referrals (0-1)
   };
   diagnosticAI: {
     mu1Effect: number;       // Base increase in resolution at primary care
     delta1Effect: number;    // Base multiplier for mortality reduction at primary
     rho1Effect: number;      // Base multiplier for referral reduction from primary
+    mu2Effect?: number;      // Base increase in resolution at district hospitals
+    delta2Effect?: number;   // Base multiplier for mortality reduction at district
+    rho2Effect?: number;     // Base multiplier for referral reduction from district
+    pointOfCareResolution?: number;   // Additional resolution at L1 to reduce L2 queue (0-1)
+    referralPrecision?: number;       // Further reduction in referrals (0-1)
   };
   bedManagementAI: {
     mu2Effect: number;       // Base increase in resolution at district hospitals
     mu3Effect: number;       // Base increase in resolution at tertiary hospitals
+    lengthOfStayReduction?: number;   // Reduction in patient days (0-1)
+    dischargeOptimization?: number;   // Faster discharge processing (0-1)
   };
   hospitalDecisionAI: {
     delta2Effect: number;    // Base multiplier for mortality reduction at district
     delta3Effect: number;    // Base multiplier for mortality reduction at tertiary
+    treatmentEfficiency?: number;     // Faster recovery at L2/L3 (0-1)
+    resourceUtilization?: number;     // Better bed utilization (0-1)
   };
   selfCareAI: {
+    // Health advisor functionality (included in comprehensive platform)
+    phi0Effect?: number;     // Base increase in formal care seeking (like AI Health Advisor)
+    sigmaIEffect?: number;   // Base multiplier for informal to formal transition (like AI Health Advisor)
+    queuePreventionRate?: number;     // Prevents inappropriate visits (0-1)
+    smartRoutingRate?: number;        // Routes directly to correct level (0-1)
+    // Self-care specific functionality
     muIEffect: number;       // Base increase in resolution in informal care
     deltaIEffect: number;    // Base multiplier for mortality reduction in informal
+    visitReductionEffect?: number; // Reduction in unnecessary visits (0-1)
+    routingImprovementEffect?: number; // Improvement in direct routing to appropriate level (0-1)
   };
 }
 
@@ -857,29 +1156,50 @@ export const defaultAICostParameters: AICostParameters = {
 export const defaultAIBaseEffects: AIBaseEffects = {
   triageAI: {
     phi0Effect: 0.08,      // 8% increase in formal care seeking
-    sigmaIEffect: 1.15     // 15% increase in informal to formal transition (multiplier)
+    sigmaIEffect: 1.15,    // 15% increase in informal to formal transition (multiplier)
+    queuePreventionRate: 0.20,      // 20% prevention of inappropriate visits
+    smartRoutingRate: 0.30          // 30% direct routing to correct level
   },
   chwAI: {
     mu0Effect: 0.05,       // 5% increase in resolution at CHW level
     delta0Effect: 0.92,    // 8% reduction in mortality (multiplier)
-    rho0Effect: 0.92       // 8% reduction in unnecessary referrals (multiplier)
+    rho0Effect: 0.92,      // 8% reduction in unnecessary referrals (multiplier)
+    resolutionBoost: 0.15,          // 15% additional resolution at L0
+    referralOptimization: 0.25      // 25% further reduction in unnecessary referrals
   },
   diagnosticAI: {
     mu1Effect: 0.06,       // 6% increase in resolution at primary care
     delta1Effect: 0.92,    // 8% reduction in mortality (multiplier)
-    rho1Effect: 0.92       // 8% reduction in referrals (multiplier)
+    rho1Effect: 0.92,      // 8% reduction in referrals (multiplier)
+    mu2Effect: 0.04,       // 4% increase in resolution at district hospitals
+    delta2Effect: 0.94,    // 6% reduction in mortality (multiplier)
+    rho2Effect: 0.94,      // 6% reduction in referrals (multiplier)
+    pointOfCareResolution: 0.20,    // 20% additional resolution at L1
+    referralPrecision: 0.25         // 25% further reduction in referrals
   },
   bedManagementAI: {
     mu2Effect: 0.03,       // 3% increase in resolution at district hospitals
-    mu3Effect: 0.03        // 3% increase in resolution at tertiary hospitals
+    mu3Effect: 0.03,       // 3% increase in resolution at tertiary hospitals
+    lengthOfStayReduction: 0.20,    // 20% reduction in length of stay
+    dischargeOptimization: 0.25     // 25% faster discharge processing
   },
   hospitalDecisionAI: {
     delta2Effect: 0.90,    // 10% reduction in mortality (multiplier)
-    delta3Effect: 0.90     // 10% reduction in mortality (multiplier)
+    delta3Effect: 0.90,    // 10% reduction in mortality (multiplier)
+    treatmentEfficiency: 0.15,      // 15% faster recovery
+    resourceUtilization: 0.20       // 20% better bed utilization
   },
   selfCareAI: {
+    // Health advisor functionality (included in comprehensive platform)
+    phi0Effect: 0.07,      // 7% increase in formal care seeking (closer to pure advisor)
+    sigmaIEffect: 1.13,    // 13% increase in informal to formal transition (closer to pure advisor)
+    queuePreventionRate: 0.25,      // 25% prevention of inappropriate visits (higher due to self-management)
+    smartRoutingRate: 0.25,         // 25% direct routing to correct level
+    // Self-care specific functionality
     muIEffect: 0.08,       // 8% increase in resolution in informal care
-    deltaIEffect: 0.85     // 15% reduction in mortality (multiplier)
+    deltaIEffect: 0.85,    // 15% reduction in mortality (multiplier)
+    visitReductionEffect: 0.2,    // 20% reduction in unnecessary visits
+    routingImprovementEffect: 0.15 // 15% improvement in direct routing
   }
 };
 
@@ -1155,6 +1475,8 @@ export const applyAIInterventions = (
   baseEffects: AIBaseEffects = defaultAIBaseEffects,
   disease?: string
 ): ModelParameters => {
+  console.log('🔧 DEBUG applyAIInterventions called with interventions:', interventions);
+  console.log('🔧 DEBUG selfCareAI state:', interventions.selfCareAI);
   const modifiedParams = { ...baseParams };
   
   // Reset aiFixedCost and aiVariableCost to 0 before applying interventions
@@ -1167,7 +1489,11 @@ export const applyAIInterventions = (
   // Get disease-specific effects or use defaults
   const getDiseaseEffects = (interventionType: keyof AIBaseEffects): any => {
     if (disease && diseaseSpecificAIEffects[disease] && diseaseSpecificAIEffects[disease][interventionType]) {
-      return diseaseSpecificAIEffects[disease][interventionType];
+      // Merge disease-specific effects with base effects to ensure all properties are available
+      return {
+        ...baseEffects[interventionType],
+        ...diseaseSpecificAIEffects[disease][interventionType]
+      };
     }
     return baseEffects[interventionType];
   };
@@ -1202,6 +1528,15 @@ export const applyAIInterventions = (
     const triageEffects = getDiseaseEffects('triageAI');
     modifiedParams.phi0 += applyMagnitude('triageAI_φ₀', triageEffects.phi0Effect);
     modifiedParams.sigmaI *= applyMagnitude('triageAI_σI', triageEffects.sigmaIEffect, true);
+    
+    // Add queue-reduction effects
+    if (triageEffects.queuePreventionRate !== undefined) {
+      modifiedParams.queuePreventionRate = applyMagnitude('triageAI_queuePrevention', triageEffects.queuePreventionRate);
+    }
+    if (triageEffects.smartRoutingRate !== undefined) {
+      modifiedParams.smartRoutingRate = applyMagnitude('triageAI_smartRouting', triageEffects.smartRoutingRate);
+    }
+    
     modifiedParams.aiFixedCost += costParams.triageAI.fixed;
     modifiedParams.aiVariableCost += costParams.triageAI.variable;
   }
@@ -1211,15 +1546,45 @@ export const applyAIInterventions = (
     modifiedParams.mu0 += applyMagnitude('chwAI_μ₀', chwEffects.mu0Effect);
     modifiedParams.delta0 *= applyMagnitude('chwAI_δ₀', chwEffects.delta0Effect, true);
     modifiedParams.rho0 *= applyMagnitude('chwAI_ρ₀', chwEffects.rho0Effect, true);
+    
+    // Add queue-reduction effects
+    if (chwEffects.resolutionBoost !== undefined) {
+      modifiedParams.resolutionBoost = applyMagnitude('chwAI_resolutionBoost', chwEffects.resolutionBoost);
+    }
+    if (chwEffects.referralOptimization !== undefined) {
+      modifiedParams.referralOptimization = applyMagnitude('chwAI_referralOptimization', chwEffects.referralOptimization);
+    }
+    
     modifiedParams.aiFixedCost += costParams.chwAI.fixed;
     modifiedParams.aiVariableCost += costParams.chwAI.variable;
   }
   
   if (interventions.diagnosticAI) {
     const diagnosticEffects = getDiseaseEffects('diagnosticAI');
+    // L1 (Primary Care) effects
     modifiedParams.mu1 += applyMagnitude('diagnosticAI_μ₁', diagnosticEffects.mu1Effect);
     modifiedParams.delta1 *= applyMagnitude('diagnosticAI_δ₁', diagnosticEffects.delta1Effect, true);
     modifiedParams.rho1 *= applyMagnitude('diagnosticAI_ρ₁', diagnosticEffects.rho1Effect, true);
+    
+    // L2 (District Hospital) effects
+    if (diagnosticEffects.mu2Effect !== undefined) {
+      modifiedParams.mu2 += applyMagnitude('diagnosticAI_μ₂', diagnosticEffects.mu2Effect);
+    }
+    if (diagnosticEffects.delta2Effect !== undefined) {
+      modifiedParams.delta2 *= applyMagnitude('diagnosticAI_δ₂', diagnosticEffects.delta2Effect, true);
+    }
+    if (diagnosticEffects.rho2Effect !== undefined) {
+      modifiedParams.rho2 *= applyMagnitude('diagnosticAI_ρ₂', diagnosticEffects.rho2Effect, true);
+    }
+    
+    // Add queue-reduction effects
+    if (diagnosticEffects.pointOfCareResolution !== undefined) {
+      modifiedParams.pointOfCareResolution = applyMagnitude('diagnosticAI_pointOfCareResolution', diagnosticEffects.pointOfCareResolution);
+    }
+    if (diagnosticEffects.referralPrecision !== undefined) {
+      modifiedParams.referralPrecision = applyMagnitude('diagnosticAI_referralPrecision', diagnosticEffects.referralPrecision);
+    }
+    
     modifiedParams.aiFixedCost += costParams.diagnosticAI.fixed;
     modifiedParams.aiVariableCost += costParams.diagnosticAI.variable;
   }
@@ -1228,6 +1593,15 @@ export const applyAIInterventions = (
     const bedMgmtEffects = getDiseaseEffects('bedManagementAI');
     modifiedParams.mu2 += applyMagnitude('bedManagementAI_μ₂', bedMgmtEffects.mu2Effect);
     modifiedParams.mu3 += applyMagnitude('bedManagementAI_μ₃', bedMgmtEffects.mu3Effect);
+    
+    // Add queue-reduction effects
+    if (bedMgmtEffects.lengthOfStayReduction !== undefined) {
+      modifiedParams.lengthOfStayReduction = applyMagnitude('bedManagementAI_lengthOfStay', bedMgmtEffects.lengthOfStayReduction);
+    }
+    if (bedMgmtEffects.dischargeOptimization !== undefined) {
+      modifiedParams.dischargeOptimization = applyMagnitude('bedManagementAI_discharge', bedMgmtEffects.dischargeOptimization);
+    }
+    
     modifiedParams.aiFixedCost += costParams.bedManagementAI.fixed;
     modifiedParams.aiVariableCost += costParams.bedManagementAI.variable;
   }
@@ -1236,14 +1610,59 @@ export const applyAIInterventions = (
     const hospitalEffects = getDiseaseEffects('hospitalDecisionAI');
     modifiedParams.delta2 *= applyMagnitude('hospitalDecisionAI_δ₂', hospitalEffects.delta2Effect, true);
     modifiedParams.delta3 *= applyMagnitude('hospitalDecisionAI_δ₃', hospitalEffects.delta3Effect, true);
+    
+    // Add queue-reduction effects
+    if (hospitalEffects.treatmentEfficiency !== undefined) {
+      modifiedParams.treatmentEfficiency = applyMagnitude('hospitalDecisionAI_treatment', hospitalEffects.treatmentEfficiency);
+    }
+    if (hospitalEffects.resourceUtilization !== undefined) {
+      modifiedParams.resourceUtilization = applyMagnitude('hospitalDecisionAI_resource', hospitalEffects.resourceUtilization);
+    }
+    
     modifiedParams.aiFixedCost += costParams.hospitalDecisionAI.fixed;
     modifiedParams.aiVariableCost += costParams.hospitalDecisionAI.variable;
   }
   
   if (interventions.selfCareAI) {
     const selfCareEffects = getDiseaseEffects('selfCareAI');
+    console.log('🔧 DEBUG selfCareAI effects:', selfCareEffects);
+    console.log('🔧 DEBUG phi0Effect:', selfCareEffects.phi0Effect);
+    console.log('🔧 DEBUG sigmaIEffect:', selfCareEffects.sigmaIEffect);
+    
+    // Health advisor functionality (included in comprehensive platform)
+    if (selfCareEffects.phi0Effect !== undefined) {
+      const oldPhi0 = modifiedParams.phi0;
+      modifiedParams.phi0 += applyMagnitude('selfCareAI_φ₀', selfCareEffects.phi0Effect);
+      console.log('🔧 DEBUG phi0 changed from', oldPhi0, 'to', modifiedParams.phi0);
+    } else {
+      console.log('🔧 DEBUG phi0Effect is undefined!');
+    }
+    if (selfCareEffects.sigmaIEffect !== undefined) {
+      const oldSigmaI = modifiedParams.sigmaI;
+      modifiedParams.sigmaI *= applyMagnitude('selfCareAI_σI', selfCareEffects.sigmaIEffect, true);
+      console.log('🔧 DEBUG sigmaI changed from', oldSigmaI, 'to', modifiedParams.sigmaI);
+    } else {
+      console.log('🔧 DEBUG sigmaIEffect is undefined!');
+    }
+    if (selfCareEffects.queuePreventionRate !== undefined) {
+      modifiedParams.queuePreventionRate = applyMagnitude('selfCareAI_queuePrevention', selfCareEffects.queuePreventionRate);
+    }
+    if (selfCareEffects.smartRoutingRate !== undefined) {
+      modifiedParams.smartRoutingRate = applyMagnitude('selfCareAI_smartRouting', selfCareEffects.smartRoutingRate);
+    }
+    
+    // Self-care specific functionality
     modifiedParams.muI += applyMagnitude('selfCareAI_μI', selfCareEffects.muIEffect);
     modifiedParams.deltaI *= applyMagnitude('selfCareAI_δI', selfCareEffects.deltaIEffect, true);
+    
+    // Add routing improvements for congestion management
+    if (selfCareEffects.visitReductionEffect !== undefined) {
+      modifiedParams.visitReduction = applyMagnitude('selfCareAI_visitReduction', selfCareEffects.visitReductionEffect);
+    }
+    if (selfCareEffects.routingImprovementEffect !== undefined) {
+      modifiedParams.directRoutingImprovement = applyMagnitude('selfCareAI_directRoutingImprovement', selfCareEffects.routingImprovementEffect);
+    }
+    
     modifiedParams.aiFixedCost += costParams.selfCareAI.fixed;
     modifiedParams.aiVariableCost += costParams.selfCareAI.variable;
     modifiedParams.selfCareAIActive = true; // Set the flag indicating self-care AI is active
@@ -1304,6 +1723,15 @@ export const getDefaultParameters = (): ModelParameters => ({
   discountRate: 0,
   yearsOfLifeLost: 30,
   regionalLifeExpectancy: 70,
+  
+  // System capacity parameters
+  systemCongestion: 0,  // Default: no congestion
+  congestionMortalityMultiplier: 1.5,  // Default: 50% increase in mortality when congested
+  
+  // Queue dynamics parameters
+  queueAbandonmentRate: 0.05,  // Default: 5% abandon per week
+  queueBypassRate: 0.10,       // Default: 10% seek alternative care per week
+  queueClearanceRate: 0.3,     // Default: 30% of queue can be cleared per week
 });
 
 export const sanitizeModelParameters = (params: ModelParameters): ModelParameters => {

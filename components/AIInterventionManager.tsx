@@ -223,11 +223,13 @@ const AIScenarioPresets: AIInterventionConfig[] = [
 const interventionInfo: InterventionInfo[] = [
   { 
     key: 'triageAI', 
-    name: 'AI Triage', 
+    name: 'AI Health Advisor', 
     description: 'LLM-powered conversational AI that provides personalized health guidance, symptom assessment, and care navigation through natural language interaction',
     effects: [
       { param: 'φ₀', effect: '+0.08', description: 'Increases initial formal care seeking. LLMs provide 24/7 multilingual support, understand complex symptoms in context, and build trust through empathetic conversation. This removes barriers of health literacy, language, and access that currently prevent care-seeking.' },
-      { param: 'σI', effect: '×1.15', description: 'Accelerates transition from informal to formal care. AI can detect urgency through conversation patterns, track symptom progression, send timely reminders, and directly connect patients to appropriate facilities, reducing dangerous delays in care-seeking.' }
+      { param: 'σI', effect: '×1.15', description: 'Accelerates transition from informal to formal care. AI can detect urgency through conversation patterns, track symptom progression, send timely reminders, and directly connect patients to appropriate facilities, reducing dangerous delays in care-seeking.' },
+      { param: 'queuePreventionRate', effect: '0.15', description: 'Queue reduction: AI triage prevents inappropriate visits that would create queues. Helps patients understand when conditions can be managed at home or in less intensive settings, preventing unnecessary healthcare system congestion.' },
+      { param: 'smartRoutingRate', effect: '0.20', description: 'Queue reduction: Enables direct routing to appropriate care levels during high congestion. AI identifies patients who need immediate higher-level care and routes them efficiently, bypassing overwhelmed lower-level facilities.' }
     ]
   },
   { 
@@ -237,17 +239,24 @@ const interventionInfo: InterventionInfo[] = [
     effects: [
       { param: 'μ₀', effect: '+0.15', description: 'Improves resolution at community level. Systematic baseline: 15 percentage point increase in weekly resolution rate. AI enables CHWs to handle more complex cases safely through clinical protocols, drug dosing guidance, and confidence scoring.' },
       { param: 'δ₀', effect: '×0.92', description: 'Reduces mortality at community level. AI helps identify high-risk patients through predictive models, ensures protocol compliance for critical conditions, and triggers automatic escalation for danger signs that might be missed by human assessment alone.' },
-      { param: 'ρ₀', effect: '×0.80', description: 'Optimizes referrals from CHW to primary care. Systematic baseline: ±20% referral optimization. AI can reduce unnecessary referrals by improving diagnostic confidence, or increase appropriate referrals by identifying severity requiring escalation. Direction varies by disease complexity.' }
+      { param: 'ρ₀', effect: '×0.80', description: 'Optimizes referrals from CHW to primary care. Systematic baseline: ±20% referral optimization. AI can reduce unnecessary referrals by improving diagnostic confidence, or increase appropriate referrals by identifying severity requiring escalation. Direction varies by disease complexity.' },
+      { param: 'resolutionBoost', effect: '0.10', description: 'Queue reduction: Additional resolution at CHW level reduces need for referrals. AI enables CHWs to successfully treat more complex cases locally, preventing queue formation at higher levels of care.' },
+      { param: 'referralOptimization', effect: '0.08', description: 'Queue reduction: Further reduces inappropriate referrals through improved clinical decision-making. AI helps CHWs distinguish cases that truly need escalation from those that can be managed locally.' }
     ]
   },
   { 
     key: 'diagnosticAI', 
-    name: 'Diagnostic AI', 
-    description: 'Suite of AI diagnostic tools including computer vision for medical imaging, LLM-based differential diagnosis, and ML-powered lab result interpretation',
+    name: 'Diagnostic AI (L1/L2)', 
+    description: 'Suite of AI diagnostic tools including computer vision for medical imaging, LLM-based differential diagnosis, and ML-powered lab result interpretation deployed at primary care and district hospital levels',
     effects: [
       { param: 'μ₁', effect: '+0.20', description: 'Improves resolution at primary care level. Systematic baseline: 20 percentage point increase in weekly resolution rate. AI enables earlier and more accurate diagnosis through pattern recognition across symptoms, medical imaging, and lab results.' },
       { param: 'δ₁', effect: '×0.92', description: 'Reduces mortality at primary care level. Early detection of serious conditions (TB, cancer, sepsis) through AI screening, plus reduced diagnostic errors from AI double-checking, prevents deaths from delayed or missed diagnoses.' },
-      { param: 'ρ₁', effect: '×0.80', description: 'Optimizes referrals from primary to secondary care. Systematic baseline: ±20% referral optimization. AI can reduce unnecessary referrals through diagnostic confidence, or increase appropriate referrals by identifying high-risk conditions requiring specialist care. Direction varies by disease complexity.' }
+      { param: 'ρ₁', effect: '×0.80', description: 'Optimizes referrals from primary to secondary care. Systematic baseline: ±20% referral optimization. AI can reduce unnecessary referrals through diagnostic confidence, or increase appropriate referrals by identifying high-risk conditions requiring specialist care. Direction varies by disease complexity.' },
+      { param: 'μ₂', effect: '+0.15', description: 'Improves resolution at district hospital level. AI-powered diagnostic imaging, lab result interpretation, and clinical decision support enable district hospitals to handle more complex cases locally without tertiary referral.' },
+      { param: 'δ₂', effect: '×0.94', description: 'Reduces mortality at district hospital level. Advanced diagnostic AI helps detect complications earlier, guides treatment selection, and provides specialist-level insights for complex cases.' },
+      { param: 'ρ₂', effect: '×0.85', description: 'Optimizes referrals from district to tertiary care. AI diagnostic confidence scoring helps determine which cases truly require tertiary-level specialist intervention versus local management.' },
+      { param: 'pointOfCareResolution', effect: '0.12', description: 'Queue reduction: Additional resolution at primary care through faster, more accurate diagnosis. AI enables point-of-care decision making that resolves cases without requiring hospital referral.' },
+      { param: 'referralPrecision', effect: '0.10', description: 'Queue reduction: Further reduces unnecessary referrals through precise diagnostic confidence scoring. AI provides certainty levels that help clinicians make better referral decisions.' }
     ] 
   },
   { 
@@ -256,7 +265,9 @@ const interventionInfo: InterventionInfo[] = [
     description: 'Intelligent hospital operations system using predictive analytics for patient flow, automated discharge planning, and dynamic resource allocation',
     effects: [
       { param: 'μ₂', effect: '+0.03', description: 'Improves discharge efficiency from district hospitals. AI predicts discharge readiness, automates discharge documentation, coordinates post-discharge care, and identifies patients suitable for early discharge with home monitoring.' },
-      { param: 'μ₃', effect: '+0.03', description: 'Improves discharge efficiency from tertiary hospitals. ML models optimize bed turnover by predicting length of stay, preventing unnecessary delays, coordinating complex discharges, and managing step-down care transitions more effectively.' }
+      { param: 'μ₃', effect: '+0.03', description: 'Improves discharge efficiency from tertiary hospitals. ML models optimize bed turnover by predicting length of stay, preventing unnecessary delays, coordinating complex discharges, and managing step-down care transitions more effectively.' },
+      { param: 'lengthOfStayReduction', effect: '0.15', description: 'Queue reduction: Reduces patient days in hospital through optimized care pathways. AI identifies opportunities for faster treatment and recovery, freeing up capacity for queued patients.' },
+      { param: 'dischargeOptimization', effect: '0.12', description: 'Queue reduction: Accelerates patient discharge through predictive analytics and automated planning. AI ensures patients are discharged as soon as clinically appropriate, maximizing bed availability.' }
     ]
   },
   { 
@@ -265,16 +276,24 @@ const interventionInfo: InterventionInfo[] = [
     description: 'Comprehensive clinical AI system providing real-time treatment recommendations, early warning scores, and evidence-based protocol guidance at the point of care',
     effects: [
       { param: 'δ₂', effect: '×0.90', description: 'Reduces mortality at district hospitals. AI provides 24/7 specialist-equivalent decision support, catches deteriorating patients hours earlier through continuous monitoring, and ensures evidence-based treatment even when specialists are unavailable.' },
-      { param: 'δ₃', effect: '×0.90', description: 'Reduces mortality at tertiary hospitals. AI prevents medical errors through drug interaction checking and protocol verification, optimizes complex treatment plans using latest evidence, and provides predictive alerts for complications before clinical signs appear.' }
+      { param: 'δ₃', effect: '×0.90', description: 'Reduces mortality at tertiary hospitals. AI prevents medical errors through drug interaction checking and protocol verification, optimizes complex treatment plans using latest evidence, and provides predictive alerts for complications before clinical signs appear.' },
+      { param: 'treatmentEfficiency', effect: '0.08', description: 'Queue reduction: Improves treatment effectiveness leading to faster patient recovery. AI-guided protocols optimize treatment pathways, reducing time to resolution and freeing up hospital capacity.' },
+      { param: 'resourceUtilization', effect: '0.10', description: 'Queue reduction: Better utilization of hospital resources through intelligent scheduling and resource allocation. AI optimizes bed assignments, procedure scheduling, and staff allocation to reduce bottlenecks.' }
     ]
   },
   { 
     key: 'selfCareAI', 
-    name: 'Self-Care Apps', 
-    description: 'Personalized health companion apps using LLMs for health coaching, medication adherence, chronic disease management, and preventive care guidance',
+    name: 'AI Self-Care Platform', 
+    description: 'Comprehensive self-management ecosystem combining AI health coaching, point-of-care diagnostics, over-the-counter medications, wearable devices, and predictive analytics for empowered patient care',
     effects: [
+      { param: 'φ₀', effect: '+0.07', description: 'Increases initial formal care seeking (health advisor functionality). Comprehensive platform provides 24/7 health guidance, symptom assessment, and care navigation, encouraging appropriate healthcare utilization when needed.' },
+      { param: 'σI', effect: '×1.13', description: 'Accelerates transition from informal to formal care (health advisor functionality). Platform detects concerning symptoms through wearables and user inputs, providing timely guidance to seek professional care when self-management is insufficient.' },
       { param: 'μI', effect: '+0.08', description: 'Improves resolution in informal care settings. AI provides personalized treatment adherence support, symptom tracking with actionable insights, and adaptive health education that improves self-management of minor illnesses and chronic conditions.' },
-      { param: 'δI', effect: '×0.85', description: 'Reduces mortality in informal care settings. AI apps detect warning signs early through passive monitoring, ensure medication compliance for chronic diseases, provide emergency guidance, and nudge users to seek care when algorithms detect serious conditions.' }
+      { param: 'δI', effect: '×0.85', description: 'Reduces mortality in informal care settings. AI apps detect warning signs early through passive monitoring, ensure medication compliance for chronic diseases, provide emergency guidance, and nudge users to seek care when algorithms detect serious conditions.' },
+      { param: 'queuePreventionRate', effect: '0.25', description: 'Queue reduction: Enhanced prevention of inappropriate visits through comprehensive self-management. Platform enables users to resolve more conditions at home through diagnostics, OTC guidance, and wearable monitoring.' },
+      { param: 'smartRoutingRate', effect: '0.25', description: 'Queue reduction: Advanced routing to appropriate care levels. Platform uses comprehensive health data (symptoms + diagnostics + wearables) to determine optimal care level and route patients efficiently.' },
+      { param: 'visitReduction', effect: '0.20', description: 'Queue reduction: Prevents unnecessary healthcare visits through better self-management. AI apps help users determine when conditions can be managed at home vs. requiring professional care, reducing system demand.' },
+      { param: 'directRoutingImprovement', effect: '0.15', description: 'Queue reduction: Enables smart routing during high congestion. When system congestion >50%, AI apps guide patients to appropriate care levels (60% to primary care, 40% to hospitals), bypassing overwhelmed CHW level.' }
     ]
   }
 ];
@@ -378,7 +397,20 @@ const AIInterventionManager: React.FC = () => {
       'δ₂': 'delta2Effect',
       'δ₃': 'delta3Effect',
       'μI': 'muIEffect',
-      'δI': 'deltaIEffect'
+      'δI': 'deltaIEffect',
+      // Queue reduction parameters (don't map to disease-specific effects currently)
+      'queuePreventionRate': null,
+      'smartRoutingRate': null,
+      'resolutionBoost': null,
+      'referralOptimization': null,
+      'pointOfCareResolution': null,
+      'referralPrecision': null,
+      'lengthOfStayReduction': null,
+      'dischargeOptimization': null,
+      'treatmentEfficiency': null,
+      'resourceUtilization': null,
+      'visitReduction': 'visitReductionEffect',
+      'directRoutingImprovement': 'routingImprovementEffect'
     };
     
     const effectName = paramToEffectMap[effectParam];
@@ -776,12 +808,12 @@ const AIInterventionManager: React.FC = () => {
   const getInterventionName = (key: keyof AIInterventions): string => {
     // Map intervention keys to their display names
     const nameMap: Record<keyof AIInterventions, string> = {
-      triageAI: 'Patient Triage AI',
-      chwAI: 'CHW Support AI', 
-      diagnosticAI: 'Diagnostic AI',
+      triageAI: 'AI Health Advisor',
+      chwAI: 'CHW Decision Support AI', 
+      diagnosticAI: 'Diagnostic AI (L1/L2)',
       bedManagementAI: 'Bed Management AI',
       hospitalDecisionAI: 'Hospital Decision Support AI',
-      selfCareAI: 'Self-Care AI'
+      selfCareAI: 'AI Self-Care Platform'
     };
     return nameMap[key] || key;
   };

@@ -14,7 +14,7 @@ interface Node {
   id: string;
   name: string;
   description: string;
-  type: 'stock' | 'informal' | 'formal' | 'level0' | 'level1' | 'level2' | 'level3' | 'outcome';
+  type: 'stock' | 'informal' | 'formal' | 'level0' | 'level1' | 'level2' | 'level3' | 'outcome' | 'queue';
   x: number;
   y: number;
   width: number;
@@ -110,14 +110,27 @@ const StockFlowDiagram: React.FC = () => {
       { id: 'resolved', name: 'Resolved', description: 'Cases resolved', type: 'outcome', x: 950, y: 200, width: nodeWidth, height: nodeHeight },
       { id: 'deaths', name: 'Deaths', description: 'Deaths from all causes', type: 'outcome', x: 950, y: 450, width: nodeWidth, height: nodeHeight },
     ];
+    
+    // Add queue nodes if congestion exists
+    const queueNodes: Node[] = [];
+    if (params.systemCongestion && params.systemCongestion > 0) {
+      queueNodes.push(
+        { id: 'q0', name: 'Q₀', description: 'Queue for CHW', type: 'queue', x: 400, y: 50, width: 60, height: 40 },
+        { id: 'q1', name: 'Q₁', description: 'Queue for Primary', type: 'queue', x: 400, y: 200, width: 60, height: 40 },
+        { id: 'q2', name: 'Q₂', description: 'Queue for District', type: 'queue', x: 400, y: 350, width: 60, height: 40 },
+        { id: 'q3', name: 'Q₃', description: 'Queue for Tertiary', type: 'queue', x: 400, y: 500, width: 60, height: 40 }
+      );
+    }
+    
+    const allNodes = [...nodes, ...queueNodes];
 
     const fmt = (num: number) => num < 0.01 && num !== 0 ? num.toFixed(4) : num < 0.1 && num !== 0 ? num.toFixed(3) : num.toFixed(2);
 
-    const links: Link[] = [
+    let links: Link[] = [
       // From New Cases
       { id: 'link_new_untreated', source: 'new', target: 'untreated', label: `(1-${getUnicodeBaseSymbol('phi', '0')})r: ${fmt((1 - params.phi0) * params.informalCareRatio)}`, value: (1 - params.phi0) * params.informalCareRatio * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 150, y1: 475 }, labelOffset: {dy: -15} },
       { id: 'link_new_informal', source: 'new', target: 'informal', label: `(1-${getUnicodeBaseSymbol('phi', '0')})(1-r): ${fmt((1 - params.phi0) * (1 - params.informalCareRatio))}`, value: (1 - params.phi0) * (1 - params.informalCareRatio) * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 150, y1: 325 } },
-      { id: 'link_new_formal', source: 'new', target: 'formal', label: `${getUnicodeBaseSymbol('phi', '0')}: ${fmt(params.phi0)}`, value: params.phi0 * weeklyIncidence, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: 'phi0', controlPoints: { x1: 150, y1: 175 }, labelOffset: {dy: -15} },
+      { id: 'link_new_formal', source: 'new', target: 'formal', label: `${getUnicodeBaseSymbol('phi', '0')}: ${fmt(params.phi0)}`, value: params.phi0 * weeklyIncidence, aiIntervention: (aiInterventions.triageAI || aiInterventions.selfCareAI) ? (aiInterventions.triageAI ? 'triageAI' : 'selfCareAI') : null, parameter: 'phi0', controlPoints: { x1: 150, y1: 175 }, labelOffset: {dy: -15} },
       
       // From Untreated to Deaths
       { id: 'link_untreated_deaths', source: 'untreated', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', 'U')}: ${fmt(params.deltaU)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 600, y1: 500 }, labelOffset: {dx: 30, dy: 15} },
@@ -126,7 +139,7 @@ const StockFlowDiagram: React.FC = () => {
       { id: 'link_untreated_resolved', source: 'untreated', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', 'U')}: ${fmt(params.muU)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 600, y1: 325 }, labelOffset: {dy: 20, dx: 10} },
       
       // From Informal Care
-      { id: 'link_informal_formal', source: 'informal', target: 'formal', label: `${getUnicodeBaseSymbol('sigma', 'I')}: ${fmt(params.sigmaI)}`, value: null, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: 'sigmaI', controlPoints: { x1: 250, y1: 225 }, labelOffset: {dx: -20} },
+      { id: 'link_informal_formal', source: 'informal', target: 'formal', label: `${getUnicodeBaseSymbol('sigma', 'I')}: ${fmt(params.sigmaI)}`, value: null, aiIntervention: (aiInterventions.triageAI || aiInterventions.selfCareAI) ? (aiInterventions.triageAI ? 'triageAI' : 'selfCareAI') : null, parameter: 'sigmaI', controlPoints: { x1: 250, y1: 225 }, labelOffset: {dx: -20} },
       { id: 'link_informal_resolved', source: 'informal', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', 'I')}: ${fmt(params.muI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'muI', controlPoints: { x1: 600, y1: 225 }, labelOffset: {dy: -20} },
       { id: 'link_informal_deaths', source: 'informal', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', 'I')}: ${fmt(params.deltaI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'deltaI', controlPoints: { x1: 600, y1: 375 }, labelOffset: {dy: 20} },
       
@@ -152,6 +165,41 @@ const StockFlowDiagram: React.FC = () => {
       { id: 'link_l3_resolved', source: 'l3', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', '3')}: ${fmt(params.mu3)}`, value: null, aiIntervention: aiInterventions.bedManagementAI ? 'bedManagementAI' : null, parameter: 'mu3', controlPoints: { x1: 750, y1: 375 }, labelOffset: {dy: -20, dx: -15} },
       { id: 'link_l3_deaths', source: 'l3', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', '3')}: ${fmt(params.delta3)}`, value: null, aiIntervention: aiInterventions.hospitalDecisionAI ? 'hospitalDecisionAI' : null, parameter: 'delta3', controlPoints: { x1: 750, y1: 500 }, labelOffset: {dy: 15} },
     ];
+    
+    // Add queue links if congestion exists
+    if (params.systemCongestion && params.systemCongestion > 0) {
+      // Formal care to queues (when capacity is constrained)
+      links.push(
+        { id: 'link_formal_q0', source: 'formal', target: 'q0', label: `Queue`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 350, y1: 100 }, labelOffset: {dy: -10} },
+        { id: 'link_l0_q1', source: 'l0', target: 'q1', label: `Queue`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 175 }, labelOffset: {dy: -10} },
+        { id: 'link_l1_q2', source: 'l1', target: 'q2', label: `Queue`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 325 }, labelOffset: {dy: -10} },
+        { id: 'link_l2_q3', source: 'l2', target: 'q3', label: `Queue`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 475 }, labelOffset: {dy: -10} },
+      );
+      
+      // Queues to healthcare levels (clearance)
+      links.push(
+        { id: 'link_q0_l0', source: 'q0', target: 'l0', label: `Clear`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 75 }, labelOffset: {dy: -10} },
+        { id: 'link_q1_l1', source: 'q1', target: 'l1', label: `Clear`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 225 }, labelOffset: {dy: -10} },
+        { id: 'link_q2_l2', source: 'q2', target: 'l2', label: `Clear`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 375 }, labelOffset: {dy: -10} },
+        { id: 'link_q3_l3', source: 'q3', target: 'l3', label: `Clear`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 525 }, labelOffset: {dy: -10} },
+      );
+      
+      // Queue mortality
+      links.push(
+        { id: 'link_q0_deaths', source: 'q0', target: 'deaths', label: `Q-mort`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 700, y1: 250 }, labelOffset: {dy: 10} },
+        { id: 'link_q1_deaths', source: 'q1', target: 'deaths', label: `Q-mort`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 700, y1: 300 }, labelOffset: {dy: 10} },
+        { id: 'link_q2_deaths', source: 'q2', target: 'deaths', label: `Q-mort`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 700, y1: 375 }, labelOffset: {dy: 10} },
+        { id: 'link_q3_deaths', source: 'q3', target: 'deaths', label: `Q-mort`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 700, y1: 475 }, labelOffset: {dy: 10} },
+      );
+      
+      // Queue abandonment/bypass
+      links.push(
+        { id: 'link_q0_informal', source: 'q0', target: 'informal', label: `Abandon`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 325, y1: 200 }, labelOffset: {dy: -10} },
+        { id: 'link_q1_informal', source: 'q1', target: 'informal', label: `Abandon`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 325, y1: 275 }, labelOffset: {dy: -10} },
+        { id: 'link_q2_informal', source: 'q2', target: 'informal', label: `Abandon`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 325, y1: 350 }, labelOffset: {dy: -10} },
+        { id: 'link_q3_informal', source: 'q3', target: 'informal', label: `Abandon`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 325, y1: 425 }, labelOffset: {dy: -10} },
+      );
+    }
 
     const svgWidth = 1100;
     const svgHeight = 700;
@@ -211,8 +259,8 @@ const StockFlowDiagram: React.FC = () => {
     linkElements.append('path')
       .attr('id', d => d.id)
       .attr('d', d => {
-        const sourceNode = nodes.find(n => n.id === d.source);
-        const targetNode = nodes.find(n => n.id === d.target);
+        const sourceNode = allNodes.find(n => n.id === d.source);
+        const targetNode = allNodes.find(n => n.id === d.target);
         if (!sourceNode || !targetNode) return null;
 
         const startPt = { x: sourceNode.x + sourceNode.width / 2, y: sourceNode.y + sourceNode.height / 2 };
@@ -247,8 +295,8 @@ const StockFlowDiagram: React.FC = () => {
       .style('transition', 'opacity 0.3s, stroke 0.3s, stroke-width 0.3s');
 
     linkElements.each(function(d) {
-      const sourceNode = nodes.find(n => n.id === d.source);
-      const targetNode = nodes.find(n => n.id === d.target);
+      const sourceNode = allNodes.find(n => n.id === d.source);
+      const targetNode = allNodes.find(n => n.id === d.target);
       if (!sourceNode || !targetNode) return;
 
       const startPt = { x: sourceNode.x + sourceNode.width / 2, y: sourceNode.y + sourceNode.height / 2 };
@@ -325,7 +373,7 @@ const StockFlowDiagram: React.FC = () => {
 
     // --- Draw Nodes FIRST --- so links appear on top
     const nodeElements = nodeContainerGroup.selectAll('g')
-      .data(nodes)
+      .data(allNodes)
       .join('g')
       .attr('id', d => `node-${d.id}`)
       .attr('transform', d => `translate(${d.x}, ${d.y})`)
@@ -340,7 +388,8 @@ const StockFlowDiagram: React.FC = () => {
       level1: '#b3e5fc', 
       level2: '#b2ebf2', 
       level3: '#d1c4e9', 
-      outcome: '#ffccbc'
+      outcome: '#ffccbc',
+      queue: '#ffcdd2'
     };
 
     nodeElements.append('rect')
@@ -433,12 +482,12 @@ const StockFlowDiagram: React.FC = () => {
           .attr('transform', `translate(${legendX}, ${legendY})`);
   
         const activeInterventionTypes = [
-          { id: 'triageAI', name: 'Triage AI', active: aiInterventions.triageAI },
+          { id: 'triageAI', name: 'Health Advisor', active: aiInterventions.triageAI },
           { id: 'chwAI', name: 'CHW AI', active: aiInterventions.chwAI },
-          { id: 'diagnosticAI', name: 'Diagnostic AI', active: aiInterventions.diagnosticAI },
+          { id: 'diagnosticAI', name: 'Diagnostic AI (L1/L2)', active: aiInterventions.diagnosticAI },
           { id: 'bedManagementAI', name: 'Bed Mgmt AI', active: aiInterventions.bedManagementAI },
           { id: 'hospitalDecisionAI', name: 'Hospital Decision AI', active: aiInterventions.hospitalDecisionAI },
-          { id: 'selfCareAI', name: 'Self-Care AI', active: aiInterventions.selfCareAI }
+          { id: 'selfCareAI', name: 'Self-Care Platform', active: aiInterventions.selfCareAI }
         ].filter(i => i.active);
   
         const legendItemHeight = 20;

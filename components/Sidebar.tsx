@@ -17,7 +17,8 @@ import {
   HealthSystemMultipliers,
   customScenarioNameAtom,
   selectedAIScenarioAtom,
-  baselineResultsAtom
+  baselineResultsAtom,
+  baseParametersAtom
 } from '../lib/store';
 import { healthSystemStrengthDefaults } from '../models/stockAndFlowModel';
 
@@ -38,6 +39,7 @@ const Sidebar: React.FC = () => {
   const [customScenarioName, setCustomScenarioName] = useAtom(customScenarioNameAtom);
   const [selectedAIScenario] = useAtom(selectedAIScenarioAtom);
   const [baseline] = useAtom(baselineResultsAtom);
+  const [baseParams, setBaseParams] = useAtom(baseParametersAtom);
   
   // Local state for disease checkboxes
   const [diseaseOptions, setDiseaseOptions] = useState<{
@@ -109,12 +111,12 @@ const Sidebar: React.FC = () => {
       if (activeAIInterventions.length === 1) {
         const aiName = (() => {
           switch(activeAIInterventions[0]) {
-            case 'triageAI': return 'AI Triage';
+            case 'triageAI': return 'AI Health Advisor';
             case 'chwAI': return 'CHW Decision Support';
-            case 'diagnosticAI': return 'Diagnostic AI';
+            case 'diagnosticAI': return 'Diagnostic AI (L1/L2)';
             case 'bedManagementAI': return 'Bed Management AI';
             case 'hospitalDecisionAI': return 'Hospital Decision Support';
-            case 'selfCareAI': return 'Self-Care Apps';
+            case 'selfCareAI': return 'AI Self-Care Platform';
             default: return activeAIInterventions[0];
           }
         })();
@@ -451,6 +453,44 @@ const Sidebar: React.FC = () => {
         </div>
       </div>
 
+      {/* System Congestion Settings */}
+      <div className="mb-6">
+        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          System Congestion Level
+        </label>
+        <select
+          value={baseParams.systemCongestion || 0}
+          onChange={(e) => {
+            const congestion = parseFloat(e.target.value);
+            setBaseParams({ ...baseParams, systemCongestion: congestion });
+          }}
+          className="input w-full"
+        >
+          <option value="0">No Congestion (0%)</option>
+          <option value="0.2">Low Congestion (20%)</option>
+          <option value="0.5">Moderate Congestion (50%)</option>
+          <option value="0.7">High Congestion (70%)</option>
+          <option value="0.9">Severe Congestion (90%)</option>
+        </select>
+        <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-left">
+          {baseParams.systemCongestion === 0 && (
+            <p>System operating normally with full capacity available. Optimal patient flow and outcomes.</p>
+          )}
+          {baseParams.systemCongestion === 0.2 && (
+            <p>Mild system stress. Some delays in care but generally manageable. Mortality slightly elevated.</p>
+          )}
+          {baseParams.systemCongestion === 0.5 && (
+            <p>Significant congestion. Half of patients face delays. Queue mortality increases substantially.</p>
+          )}
+          {baseParams.systemCongestion === 0.7 && (
+            <p>System under severe strain. Most patients queued. High mortality from delays in care.</p>
+          )}
+          {baseParams.systemCongestion === 0.9 && (
+            <p>Near-collapse conditions. System overwhelmed. Critical patients dying in queues.</p>
+          )}
+        </div>
+      </div>
+
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -530,7 +570,7 @@ const Sidebar: React.FC = () => {
               className="mr-2"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">
-              AI Triage
+              AI Health Advisor
             </span>
           </label>
           
@@ -554,7 +594,7 @@ const Sidebar: React.FC = () => {
               className="mr-2"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">
-              Diagnostic AI
+              Diagnostic AI (L1/L2)
             </span>
           </label>
           
@@ -590,7 +630,7 @@ const Sidebar: React.FC = () => {
               className="mr-2"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">
-              Self-Care Apps
+              AI Self-Care Platform
             </span>
           </label>
         </div>

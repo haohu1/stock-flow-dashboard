@@ -98,6 +98,14 @@ const parameterGroups = [
     ],
     // These are affected by multipliers, so indirectly health system specific
   },
+  {
+    title: 'System Capacity Constraints',
+    params: [
+      { key: 'systemCongestion', label: 'System Congestion', description: 'Overall health system congestion level (0=no congestion, 1=fully congested)' },
+      { key: 'congestionMortalityMultiplier', label: 'Congestion Mortality Factor', description: 'How much mortality increases due to congestion (e.g., 1.5 = 50% increase)' },
+    ],
+    isHealthSystemSpecific: true,
+  },
 ];
 
 // Define the type for the exported/imported parameters

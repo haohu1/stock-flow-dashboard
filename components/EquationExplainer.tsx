@@ -106,6 +106,59 @@ const EquationExplainer: React.FC = () => {
       example: 'All patients entering formal care are first directed to community health workers (L0). Higher levels of care are accessed through referrals from lower levels.'
     },
     {
+      title: 'Capacity Constraints and Queue Formation',
+      equation: 's_{eff} = \\min(1, s \\cdot \\kappa) \\\\ c = 1 - s_{eff} \\\\ F_{actual} = F_{desired} \\cdot c \\\\ Q_{new} = F_{desired} - F_{actual}',
+      explanation: 'System congestion reduces the capacity to admit new patients. The capacity multiplier (c) determines what fraction of desired patient flow can actually be admitted. Patients who cannot be admitted join queues.',
+      variables: [
+        { symbol: 's', name: 'System Congestion Level', value: params.systemCongestion || 0 },
+        { symbol: '\\kappa', name: 'Competition Sensitivity', value: params.competitionSensitivity || 1.0 },
+        { symbol: 's_{eff}', name: 'Effective Congestion', value: Math.min(1, (params.systemCongestion || 0) * (params.competitionSensitivity || 1.0)) },
+        { symbol: 'c', name: 'Capacity Multiplier', value: 1 - Math.min(1, (params.systemCongestion || 0) * (params.competitionSensitivity || 1.0)) },
+        { symbol: 'F_{desired}', name: 'Desired Patient Flow', value: 'Referrals/entries' },
+        { symbol: 'F_{actual}', name: 'Actual Patient Flow', value: 'Capacity-limited' },
+      ],
+      example: `With ${formatDecimal((params.systemCongestion || 0) * 100, 0)}% system congestion and competition sensitivity of ${formatDecimal(params.competitionSensitivity || 1.0, 2)}, the effective congestion is ${formatDecimal(Math.min(1, (params.systemCongestion || 0) * (params.competitionSensitivity || 1.0)) * 100, 0)}%. This gives a capacity multiplier of ${formatDecimal(1 - Math.min(1, (params.systemCongestion || 0) * (params.competitionSensitivity || 1.0)), 2)}, meaning only ${formatDecimal((1 - Math.min(1, (params.systemCongestion || 0) * (params.competitionSensitivity || 1.0))) * 100, 0)}% of patients can be admitted.`
+    },
+    {
+      title: 'Queue Dynamics - Mortality, Abandonment, and Bypass',
+      equation: 'Q_{mortality} = Q_t \\cdot \\delta_{base} \\cdot (m - 1) \\cdot \\kappa \\\\ Q_{abandon} = Q_t \\cdot a \\\\ Q_{bypass} = Q_t \\cdot b \\\\ Q_{cleared} = Q_t \\cdot r \\cdot (1 - s_{eff})^*',
+      explanation: 'Patients in queues face four possible outcomes each week: death (increased mortality while waiting), abandonment (return to untreated), bypass (seek informal care), or clearance (admitted when capacity available). *Queue clearance depends on available capacity.',
+      variables: [
+        { symbol: 'Q_t', name: 'Current Queue Size', value: 'Dynamic' },
+        { symbol: '\\delta_{base}', name: 'Base Death Rate', value: 'Level-specific' },
+        { symbol: 'm', name: 'Congestion Mortality Multiplier', value: params.congestionMortalityMultiplier || 1.5 },
+        { symbol: 'a', name: 'Queue Abandonment Rate', value: params.queueAbandonmentRate || 0.05 },
+        { symbol: 'b', name: 'Queue Bypass Rate', value: params.queueBypassRate || 0.10 },
+        { symbol: 'r', name: 'Queue Clearance Rate', value: params.queueClearanceRate || 0.30 },
+      ],
+      example: `Queue mortality is ${formatDecimal(((params.congestionMortalityMultiplier || 1.5) - 1) * 100, 0)}% higher than baseline death rates. Each week, ${formatDecimal((params.queueAbandonmentRate || 0.05) * 100, 0)}% abandon care (→U), ${formatDecimal((params.queueBypassRate || 0.10) * 100, 0)}% seek informal care (→I), and up to ${formatDecimal((params.queueClearanceRate || 0.30) * 100, 0)}% can be cleared if capacity is available.`
+    },
+    {
+      title: 'Queue State Evolution',
+      equation: 'Q_{t+1} = \\max(0, Q_t + Q_{new} - Q_{mortality} - Q_{abandon} - Q_{bypass} - Q_{cleared})',
+      explanation: 'Each queue evolves weekly based on new arrivals minus all forms of exits. The max function ensures queues never become negative.',
+      variables: [
+        { symbol: 'Q_{t+1}', name: 'Queue Size Next Week', value: 'Dynamic' },
+        { symbol: 'Q_{new}', name: 'New Queue Entries', value: 'From capacity constraints' },
+        { symbol: 'Q_{mortality}', name: 'Deaths in Queue', value: 'Congestion-dependent' },
+        { symbol: 'Q_{abandon}', name: 'Abandonments to U', value: 'Fixed rate' },
+        { symbol: 'Q_{bypass}', name: 'Bypasses to I', value: 'Fixed rate' },
+        { symbol: 'Q_{cleared}', name: 'Admitted from Queue', value: 'Capacity-dependent' },
+      ],
+      example: `Queues grow when new patients cannot be admitted and shrink through the four exit mechanisms. The balance determines whether queues are growing or shrinking over time.`
+    },
+    {
+      title: 'Self-care AI Routing Effects',
+      equation: 'New_{effective} = New \\cdot (1 - v) \\\\ F_{L1-direct} = F \\cdot d \\cdot s \\cdot 0.6 \\\\ F_{L2-direct} = F \\cdot d \\cdot s \\cdot 0.4',
+      explanation: 'Self-care AI reduces unnecessary visits and enables smart routing during congestion. When congestion > 50%, some patients bypass lower levels.',
+      variables: [
+        { symbol: 'v', name: 'Visit Reduction', value: params.visitReduction || 0 },
+        { symbol: 'd', name: 'Direct Routing Improvement', value: params.directRoutingImprovement || 0 },
+        { symbol: 's', name: 'System Congestion', value: params.systemCongestion || 0 },
+      ],
+      example: `Self-care AI reduces visits by ${formatDecimal((params.visitReduction || 0) * 100, 0)}% and improves routing by ${formatDecimal((params.directRoutingImprovement || 0) * 100, 0)}% during congestion.`
+    },
+    {
       title: 'CHW Level (L0) Transitions',
       equation: 'L0_{resolved} = \\mu_{L0} \\cdot L0_t \\\\ L0_{deaths} = \\delta_{L0} \\cdot L0_t \\\\ L0_{referrals} = \\rho_{L0} \\cdot L0_t \\\\ L0_{t+1} = L0_t + L0_{new} - L0_{resolved} - L0_{deaths} - L0_{referrals}',
       explanation: 'Weekly transitions for patients at the community health worker level. Note: Health system multipliers for μ_L0, δ_L0, and ρ_L0 have already been applied to these parameters. Each week, the L0 population changes based on new entries and outflows through resolution, death, or referral.',
@@ -226,7 +279,7 @@ const EquationExplainer: React.FC = () => {
         <h4 className="text-md font-medium text-gray-700 dark:text-yellow-100 mb-2">Model Limitations</h4>
         <p className="text-sm text-gray-600 dark:text-gray-300">
           This model has several important limitations to consider when interpreting results:
-          (1) Healthcare capacity constraints are not modeled - resolution rates are proportional to patient numbers without upper limits;
+          (1) Healthcare capacity constraints are modeled through a simplified congestion mechanism - actual capacity limits are more complex with facility-specific constraints;
           (2) The model simplifies disease progression pathways - it doesn't fully capture disease heterogeneity, non-linear progression patterns, comorbidities, demographic variations in outcomes, or complex transitions between care levels that occur in real-world settings;
           (3) All rates are weekly probabilities rather than continuous rates, which simplifies transitions but may not capture time-dependent dynamics;
           (4) The model doesn't directly capture patient suffering or quality of life beyond DALYs;
@@ -239,7 +292,7 @@ const EquationExplainer: React.FC = () => {
         <StockFlowDiagram />
         <p className="text-sm text-gray-600 dark:text-gray-400 italic text-center">
           This diagram illustrates the flow of patients through different levels of the healthcare system.
-          Green highlighted paths show active AI interventions.
+          Green highlighted paths show active AI interventions. Red queue nodes (Q₀-Q₃) appear when system congestion > 0.
         </p>
       </div>
       

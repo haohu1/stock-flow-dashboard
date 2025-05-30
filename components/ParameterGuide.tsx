@@ -29,7 +29,15 @@ const ParameterGuide: React.FC = () => {
       'maternal_sepsis': 'Maternal Sepsis',
       'tuberculosis': 'Tuberculosis',
       'acute_diarrhea': 'Acute Diarrhea',
-      'hiv_management_chronic': 'HIV Management (Chronic)'
+      'hiv_management_chronic': 'HIV Management (Chronic)',
+      'congestive_heart_failure': 'Congestive Heart Failure',
+      'malaria': 'Malaria',
+      'fever': 'Fever of Unknown Origin',
+      'diarrhea': 'Diarrheal Disease',
+      'anemia': 'Anemia',
+      'high_risk_pregnancy_low_anc': 'High-Risk Pregnancy (Low ANC)',
+      'urti': 'Upper Respiratory Tract Infection',
+      'hiv_opportunistic': 'HIV-Related Opportunistic Infections'
     };
     return diseaseNames[diseaseKey] || diseaseKey;
   };
@@ -38,7 +46,9 @@ const ParameterGuide: React.FC = () => {
     const systemNames: { [key: string]: string } = {
       'weak_rural_system': 'Weak Rural Health System',
       'moderate_urban_system': 'Moderate Urban Health System',
-      'strong_urban_system': 'Strong Urban Health System'
+      'strong_urban_system': 'Strong Urban Health System',
+      'fragile_conflict_system': 'Fragile/Conflict-Affected System',
+      'well_functioning_system': 'Well-Functioning Health System'
     };
     return systemNames[systemKey] || systemKey;
   };

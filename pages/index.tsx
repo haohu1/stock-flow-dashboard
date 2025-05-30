@@ -5,6 +5,7 @@ import Dashboard from '../components/Dashboard';
 import SensitivityAnalysis from '../components/SensitivityAnalysis';
 import ParametersPanel from '../components/ParametersPanel';
 import EquationExplainer from '../components/EquationExplainer';
+import ParameterGuide from '../components/ParameterGuide';
 import ScenarioManager from '../components/ScenarioManager';
 import AIInterventionManager from '../components/AIInterventionManager';
 import BubbleChartView from '../components/BubbleChartView';
@@ -12,14 +13,14 @@ import ImpactFeasibilityBubbleChart from '../components/ImpactFeasibilityBubbleC
 import { useAtom } from 'jotai';
 import { simulationResultsAtom, aiInterventionsAtom, scenariosAtom } from '../lib/store';
 
-type TabType = 'dashboard' | 'scenarios' | 'interventions' | 'sensitivity' | 'parameters' | 'equations' | 'ipm-bubble' | 'impact-bubble';
+type TabType = 'dashboard' | 'scenarios' | 'interventions' | 'sensitivity' | 'parameters' | 'equations' | 'parameter-guide' | 'ipm-bubble' | 'impact-bubble';
 
 export default function Home() {
   const [results] = useAtom(simulationResultsAtom);
   const [aiInterventions] = useAtom(aiInterventionsAtom);
   const [scenarios] = useAtom(scenariosAtom);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [preSimulationTab, setPreSimulationTab] = useState<'dashboard' | 'scenarios' | 'parameters' | 'equations' | 'interventions'>('dashboard');
+  const [preSimulationTab, setPreSimulationTab] = useState<'dashboard' | 'scenarios' | 'parameters' | 'equations' | 'parameter-guide' | 'interventions'>('dashboard');
   
   // Count active AI interventions
   const activeInterventionsCount = Object.values(aiInterventions).filter(Boolean).length;
@@ -123,6 +124,8 @@ export default function Home() {
         return <ParametersPanel />;
       case 'equations':
         return <EquationExplainer />;
+      case 'parameter-guide':
+        return <ParameterGuide />;
       case 'ipm-bubble':
         return <BubbleChartView />;
       case 'impact-bubble':
@@ -140,6 +143,8 @@ export default function Home() {
         return <ParametersPanel />;
       case 'equations':
         return <EquationExplainer />;
+      case 'parameter-guide':
+        return <ParameterGuide />;
       case 'interventions':
         return <AIInterventionManager />;
       case 'dashboard':
@@ -181,6 +186,7 @@ export default function Home() {
                     { id: 'sensitivity', name: 'Sensitivity' },
                     { id: 'parameters', name: 'Parameters' },
                     { id: 'equations', name: 'Equations' },
+                    { id: 'parameter-guide', name: 'Parameter Guide' },
                     { 
                       id: 'ipm-bubble', 
                       name: 'IPM Bubble Chart',
@@ -232,10 +238,11 @@ export default function Home() {
                     { id: 'parameters', name: 'Configure Parameters' },
                     { id: 'interventions', name: 'Configure AI Interventions' },
                     { id: 'equations', name: 'Model Equations' },
+                    { id: 'parameter-guide', name: 'Parameter Guide' },
                   ].map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={() => setPreSimulationTab(tab.id as 'dashboard' | 'scenarios' | 'parameters' | 'equations' | 'interventions')}
+                      onClick={() => setPreSimulationTab(tab.id as 'dashboard' | 'scenarios' | 'parameters' | 'equations' | 'parameter-guide' | 'interventions')}
                       className={`
                         border-b-2 py-4 px-1 text-sm font-medium
                         ${preSimulationTab === tab.id 

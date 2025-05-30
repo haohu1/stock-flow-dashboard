@@ -211,160 +211,210 @@ const ParameterGuide: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-          <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Disease-Specific Clinical Context & Interpretation</h4>
+        <div className="mt-6 p-6 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+          <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-300 dark:border-gray-500">
+            Disease-Specific Clinical Context
+          </h4>
           
-          {selectedDisease === 'childhood_pneumonia' && (
-            <div className="space-y-3">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>Childhood Pneumonia:</strong> A leading cause of death in children under 5, particularly in low-resource settings. The dramatic improvement in outcomes from CHW to primary care reflects the importance of appropriate antibiotics and oxygen therapy.
-              </p>
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded">
-                <p className="text-blue-800 dark:text-blue-200 text-sm">
-                  <strong>Key Clinical Points:</strong> High spontaneous recovery rates reflect mild viral cases, but bacterial pneumonia requires immediate antibiotic treatment. The high referral rate from CHW to primary care ensures access to appropriate antibiotics and oxygen when needed.
-                </p>
-              </div>
-            </div>
-          )}
+          {/* Helper function to get disease-specific content */}
+          {(() => {
+            const diseaseInfo = {
+              'childhood_pneumonia': {
+                name: 'Childhood Pneumonia',
+                category: 'Acute Infectious Disease',
+                overview: 'A leading cause of death in children under 5, particularly in low-resource settings. The dramatic improvement in outcomes from CHW to primary care reflects the critical importance of timely access to appropriate antibiotics and oxygen therapy.',
+                treatmentRationale: 'Most childhood pneumonia is bacterial and responds well to antibiotics. CHWs can provide first-line amoxicillin, but severe cases require oxygen therapy and parenteral antibiotics available at health facilities.',
+                keyPoints: [
+                  'High spontaneous recovery rates (70-80%) reflect mild viral cases that resolve without intervention',
+                  'Bacterial pneumonia requires immediate antibiotic treatment - delays significantly increase mortality',
+                  'High CHW→Primary referral rate (60%) ensures access to oxygen therapy for severe cases',
+                  'Fast-breathing pneumonia can be managed by CHWs, but danger signs require facility care'
+                ]
+              },
+              'tuberculosis': {
+                name: 'Tuberculosis',
+                category: 'Chronic Infectious Disease',
+                overview: 'Requires standardized long-term treatment (6+ months) with multiple drugs. The modest differences in recovery rates across care levels reflect the standardized nature of TB treatment protocols, though higher levels provide crucial monitoring.',
+                treatmentRationale: 'TB treatment is highly standardized globally. Success depends more on treatment completion than care level, but higher facilities provide better adherence monitoring and drug resistance management.',
+                keyPoints: [
+                  'Treatment protocols are standardized across all levels following WHO guidelines',
+                  'High CHW→Primary referral rate (85%) reflects need for specialized TB clinics and DOTS programs',
+                  'Lower mortality at higher levels reflects better adherence monitoring and side effect management',
+                  'Drug-resistant TB requires specialized facilities with culture and sensitivity testing'
+                ]
+              },
+              'malaria': {
+                name: 'Malaria',
+                category: 'Acute Parasitic Disease',
+                overview: 'Highly treatable with rapid diagnostic tests (RDTs) and artemisinin-based combination therapy (ACT). Excellent outcomes at CHW and primary care levels demonstrate the remarkable effectiveness of community-based malaria management programs.',
+                treatmentRationale: 'Uncomplicated malaria is easily treated at community level with RDTs and ACT. Hospital cases typically represent severe malaria requiring intensive supportive care.',
+                keyPoints: [
+                  'Community health workers achieve 80-85% cure rates with RDTs and ACT',
+                  'Lower recovery rates at hospitals reflect severe malaria cases requiring intensive care',
+                  'Rapid diagnosis and treatment within 24 hours prevents progression to severe disease',
+                  'Community case management has dramatically reduced malaria mortality in endemic areas'
+                ]
+              },
+              'diarrhea': {
+                name: 'Diarrheal Disease',
+                category: 'Acute Gastrointestinal Condition',
+                overview: 'Primarily managed with oral rehydration solution (ORS) and zinc supplementation. The excellent outcomes at CHW level demonstrate the remarkable effectiveness of community-based case management for acute diarrhea.',
+                treatmentRationale: 'Most childhood diarrhea responds to simple rehydration. The WHO/UNICEF protocol of ORS + zinc is highly effective and can be safely administered by trained CHWs.',
+                keyPoints: [
+                  'ORS + zinc treatment achieves 85-90% success rates at community level',
+                  'CHWs can effectively manage mild to moderate dehydration using ORS',
+                  'Hospital referral is reserved for severe dehydration requiring IV fluids',
+                  'Prevention through improved water, sanitation, and hygiene remains crucial'
+                ]
+              },
+              'hiv_management_chronic': {
+                name: 'HIV Management (Chronic)',
+                category: 'Chronic Viral Disease',
+                overview: 'Focuses on stable patients receiving antiretroviral therapy (ART). Success depends on consistent medication adherence, regular monitoring, and proactive management of comorbidities and opportunistic infections.',
+                treatmentRationale: 'HIV is a chronic manageable condition with ART. "Recovery" means viral suppression and immune reconstitution, not cure. Higher care levels provide specialized monitoring and complex case management.',
+                keyPoints: [
+                  '"Recovery rates" represent viral suppression and stable clinical management, not cure',
+                  'ART adherence >95% is required for sustained viral suppression',
+                  'Higher referral rates (90%) reflect need for specialist HIV care and monitoring',
+                  'Regular CD4 counts and viral load monitoring optimize treatment outcomes'
+                ]
+              },
+              'anemia': {
+                name: 'Anemia',
+                category: 'Nutritional/Hematologic Condition',
+                overview: 'Often nutritional (iron deficiency) but may have multiple underlying causes requiring systematic investigation. The gradual improvement across care levels reflects increasing diagnostic and therapeutic capabilities.',
+                treatmentRationale: 'Most anemia in LMICs is iron deficiency, treatable with iron supplements. However, proper diagnosis requires blood testing, and severe cases may need transfusion or treatment of underlying causes.',
+                keyPoints: [
+                  'Very low mortality reflects the chronic, non-life-threatening nature of most anemia',
+                  'Iron deficiency anemia responds well to oral iron supplementation',
+                  'Higher care levels provide diagnostic testing to identify underlying causes',
+                  'Severe anemia (Hb <7g/dL) may require blood transfusion at hospital level'
+                ]
+              },
+              'congestive_heart_failure': {
+                name: 'Congestive Heart Failure',
+                category: 'Chronic Cardiovascular Disease',
+                overview: 'A complex chronic condition requiring specialized management with evidence-based medications (ACE inhibitors, diuretics) and careful monitoring. Poor outcomes without formal care reflect the critical need for guideline-based heart failure management.',
+                treatmentRationale: 'Heart failure requires complex medication management, fluid balance monitoring, and treatment of underlying causes. This expertise is typically only available at hospital levels.',
+                keyPoints: [
+                  'High mortality without formal care reflects the life-threatening nature of untreated heart failure',
+                  'Evidence-based medications (ACE inhibitors, diuretics) dramatically improve survival',
+                  'Requires specialized cardiology expertise for optimal medication titration',
+                  'High referral rates (70%+) are clinically appropriate for this complex condition'
+                ]
+              },
+              'high_risk_pregnancy_low_anc': {
+                name: 'High-Risk Pregnancy (Low ANC)',
+                category: 'Maternal Health Emergency',
+                overview: 'Pregnant women without adequate antenatal care monitoring, representing high-risk deliveries. Poor outcomes at lower levels reflect the critical need for skilled birth attendance and emergency obstetric care.',
+                treatmentRationale: 'High-risk pregnancies require skilled birth attendants and access to emergency obstetric care. Complications like hemorrhage, eclampsia, and obstructed labor need immediate hospital intervention.',
+                keyPoints: [
+                  'Very high referral rates (90%+) reflect appropriate need for skilled birth attendance',
+                  'Emergency obstetric care (cesarean, blood transfusion) is only available at hospitals',
+                  'Maternal mortality decreases dramatically with access to comprehensive emergency care',
+                  'Lack of ANC increases risks of undetected complications during delivery'
+                ]
+              },
+              'urti': {
+                name: 'Upper Respiratory Tract Infection',
+                category: 'Acute Viral Illness',
+                overview: 'Common viral infections that are typically self-limiting with excellent prognosis. The minimal differences across care levels and very low referral rates reflect the mild, self-resolving nature of most URTIs.',
+                treatmentRationale: 'Most URTIs are viral and self-limiting. Treatment is symptomatic. Healthcare primarily provides reassurance and identifies rare bacterial complications requiring antibiotics.',
+                keyPoints: [
+                  'Very high spontaneous recovery rates (70%+) reflect viral, self-limiting nature',
+                  'Minimal mortality reflects the benign course of most viral URTIs',
+                  'Formal care provides symptomatic relief and identifies rare complications',
+                  'Antibiotic use should be reserved for proven bacterial infections'
+                ]
+              },
+              'fever': {
+                name: 'Fever of Unknown Origin',
+                category: 'Symptom Complex',
+                overview: 'A clinical presentation requiring systematic diagnostic evaluation for underlying causes including malaria, respiratory infections, typhoid, or other febrile illnesses. Variable outcomes reflect the diversity of underlying conditions.',
+                treatmentRationale: 'Fever is a symptom, not a diagnosis. Successful management depends on identifying and treating the underlying cause, which requires diagnostic capabilities that increase with care level.',
+                keyPoints: [
+                  'Moderate spontaneous recovery (30%) reflects self-limiting viral illnesses',
+                  'Higher care levels provide better diagnostic capabilities (lab tests, imaging)',
+                  'Common causes include malaria, pneumonia, typhoid, and viral syndromes',
+                  'Systematic evaluation prevents missed diagnoses of serious conditions'
+                ]
+              },
+              'hiv_opportunistic': {
+                name: 'HIV-Related Opportunistic Infections',
+                category: 'Immunodeficiency Complications',
+                overview: 'Serious infections occurring in HIV patients with severely compromised immune systems. Poor outcomes without formal care reflect the urgent need for specialized treatment and immune system support.',
+                treatmentRationale: 'Opportunistic infections in HIV patients require specialized knowledge, diagnostic capabilities, and specific antimicrobial treatments typically only available at higher care levels.',
+                keyPoints: [
+                  'High mortality without formal care reflects severity in immunocompromised patients',
+                  'Requires specialized HIV expertise and specific antimicrobial treatments',
+                  'Common infections include TB, Pneumocystis pneumonia, cryptococcal meningitis',
+                  'Prevention through ART and prophylaxis is more effective than treatment'
+                ]
+              }
+            };
 
-          {selectedDisease === 'tuberculosis' && (
-            <div className="space-y-3">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>Tuberculosis:</strong> Requires long-term treatment (6+ months) with multiple drugs. The modest differences in recovery rates across levels reflect the standardized nature of TB treatment protocols, though higher levels provide better monitoring and side effect management.
-              </p>
-              <div className="p-3 bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-700 rounded">
-                <p className="text-orange-800 dark:text-orange-200 text-sm">
-                  <strong>Key Clinical Points:</strong> High referral rates from CHW reflect the need for specialized TB clinics and directly observed therapy (DOTS). Lower mortality at higher levels reflects better treatment adherence monitoring and management of drug resistance.
-                </p>
-              </div>
-            </div>
-          )}
+            const currentDisease = diseaseInfo[selectedDisease as keyof typeof diseaseInfo];
+            
+            if (currentDisease) {
+              return (
+                <div className="space-y-6">
+                  {/* Disease Header */}
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {currentDisease.name}
+                      </h5>
+                      <span className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">
+                        {currentDisease.category}
+                      </span>
+                    </div>
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                      {currentDisease.overview}
+                    </p>
+                  </div>
 
-          {selectedDisease === 'malaria' && (
-            <div className="space-y-3">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>Malaria:</strong> Highly treatable with rapid diagnostic tests and artemisinin-based combination therapy (ACT). Excellent outcomes at CHW and primary care levels demonstrate the effectiveness of community-based malaria management programs.
-              </p>
-              <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded">
-                <p className="text-green-800 dark:text-green-200 text-sm">
-                  <strong>Key Clinical Points:</strong> The paradoxically lower recovery rates at higher levels may reflect severe malaria cases requiring intensive care. Community health workers are highly effective for uncomplicated malaria with rapid diagnostic tests and ACT.
-                </p>
-              </div>
-            </div>
-          )}
+                  {/* Treatment Rationale */}
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <h6 className="font-semibold text-gray-900 dark:text-white mb-2">
+                      Treatment Rationale & Care Level Logic
+                    </h6>
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                      {currentDisease.treatmentRationale}
+                    </p>
+                  </div>
 
-          {selectedDisease === 'diarrhea' && (
-            <div className="space-y-3">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>Diarrheal Disease:</strong> Primarily managed with oral rehydration solution (ORS) and zinc supplementation. The excellent outcomes at CHW level demonstrate the effectiveness of community-based case management for acute diarrhea in children.
-              </p>
-              <div className="p-3 bg-cyan-50 dark:bg-cyan-900/30 border border-cyan-200 dark:border-cyan-700 rounded">
-                <p className="text-cyan-800 dark:text-cyan-200 text-sm">
-                  <strong>Key Clinical Points:</strong> High recovery rates across all levels reflect the simplicity and effectiveness of ORS/zinc treatment. Lower recovery at hospitals may indicate severe dehydration cases or complications requiring IV fluids.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {selectedDisease === 'hiv_management_chronic' && (
-            <div className="space-y-3">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>HIV Management (Chronic):</strong> Focuses on stable patients on antiretroviral therapy (ART). Success depends on consistent medication adherence, regular monitoring, and management of comorbidities and opportunistic infections.
-              </p>
-              <div className="p-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded">
-                <p className="text-purple-800 dark:text-purple-200 text-sm">
-                  <strong>Key Clinical Points:</strong> "Recovery rates" represent viral suppression and stable clinical management, not cure. Higher rates at formal care levels reflect access to ART, CD4 monitoring, and specialized HIV care. Very high referral rates reflect need for specialist oversight.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {selectedDisease === 'anemia' && (
-            <div className="space-y-3">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>Anemia:</strong> Often nutritional (iron deficiency) but may have other causes requiring investigation. The gradual improvement across care levels reflects the need for proper diagnosis, iron supplementation, and treatment of underlying causes.
-              </p>
-              <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded">
-                <p className="text-red-800 dark:text-red-200 text-sm">
-                  <strong>Key Clinical Points:</strong> Very low mortality reflects the chronic nature of most anemia. Higher recovery rates at formal care levels reflect access to iron supplements, diagnostic testing, and treatment of underlying conditions like parasitic infections.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {selectedDisease === 'congestive_heart_failure' && (
-            <div className="space-y-3">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>Congestive Heart Failure:</strong> A complex chronic condition requiring specialized management with diuretics, ACE inhibitors, and careful monitoring. Poor outcomes without formal care reflect the need for evidence-based heart failure management.
-              </p>
-              <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 rounded">
-                <p className="text-indigo-800 dark:text-indigo-200 text-sm">
-                  <strong>Key Clinical Points:</strong> High mortality without formal care reflects the life-threatening nature of untreated heart failure. Dramatic improvement at hospital levels reflects access to specialized cardiology care, medications, and monitoring. High referral rates are appropriate for this complex condition.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {selectedDisease === 'high_risk_pregnancy_low_anc' && (
-            <div className="space-y-3">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>High-Risk Pregnancy (Low ANC):</strong> Pregnant women without adequate antenatal care monitoring. Poor outcomes at lower levels reflect the need for skilled birth attendance, emergency obstetric care, and management of complications.
-              </p>
-              <div className="p-3 bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-700 rounded">
-                <p className="text-pink-800 dark:text-pink-200 text-sm">
-                  <strong>Key Clinical Points:</strong> Very high referral rates reflect the need for skilled birth attendance and emergency obstetric care. Dramatic improvement at hospital levels reflects access to cesarean sections, blood transfusions, and specialized obstetric care for complications.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {selectedDisease === 'urti' && (
-            <div className="space-y-3">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>Upper Respiratory Tract Infection:</strong> Common viral infections that are typically self-limiting. The excellent outcomes across all levels and very low referral rates reflect the mild, self-resolving nature of most URTIs.
-              </p>
-              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded">
-                <p className="text-yellow-800 dark:text-yellow-200 text-sm">
-                  <strong>Key Clinical Points:</strong> Very high spontaneous recovery rates and minimal mortality reflect the viral, self-limiting nature. Formal care provides symptom relief and identifies rare complications. Low referral rates are appropriate as most cases resolve without intervention.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {selectedDisease === 'fever' && (
-            <div className="space-y-3">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>Fever of Unknown Origin:</strong> A symptom requiring diagnostic evaluation for underlying causes including malaria, respiratory infections, or other febrile illnesses. Variable outcomes reflect the diverse underlying conditions.
-              </p>
-              <div className="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded">
-                <p className="text-amber-800 dark:text-amber-200 text-sm">
-                  <strong>Key Clinical Points:</strong> Moderate spontaneous recovery reflects self-limiting viral illnesses. Improved outcomes at higher levels reflect better diagnostic capabilities and treatment of specific underlying conditions. Referral rates balance resource use with diagnostic needs.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {selectedDisease === 'hiv_opportunistic' && (
-            <div className="space-y-3">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>HIV-Related Opportunistic Infections:</strong> Serious infections occurring in HIV patients with compromised immune systems. Poor outcomes without formal care reflect the need for specialized treatment and immune system support.
-              </p>
-              <div className="p-3 bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-700 rounded">
-                <p className="text-violet-800 dark:text-violet-200 text-sm">
-                  <strong>Key Clinical Points:</strong> High mortality without formal care reflects the severity of opportunistic infections in immunocompromised patients. Higher levels provide access to specialized HIV care, prophylactic treatments, and management of complex opportunistic infections.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Default explanation for any disease not specifically covered */}
-          {!['childhood_pneumonia', 'tuberculosis', 'malaria', 'diarrhea', 'hiv_management_chronic', 'anemia', 'congestive_heart_failure', 'high_risk_pregnancy_low_anc', 'urti', 'fever', 'hiv_opportunistic'].includes(selectedDisease) && (
-            <p className="text-gray-700 dark:text-gray-300">
-              Higher-level care generally shows better recovery rates and lower mortality, but this varies by condition. 
-              For acute conditions like pneumonia, the difference between levels is dramatic. For chronic conditions, 
-              the differences may be smaller but still clinically significant over time.
-            </p>
-          )}
+                  {/* Key Clinical Points */}
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <h6 className="font-semibold text-gray-900 dark:text-white mb-3">
+                      Key Clinical Insights
+                    </h6>
+                    <ul className="space-y-2">
+                      {currentDisease.keyPoints.map((point, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                          <span className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+                            {point}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              );
+            } else {
+              // Default explanation for diseases not specifically covered
+              return (
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                    Higher-level care generally shows better recovery rates and lower mortality, but this varies significantly by condition. 
+                    For acute conditions like pneumonia, the difference between care levels can be dramatic due to access to life-saving interventions. 
+                    For chronic conditions, the differences may be smaller but still clinically significant over time, often reflecting 
+                    improved monitoring, medication management, and specialist expertise available at higher levels.
+                  </p>
+                </div>
+              );
+            }
+          })()}
         </div>
       </ClinicalSection>
 

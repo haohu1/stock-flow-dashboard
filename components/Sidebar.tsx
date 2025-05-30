@@ -294,7 +294,7 @@ const Sidebar: React.FC = () => {
   }, {} as Record<string, typeof diseaseOptions>);
 
   return (
-    <aside className="w-full md:w-64 bg-white dark:bg-gray-800 p-4 border-r border-gray-200 dark:border-gray-700">
+    <aside className="w-full md:w-64 bg-white dark:bg-gray-800 p-4 border-r border-gray-200 dark:border-gray-700 h-screen overflow-y-auto">
       <h2 className="text-xl font-bold mb-6 text-gray-800 dark:text-white">Model Settings</h2>
 
       <div className="mb-6">

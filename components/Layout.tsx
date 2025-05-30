@@ -40,8 +40,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </svg>
       </button>
       
-      {/* Sidebar without fixed positioning for desktop */}
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 fixed md:relative md:translate-x-0 z-40`}>
+      {/* Sidebar with sticky positioning for desktop */}
+      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 fixed md:sticky md:top-0 md:h-screen md:translate-x-0 z-40`}>
         <Sidebar />
       </div>
       

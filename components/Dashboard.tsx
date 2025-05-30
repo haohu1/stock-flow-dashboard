@@ -275,36 +275,41 @@ const Dashboard: React.FC = () => {
           <div className="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg border border-blue-200 dark:border-blue-700 max-w-2xl">
             <h3 className="text-lg font-medium text-blue-800 dark:text-blue-200 mb-2">How to use this dashboard</h3>
             <ol className="list-decimal list-inside text-left text-gray-700 dark:text-gray-300 space-y-2">
-              <li className="font-medium">Start with the model structure:
+              <li className="font-medium">Configure your health system:
                 <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                  <li>View "Model Equations" tab to see how patients move through care levels</li>
-                  <li>Note how DALYs adjust for age of infection</li>
-                </ul>
-              </li>
-              <li className="font-medium">Set up your parameters:
-                <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                  <li>Choose geography and disease in sidebar</li>
-                  <li>Click "Configure Parameters" for custom values</li>
+                  <li>Select health system strength (e.g., Moderate Urban, Weak Rural)</li>
+                  <li>Choose primary disease (e.g., Malaria, TB, Pneumonia)</li>
+                  <li>Set population size and congestion level</li>
+                  <li>Optionally select multiple diseases for comparison</li>
                 </ul>
               </li>
               <li className="font-medium">Run baseline scenario:
                 <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                  <li>Turn off all AI interventions</li>
+                  <li>Keep all AI interventions off</li>
                   <li>Click "Run Simulation"</li>
-                  <li>Click "Set as Baseline"</li>
+                  <li>Click "Set as Baseline" to save for comparison</li>
                 </ul>
               </li>
               <li className="font-medium">Test AI interventions:
                 <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                  <li>Turn on one or more AI options</li>
-                  <li>Run a new simulation</li>
-                  <li>Review DALY and ICER results</li>
+                  <li>Toggle one or more AI interventions</li>
+                  <li>Run simulation to see impact</li>
+                  <li>Compare deaths, DALYs, costs, and ICER vs baseline</li>
                 </ul>
               </li>
-              <li className="font-medium">Compare scenarios:
+              <li className="font-medium">Analyze results:
                 <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                  <li>"Save as Scenario" to store results</li>
-                  <li>Create different intervention combinations</li>
+                  <li>View patient flow animation and queue buildup</li>
+                  <li>Check bubble charts for impact vs feasibility</li>
+                  <li>Save scenarios for comparison</li>
+                  <li>Use Sensitivity tab to test parameter uncertainty</li>
+                </ul>
+              </li>
+              <li className="font-medium">Explore documentation:
+                <ul className="list-disc list-inside ml-4 mt-1 font-normal">
+                  <li>Model Equations tab: Mathematical framework</li>
+                  <li>Parameter Guide tab: Clinical context</li>
+                  <li>Parameters tab: Adjust custom values</li>
                 </ul>
               </li>
               <li className="font-medium">Compare multiple diseases:

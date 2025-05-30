@@ -1,523 +1,543 @@
 import React from 'react';
 import { useAtom } from 'jotai';
-import { derivedParametersAtom, aiInterventionsAtom } from '../lib/store';
+import { derivedParametersAtom, aiInterventionsAtom, selectedDiseaseAtom, selectedHealthSystemStrengthAtom } from '../lib/store';
 
 const ParameterGuide: React.FC = () => {
   const [params] = useAtom(derivedParametersAtom);
   const [aiInterventions] = useAtom(aiInterventionsAtom);
+  const [selectedDisease] = useAtom(selectedDiseaseAtom);
+  const [selectedHealthSystem] = useAtom(selectedHealthSystemStrengthAtom);
 
-  const formatValue = (value: number | undefined, isPercentage = false, decimals = 2) => {
-    if (value === undefined) return 'Not set';
-    if (isPercentage) return `${(value * 100).toFixed(decimals)}%`;
-    return value.toFixed(decimals);
+  const formatPercentage = (value: number | undefined) => {
+    if (value === undefined) return 'Not configured';
+    return `${(value * 100).toFixed(1)}%`;
   };
 
-  const ParameterSection = ({ title, description, children }: { title: string; description: string; children: React.ReactNode }) => (
+  const formatRate = (value: number | undefined) => {
+    if (value === undefined) return 'Not configured';
+    return `${(value * 100).toFixed(2)}%`;
+  };
+
+  const formatCost = (value: number | undefined) => {
+    if (value === undefined) return 'Not configured';
+    return `$${value.toFixed(0)}`;
+  };
+
+  const getDiseaseName = (diseaseKey: string) => {
+    const diseaseNames: { [key: string]: string } = {
+      'childhood_pneumonia': 'Childhood Pneumonia',
+      'maternal_sepsis': 'Maternal Sepsis',
+      'tuberculosis': 'Tuberculosis',
+      'acute_diarrhea': 'Acute Diarrhea'
+    };
+    return diseaseNames[diseaseKey] || diseaseKey;
+  };
+
+  const getHealthSystemName = (systemKey: string) => {
+    const systemNames: { [key: string]: string } = {
+      'weak_rural_system': 'Weak Rural Health System',
+      'moderate_urban_system': 'Moderate Urban Health System',
+      'strong_urban_system': 'Strong Urban Health System'
+    };
+    return systemNames[systemKey] || systemKey;
+  };
+
+  const ClinicalSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{description}</p>
-      <div className="space-y-4">
-        {children}
-      </div>
+      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-600 pb-2">
+        {title}
+      </h3>
+      {children}
     </div>
   );
 
-  const ParameterItem = ({ 
-    name, 
-    value, 
-    unit, 
-    description, 
-    clinicalMeaning, 
-    isPercentage = false,
-    decimals = 2 
-  }: { 
-    name: string; 
-    value: number | undefined; 
-    unit?: string; 
-    description: string; 
-    clinicalMeaning: string;
-    isPercentage?: boolean;
-    decimals?: number;
+  const ClinicalInsight = ({ title, value, interpretation, context }: { 
+    title: string; 
+    value: string; 
+    interpretation: string; 
+    context?: string;
   }) => (
-    <div className="border-l-4 border-blue-500 pl-4 py-2">
+    <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
       <div className="flex justify-between items-start mb-2">
-        <h4 className="font-medium text-gray-900 dark:text-white">{name}</h4>
-        <span className="text-sm font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-          {formatValue(value, isPercentage, decimals)}{unit && ` ${unit}`}
-        </span>
+        <h4 className="font-semibold text-gray-900 dark:text-white">{title}</h4>
+        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{value}</span>
       </div>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{description}</p>
-      <p className="text-xs text-blue-600 dark:text-blue-400 italic">{clinicalMeaning}</p>
+      <p className="text-gray-700 dark:text-gray-300 mb-2">{interpretation}</p>
+      {context && (
+        <p className="text-sm text-gray-600 dark:text-gray-400 italic">{context}</p>
+      )}
     </div>
   );
 
-  const InterventionStatus = ({ name, active, description }: { name: string; active: boolean; description: string }) => (
-    <div className={`border-l-4 ${active ? 'border-green-500' : 'border-gray-300'} pl-4 py-2`}>
-      <div className="flex justify-between items-start mb-2">
-        <h4 className="font-medium text-gray-900 dark:text-white">{name}</h4>
-        <span className={`text-xs px-2 py-1 rounded-full ${active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
-          {active ? 'ACTIVE' : 'INACTIVE'}
-        </span>
+  const ActiveInterventions = () => {
+    const activeCount = Object.values(aiInterventions).filter(Boolean).length;
+    const interventionNames = {
+      triageAI: 'AI-Powered Triage',
+      chwAI: 'CHW Decision Support',
+      diagnosticAI: 'Point-of-Care Diagnostics',
+      bedManagementAI: 'Hospital Bed Management',
+      hospitalDecisionAI: 'Clinical Decision Support',
+      selfCareAI: 'Patient Self-Care Guidance'
+    };
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {Object.entries(aiInterventions).map(([key, active]) => (
+          <div key={key} className={`p-3 rounded-lg border-2 ${active ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-300 bg-gray-50 dark:bg-gray-700'}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                {interventionNames[key as keyof typeof interventionNames]}
+              </span>
+              <span className={`text-xs px-2 py-1 rounded-full ${active ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
+                {active ? 'ACTIVE' : 'OFF'}
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
-      <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Parameter Guide for Subject Matter Experts</h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          Comprehensive explanation of all model parameters, their clinical significance, and current values in your simulation.
+    <div className="max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="mb-8 text-center">
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+          Clinical Parameter Overview
+        </h2>
+        <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">
+          Understanding your model configuration for <strong>{getDiseaseName(selectedDisease)}</strong> in a <strong>{getHealthSystemName(selectedHealthSystem)}</strong>
         </p>
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <p className="text-blue-800 dark:text-blue-200">
+            This guide translates the technical model parameters into clinically meaningful insights for healthcare professionals and policy makers.
+          </p>
+        </div>
       </div>
 
-      {/* Health System Parameters */}
-      <ParameterSection 
-        title="Health System Structure & Capacity"
-        description="Parameters defining the healthcare delivery system architecture, capacity constraints, and patient flow dynamics."
-      >
-        <ParameterItem
-          name="System Congestion Level"
-          value={params.systemCongestion}
-          description="Overall capacity utilization across the health system"
-          clinicalMeaning="Reflects how overwhelmed the system is. 70% = manageable load, 90% = severe strain with delays and rationing"
-          isPercentage={true}
-          decimals={0}
-        />
-        
-        <ParameterItem
-          name="Competition Sensitivity"
-          value={params.competitionSensitivity}
-          description="How much disease-specific factors amplify congestion effects"
-          clinicalMeaning="Higher values mean this condition competes more for limited resources (e.g., ICU beds for severe cases vs. routine care)"
-          decimals={1}
-        />
-        
-        <ParameterItem
-          name="Queue Clearance Rate"
-          value={params.queueClearanceRate}
-          description="Maximum proportion of queued patients that can be processed weekly when capacity is available"
-          clinicalMeaning="Represents system efficiency in clearing backlogs. Limited by staffing, equipment, and operational capacity"
-          isPercentage={true}
-          decimals={0}
-        />
-        
-        <ParameterItem
-          name="Queue Prevention Rate (Triage AI)"
-          value={params.queuePreventionRate}
-          description="Proportion of inappropriate queue entries prevented by AI triage"
-          clinicalMeaning="AI helps identify patients who don't need immediate care, reducing unnecessary queue formation"
-          isPercentage={true}
-          decimals={0}
-        />
-        
-        <ParameterItem
-          name="Queue Abandonment Rate"
-          value={params.queueAbandonmentRate}
-          description="Weekly rate at which patients leave queues and return to untreated status"
-          clinicalMeaning="Patients give up waiting due to long delays, distance, or opportunity costs. Higher in rural/poor areas"
-          isPercentage={true}
-          decimals={1}
-        />
-        
-        <ParameterItem
-          name="Queue Bypass Rate"
-          value={params.queueBypassRate}
-          description="Weekly rate at which queued patients seek informal care instead"
-          clinicalMeaning="Patients turn to traditional healers, pharmacies, or self-medication while waiting for formal care"
-          isPercentage={true}
-          decimals={1}
-        />
-        
-        <ParameterItem
-          name="Congestion Mortality Multiplier"
-          value={params.congestionMortalityMultiplier}
-          description="Factor by which death rates increase for patients waiting in queues"
-          clinicalMeaning="Delayed care leads to disease progression and worse outcomes. Critical for time-sensitive conditions"
-          decimals={1}
-          unit="×"
-        />
-      </ParameterSection>
-
-      {/* Disease-Specific Parameters */}
-      <ParameterSection 
-        title="Disease-Specific Clinical Parameters"
-        description="Parameters defining the natural history, treatment outcomes, and care pathways for the specific condition being modeled."
-      >
+      {/* Disease Burden & Care Seeking */}
+      <ClinicalSection title="Disease Burden & Patient Care-Seeking Behavior">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <ClinicalInsight
+            title="Annual Disease Incidence"
+            value={`${(params.lambda * 100000).toFixed(0)} cases per 100,000 people`}
+            interpretation="This represents the expected number of new cases of this condition per year in a population of 100,000 people."
+            context="For comparison: childhood pneumonia typically ranges from 1,000-5,000 per 100,000 children annually in LMICs."
+          />
+          
+          <ClinicalInsight
+            title="Healthcare-Seeking Behavior"
+            value={formatPercentage(params.phi0)}
+            interpretation={`${formatPercentage(params.phi0)} of patients with this condition initially seek formal healthcare, while ${formatPercentage(1 - (params.phi0 || 0))} either self-treat or seek traditional care first.`}
+            context="Higher rates indicate better health system access and trust. Rural areas typically show lower formal care-seeking rates."
+          />
+        </div>
+
+        <ClinicalInsight
+          title="Care Pathway Transitions"
+          value={`${formatPercentage(params.sigmaI)} weekly transition rate`}
+          interpretation={`Each week, ${formatPercentage(params.sigmaI)} of patients receiving traditional/informal care will transition to formal healthcare, typically when their condition worsens or traditional treatment fails.`}
+          context="This reflects the integration between traditional and modern healthcare systems."
+        />
+      </ClinicalSection>
+
+      {/* Clinical Outcomes by Care Level */}
+      <ClinicalSection title="Treatment Effectiveness Across Care Levels">
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
+          These rates show the weekly probability of recovery and death at each level of care, reflecting both the natural disease progression and the effectiveness of interventions.
+        </p>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recovery Rates */}
           <div>
-            <h4 className="font-medium text-gray-900 dark:text-white mb-3">Resolution Rates (Weekly)</h4>
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Weekly Recovery Rates</h4>
             <div className="space-y-3">
-              <ParameterItem
-                name="Untreated Resolution"
-                value={params.muU}
-                description="Natural recovery rate without any treatment"
-                clinicalMeaning="Self-limiting conditions have higher rates; chronic diseases have lower rates"
-                isPercentage={true}
-                decimals={1}
-              />
-              <ParameterItem
-                name="Informal Care Resolution"
-                value={params.muI}
-                description="Recovery rate with traditional/informal care"
-                clinicalMeaning="May be effective for some conditions, ineffective or harmful for others"
-                isPercentage={true}
-                decimals={1}
-              />
-              <ParameterItem
-                name="CHW Level (L0) Resolution"
-                value={params.mu0}
-                description="Recovery rate with community health worker care"
-                clinicalMeaning="Effective for basic conditions, preventive care, and health education"
-                isPercentage={true}
-                decimals={1}
-              />
-              <ParameterItem
-                name="Primary Care (L1) Resolution"
-                value={params.mu1}
-                description="Recovery rate with primary healthcare"
-                clinicalMeaning="Can handle most common conditions with basic diagnostics and treatments"
-                isPercentage={true}
-                decimals={1}
-              />
-              <ParameterItem
-                name="District Hospital (L2) Resolution"
-                value={params.mu2}
-                description="Recovery rate with secondary care"
-                clinicalMeaning="Advanced diagnostics, specialist care, minor surgeries"
-                isPercentage={true}
-                decimals={1}
-              />
-              <ParameterItem
-                name="Tertiary Hospital (L3) Resolution"
-                value={params.mu3}
-                description="Recovery rate with tertiary care"
-                clinicalMeaning="Highest level of care with specialized equipment and expertise"
-                isPercentage={true}
-                decimals={1}
-              />
+              <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/20 rounded">
+                <span>No Treatment</span>
+                <span className="font-bold text-red-600">{formatRate(params.muU)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded">
+                <span>Traditional Care</span>
+                <span className="font-bold text-orange-600">{formatRate(params.muI)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                <span>Community Health Worker</span>
+                <span className="font-bold text-yellow-600">{formatRate(params.mu0)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+                <span>Primary Care</span>
+                <span className="font-bold text-blue-600">{formatRate(params.mu1)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded">
+                <span>District Hospital</span>
+                <span className="font-bold text-indigo-600">{formatRate(params.mu2)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded">
+                <span>Tertiary Hospital</span>
+                <span className="font-bold text-green-600">{formatRate(params.mu3)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Mortality Rates */}
+          <div>
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Weekly Mortality Rates</h4>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/20 rounded">
+                <span>No Treatment</span>
+                <span className="font-bold text-red-600">{formatRate(params.deltaU)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded">
+                <span>Traditional Care</span>
+                <span className="font-bold text-orange-600">{formatRate(params.deltaI)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                <span>Community Health Worker</span>
+                <span className="font-bold text-yellow-600">{formatRate(params.delta0)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+                <span>Primary Care</span>
+                <span className="font-bold text-blue-600">{formatRate(params.delta1)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded">
+                <span>District Hospital</span>
+                <span className="font-bold text-indigo-600">{formatRate(params.delta2)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded">
+                <span>Tertiary Hospital</span>
+                <span className="font-bold text-green-600">{formatRate(params.delta3)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Clinical Interpretation</h4>
+          <p className="text-gray-700 dark:text-gray-300">
+            Higher-level care generally shows better recovery rates and lower mortality, but this varies by condition. 
+            For acute conditions like pneumonia, the difference between levels is dramatic. For chronic conditions, 
+            the differences may be smaller but still clinically significant over time.
+          </p>
+        </div>
+      </ClinicalSection>
+
+      {/* Health System Capacity & Congestion */}
+      <ClinicalSection title="Health System Capacity & Patient Flow">
+        <ClinicalInsight
+          title="System Congestion Level"
+          value={formatPercentage(params.systemCongestion)}
+          interpretation={
+            (params.systemCongestion || 0) < 0.5 
+              ? "The health system is operating below capacity with manageable patient loads and minimal delays."
+              : (params.systemCongestion || 0) < 0.8
+              ? "The health system is experiencing moderate strain with some delays and resource competition."
+              : "The health system is severely congested with significant delays, rationing, and compromised care quality."
+          }
+          context="Congestion affects all levels of care, with patients facing longer wait times and potentially seeking alternative care pathways."
+        />
+
+        {(params.systemCongestion || 0) > 0.3 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <ClinicalInsight
+              title="Queue Abandonment"
+              value={formatPercentage(params.queueAbandonmentRate)}
+              interpretation="Patients who give up waiting and return home untreated each week."
+              context="Higher in rural areas due to travel costs and opportunity costs of waiting."
+            />
+            
+            <ClinicalInsight
+              title="Alternative Care Seeking"
+              value={formatPercentage(params.queueBypassRate)}
+              interpretation="Patients who seek traditional healers or self-medication while waiting."
+              context="Common coping mechanism when formal care is delayed."
+            />
+            
+            <ClinicalInsight
+              title="Excess Mortality from Delays"
+              value={`${((params.congestionMortalityMultiplier || 1) - 1) * 100}% increase`}
+              interpretation="Additional deaths due to delayed care and disease progression while waiting."
+              context="Most critical for time-sensitive conditions like sepsis or severe pneumonia."
+            />
+          </div>
+        )}
+      </ClinicalSection>
+
+      {/* Patient Flow Transitions */}
+      <ClinicalSection title="Patient Flow Transitions & System Navigation">
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
+          Understanding how patients move through the health system, including referral patterns, queue formation during congestion, and alternative pathways.
+        </p>
+
+        {/* Referral Flow */}
+        <div className="mb-6">
+          <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Referral Patterns Between Care Levels</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-gradient-to-r from-yellow-50 to-blue-50 dark:from-yellow-900/20 dark:to-blue-900/20 rounded-lg border">
+              <div className="text-center">
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">CHW → Primary Care</div>
+                <div className="text-2xl font-bold text-blue-600">{formatRate(params.rho0)}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">weekly referral rate</div>
+              </div>
+            </div>
+            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border">
+              <div className="text-center">
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Primary → District Hospital</div>
+                <div className="text-2xl font-bold text-indigo-600">{formatRate(params.rho1)}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">weekly referral rate</div>
+              </div>
+            </div>
+            <div className="p-4 bg-gradient-to-r from-indigo-50 to-green-50 dark:from-indigo-900/20 dark:to-green-900/20 rounded-lg border">
+              <div className="text-center">
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">District → Tertiary Hospital</div>
+                <div className="text-2xl font-bold text-green-600">{formatRate(params.rho2)}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">weekly referral rate</div>
+              </div>
             </div>
           </div>
           
-          <div>
-            <h4 className="font-medium text-gray-900 dark:text-white mb-3">Mortality Rates (Weekly)</h4>
-            <div className="space-y-3">
-              <ParameterItem
-                name="Untreated Mortality"
-                value={params.deltaU}
-                description="Death rate without any treatment"
-                clinicalMeaning="Baseline disease severity. Higher for acute conditions, lower for chronic manageable diseases"
-                isPercentage={true}
-                decimals={2}
-              />
-              <ParameterItem
-                name="Informal Care Mortality"
-                value={params.deltaI}
-                description="Death rate with traditional/informal care"
-                clinicalMeaning="May reduce mortality through supportive care or increase it through harmful practices"
-                isPercentage={true}
-                decimals={2}
-              />
-              <ParameterItem
-                name="CHW Level (L0) Mortality"
-                value={params.delta0}
-                description="Death rate with community health worker care"
-                clinicalMeaning="Reduced through early detection, basic treatment, and appropriate referrals"
-                isPercentage={true}
-                decimals={2}
-              />
-              <ParameterItem
-                name="Primary Care (L1) Mortality"
-                value={params.delta1}
-                description="Death rate with primary healthcare"
-                clinicalMeaning="Further reduced through proper diagnosis and evidence-based treatment"
-                isPercentage={true}
-                decimals={2}
-              />
-              <ParameterItem
-                name="District Hospital (L2) Mortality"
-                value={params.delta2}
-                description="Death rate with secondary care"
-                clinicalMeaning="Lowest mortality for conditions requiring this level of care"
-                isPercentage={true}
-                decimals={2}
-              />
-              <ParameterItem
-                name="Tertiary Hospital (L3) Mortality"
-                value={params.delta3}
-                description="Death rate with tertiary care"
-                clinicalMeaning="Lowest overall mortality but may reflect sicker patient population"
-                isPercentage={true}
-                decimals={2}
-              />
+          <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              <strong>Clinical Interpretation:</strong> Higher referral rates may indicate limited capacity at lower levels, more complex case mix, or inadequate resources for managing conditions locally. Optimal referral patterns balance appropriate escalation with system efficiency.
+            </p>
+          </div>
+        </div>
+
+        {/* Queue Dynamics */}
+        {(params.systemCongestion || 0) > 0.2 && (
+          <div className="mb-6">
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Queue Formation & Management During Congestion</h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <h5 className="font-semibold text-red-800 dark:text-red-200 mb-3">When Capacity is Exceeded</h5>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Queue Clearance Capacity:</span>
+                    <span className="font-semibold">{formatPercentage(params.queueClearanceRate)} weekly</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Competition Sensitivity:</span>
+                    <span className="font-semibold">{(params.competitionSensitivity || 1).toFixed(1)}×</span>
+                  </div>
+                  {params.queuePreventionRate && (
+                    <div className="flex justify-between">
+                      <span>AI Triage Prevention:</span>
+                      <span className="font-semibold text-green-600">{formatPercentage(params.queuePreventionRate)}</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-red-700 dark:text-red-300 mt-2">
+                  When demand exceeds capacity, patients form queues at each level. Higher competition sensitivity means this condition competes more aggressively for limited resources.
+                </p>
+              </div>
+
+              <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                <h5 className="font-semibold text-orange-800 dark:text-orange-200 mb-3">Patient Responses to Delays</h5>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Abandon Care (Return Home):</span>
+                    <span className="font-semibold">{formatPercentage(params.queueAbandonmentRate)} weekly</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Seek Traditional Care:</span>
+                    <span className="font-semibold">{formatPercentage(params.queueBypassRate)} weekly</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Mortality Risk Increase:</span>
+                    <span className="font-semibold text-red-600">+{((params.congestionMortalityMultiplier || 1) - 1) * 100}%</span>
+                  </div>
+                </div>
+                <p className="text-xs text-orange-700 dark:text-orange-300 mt-2">
+                  Patients facing long waits may abandon formal care or seek alternatives, potentially leading to worse outcomes.
+                </p>
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* Care Pathway Transitions */}
+        <div className="mb-6">
+          <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Alternative Care Pathways</h4>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <h5 className="font-semibold text-blue-800 dark:text-blue-200 mb-3">Initial Care-Seeking Behavior</h5>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded">
+                  <span className="text-sm">Seek Formal Care First</span>
+                  <span className="font-bold text-blue-600">{formatPercentage(params.phi0)}</span>
+                </div>
+                <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded">
+                  <span className="text-sm">Self-treat or Traditional Care</span>
+                  <span className="font-bold text-orange-600">{formatPercentage(1 - (params.phi0 || 0))}</span>
+                </div>
+              </div>
+              <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                Initial healthcare-seeking patterns reflect access, affordability, cultural preferences, and trust in the formal system.
+              </p>
+            </div>
+
+            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <h5 className="font-semibold text-green-800 dark:text-green-200 mb-3">Transitions to Formal Care</h5>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded">
+                  <span className="text-sm">Traditional → Formal Care</span>
+                  <span className="font-bold text-green-600">{formatPercentage(params.sigmaI)} weekly</span>
+                </div>
+                <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded">
+                  <span className="text-sm">Untreated Population Mix</span>
+                  <span className="font-bold text-gray-600">{formatPercentage(params.informalCareRatio)} stay untreated</span>
+                </div>
+              </div>
+              <p className="text-xs text-green-700 dark:text-green-300 mt-2">
+                Patients typically transition to formal care when traditional treatment fails or symptoms worsen significantly.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Impact on Flow */}
+        {Object.values(aiInterventions).some(Boolean) && (
+          <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+            <h5 className="font-semibold text-purple-800 dark:text-purple-200 mb-3">AI Impact on Patient Flow</h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              {aiInterventions.selfCareAI && (
+                <div>
+                  <span className="font-semibold text-purple-700 dark:text-purple-300">Demand Reduction:</span>
+                  <span className="ml-2">{formatPercentage(params.visitReduction)} fewer initial visits</span>
+                </div>
+              )}
+              {aiInterventions.triageAI && (
+                <div>
+                  <span className="font-semibold text-purple-700 dark:text-purple-300">Smart Routing:</span>
+                  <span className="ml-2">{formatPercentage(params.directRoutingImprovement)} better level matching</span>
+                </div>
+              )}
+              {aiInterventions.diagnosticAI && (
+                <div>
+                  <span className="font-semibold text-purple-700 dark:text-purple-300">Referral Optimization:</span>
+                  <span className="ml-2">{formatPercentage(params.referralPrecision)} reduction in unnecessary referrals</span>
+                </div>
+              )}
+              {aiInterventions.bedManagementAI && (
+                <div>
+                  <span className="font-semibold text-purple-700 dark:text-purple-300">Throughput Improvement:</span>
+                  <span className="ml-2">{formatPercentage(params.lengthOfStayReduction)} faster patient turnover</span>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-purple-700 dark:text-purple-300 mt-2">
+              AI interventions optimize patient flow by reducing unnecessary visits, improving routing decisions, and increasing system efficiency.
+            </p>
+          </div>
+        )}
+      </ClinicalSection>
+
+      {/* AI Interventions Impact */}
+      <ClinicalSection title="AI Interventions & Clinical Impact">
+        <div className="mb-6">
+          <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Currently Active Interventions</h4>
+          <ActiveInterventions />
+        </div>
+
+        {Object.values(aiInterventions).some(Boolean) ? (
+          <div className="space-y-4">
+            {aiInterventions.chwAI && (
+              <ClinicalInsight
+                title="CHW Decision Support Impact"
+                value={formatPercentage(params.resolutionBoost)}
+                interpretation="AI tools help community health workers make more accurate diagnoses and treatment decisions, improving patient outcomes at the community level."
+                context="Particularly valuable in areas with limited CHW training or supervision."
+              />
+            )}
+            
+            {aiInterventions.diagnosticAI && (
+              <ClinicalInsight
+                title="Point-of-Care Diagnostic Impact"
+                value={formatPercentage(params.pointOfCareResolution)}
+                interpretation="AI-assisted diagnostics at primary care level reduce misdiagnosis and unnecessary referrals to higher levels."
+                context="Helps primary care providers manage more cases locally, reducing system burden."
+              />
+            )}
+            
+            {aiInterventions.bedManagementAI && (
+              <ClinicalInsight
+                title="Hospital Efficiency Gains"
+                value={formatPercentage(params.lengthOfStayReduction)}
+                interpretation="AI optimization of bed allocation and discharge planning reduces average length of stay, increasing effective hospital capacity."
+                context="Critical for managing patient flow during high-demand periods."
+              />
+            )}
+            
+            {aiInterventions.selfCareAI && (
+              <ClinicalInsight
+                title="Demand Management"
+                value={formatPercentage(params.visitReduction)}
+                interpretation="AI-powered patient guidance reduces unnecessary healthcare visits by helping patients manage appropriate conditions at home."
+                context="Reduces system burden while maintaining patient safety through smart triage."
+              />
+            )}
+          </div>
+        ) : (
+          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <p className="text-yellow-800 dark:text-yellow-200">
+              No AI interventions are currently active. Consider enabling relevant interventions to see their potential clinical impact.
+            </p>
+          </div>
+        )}
+      </ClinicalSection>
+
+      {/* Economic Context */}
+      <ClinicalSection title="Economic Context">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatCost(params.perDiemCosts.L0)}</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">CHW Care</div>
+          </div>
+          <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatCost(params.perDiemCosts.L1)}</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Primary Care</div>
+          </div>
+          <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatCost(params.perDiemCosts.L2)}</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">District Hospital</div>
+          </div>
+          <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatCost(params.perDiemCosts.L3)}</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Tertiary Hospital</div>
           </div>
         </div>
         
-        <div className="mt-6">
-          <h4 className="font-medium text-gray-900 dark:text-white mb-3">Referral Patterns (Weekly)</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ParameterItem
-              name="CHW to Primary Care Referral"
-              value={params.rho0}
-              description="Rate at which CHWs refer patients to higher levels"
-              clinicalMeaning="Reflects CHW training, protocols, and case complexity. Higher for conditions requiring advanced care"
-              isPercentage={true}
-              decimals={1}
-            />
-            <ParameterItem
-              name="Primary to District Hospital Referral"
-              value={params.rho1}
-              description="Rate at which primary care refers to secondary level"
-              clinicalMeaning="Depends on primary care capacity and case complexity requiring specialist intervention"
-              isPercentage={true}
-              decimals={1}
-            />
-            <ParameterItem
-              name="District to Tertiary Hospital Referral"
-              value={params.rho2}
-              description="Rate at which district hospitals refer to tertiary care"
-              clinicalMeaning="Reserved for most complex cases requiring subspecialty care or advanced procedures"
-              isPercentage={true}
-              decimals={1}
-            />
+        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <p className="text-blue-800 dark:text-blue-200">
+            <strong>Cost per episode:</strong> These represent the average cost to treat one patient episode at each level of care, 
+            including staff time, supplies, diagnostics, and facility overhead. Higher-level care costs more but may prevent 
+            complications and reduce overall treatment duration.
+          </p>
+        </div>
+      </ClinicalSection>
+
+      {/* Key Clinical Insights */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">Key Clinical Insights</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Patient Flow Patterns</h4>
+            <ul className="space-y-1 text-blue-700 dark:text-blue-300">
+              <li>• Referral rates: CHW→Primary ({formatRate(params.rho0)}), Primary→District ({formatRate(params.rho1)}), District→Tertiary ({formatRate(params.rho2)})</li>
+              <li>• Higher referral rates may indicate limited capacity at lower levels or more severe case mix</li>
+              <li>• AI interventions can optimize referral patterns and reduce unnecessary escalations</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">System Performance</h4>
+            <ul className="space-y-1 text-blue-700 dark:text-blue-300">
+              <li>• Recovery rates should generally increase with higher levels of care</li>
+              <li>• Mortality rates should generally decrease with higher levels of care</li>
+              <li>• System congestion affects all levels and can reverse these expected patterns</li>
+            </ul>
           </div>
         </div>
-      </ParameterSection>
-
-      {/* Care-Seeking Behavior */}
-      <ParameterSection 
-        title="Care-Seeking Behavior & Access"
-        description="Parameters governing how patients enter the health system and choose between formal and informal care pathways."
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <ParameterItem
-            name="Annual Incidence Rate"
-            value={params.lambda}
-            description="New cases per person per year"
-            clinicalMeaning="Disease burden in the population. Varies by season, outbreaks, and demographic factors"
-            decimals={4}
-            unit="per person/year"
-          />
-          <ParameterItem
-            name="Formal Care Seeking Rate"
-            value={params.phi0}
-            description="Proportion of new cases that initially seek formal healthcare"
-            clinicalMeaning="Influenced by education, income, distance to facilities, and trust in formal system"
-            isPercentage={true}
-            decimals={0}
-          />
-          <ParameterItem
-            name="Informal Care Ratio"
-            value={params.informalCareRatio}
-            description="Proportion of untreated patients who remain truly untreated vs. seeking informal care"
-            clinicalMeaning="Higher values mean more patients stay completely untreated rather than seeking traditional healers"
-            isPercentage={true}
-            decimals={0}
-          />
-          <ParameterItem
-            name="Informal to Formal Transition"
-            value={params.sigmaI}
-            description="Weekly rate of transition from informal to formal care"
-            clinicalMeaning="Usually occurs when traditional treatment fails or for serious complications"
-            isPercentage={true}
-            decimals={1}
-          />
-        </div>
-      </ParameterSection>
-
-      {/* AI Interventions Status */}
-      <ParameterSection 
-        title="AI Intervention Status & Effects"
-        description="Current status of AI interventions and their impact on health system performance."
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h4 className="font-medium text-gray-900 dark:text-white mb-3">Intervention Status</h4>
-            <div className="space-y-3">
-              <InterventionStatus
-                name="Triage AI"
-                active={aiInterventions.triageAI}
-                description="AI-powered patient triage and queue management to optimize patient flow and reduce inappropriate admissions"
-              />
-              <InterventionStatus
-                name="CHW AI (Resolution Boost)"
-                active={aiInterventions.chwAI}
-                description="AI tools for community health workers to improve diagnostic accuracy and treatment effectiveness"
-              />
-              <InterventionStatus
-                name="Diagnostic AI (Point-of-Care)"
-                active={aiInterventions.diagnosticAI}
-                description="AI-assisted diagnostics at primary care level to improve accuracy and reduce referrals"
-              />
-              <InterventionStatus
-                name="Bed Management AI"
-                active={aiInterventions.bedManagementAI}
-                description="AI optimization of bed allocation and length of stay at district hospitals"
-              />
-              <InterventionStatus
-                name="Hospital Decision Support AI"
-                active={aiInterventions.hospitalDecisionAI}
-                description="AI clinical decision support for treatment optimization and discharge planning at tertiary hospitals"
-              />
-              <InterventionStatus
-                name="Self-Care AI"
-                active={aiInterventions.selfCareAI}
-                description="AI-powered self-care guidance and smart routing to reduce unnecessary healthcare visits"
-              />
-            </div>
-          </div>
-          
-          <div>
-            <h4 className="font-medium text-gray-900 dark:text-white mb-3">AI Effect Magnitudes</h4>
-            <div className="space-y-3">
-              <ParameterItem
-                name="Resolution Boost Effect"
-                value={params.resolutionBoost}
-                description="Improvement in CHW treatment effectiveness"
-                clinicalMeaning="AI helps CHWs make better diagnoses and treatment decisions"
-                isPercentage={true}
-                decimals={0}
-              />
-              <ParameterItem
-                name="Point-of-Care Diagnostic Effect"
-                value={params.pointOfCareResolution}
-                description="Improvement in primary care diagnostic accuracy"
-                clinicalMeaning="Reduces misdiagnosis and inappropriate referrals"
-                isPercentage={true}
-                decimals={0}
-              />
-              <ParameterItem
-                name="Length of Stay Reduction"
-                value={params.lengthOfStayReduction}
-                description="Reduction in hospital length of stay"
-                clinicalMeaning="Faster patient turnover increases effective capacity"
-                isPercentage={true}
-                decimals={0}
-              />
-              <ParameterItem
-                name="Discharge Planning Effect"
-                value={params.dischargeOptimization}
-                description="Improvement in discharge planning efficiency"
-                clinicalMeaning="Reduces readmissions and optimizes bed utilization"
-                isPercentage={true}
-                decimals={0}
-              />
-              <ParameterItem
-                name="Treatment Optimization Effect"
-                value={params.treatmentEfficiency}
-                description="Improvement in treatment protocol adherence"
-                clinicalMeaning="Better outcomes through evidence-based care protocols"
-                isPercentage={true}
-                decimals={0}
-              />
-              <ParameterItem
-                name="Resource Optimization Effect"
-                value={params.resourceUtilization}
-                description="Improvement in resource allocation efficiency"
-                clinicalMeaning="Better utilization of staff, equipment, and supplies"
-                isPercentage={true}
-                decimals={0}
-              />
-              <ParameterItem
-                name="Visit Reduction Effect"
-                value={params.visitReduction}
-                description="Reduction in unnecessary healthcare visits"
-                clinicalMeaning="AI helps patients manage conditions at home when appropriate"
-                isPercentage={true}
-                decimals={0}
-              />
-              <ParameterItem
-                name="Smart Routing Effect"
-                value={params.directRoutingImprovement}
-                description="Improvement in patient routing during congestion"
-                clinicalMeaning="Directs patients to appropriate care levels, reducing bottlenecks"
-                isPercentage={true}
-                decimals={0}
-              />
-            </div>
-          </div>
-        </div>
-      </ParameterSection>
-
-      {/* Cost Parameters */}
-      <ParameterSection 
-        title="Economic Parameters"
-        description="Cost parameters for economic evaluation of interventions and health system resource requirements."
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h4 className="font-medium text-gray-900 dark:text-white mb-3">Per-Episode Costs (USD)</h4>
-            <div className="space-y-2">
-              <ParameterItem
-                name="CHW Care"
-                value={params.perDiemCosts.L0}
-                description="Cost per patient episode at CHW level"
-                clinicalMeaning="Includes CHW time, basic supplies, and transportation costs"
-                decimals={0}
-                unit="USD"
-              />
-              <ParameterItem
-                name="Primary Care"
-                value={params.perDiemCosts.L1}
-                description="Cost per patient episode at primary care"
-                clinicalMeaning="Includes consultation, basic diagnostics, and medications"
-                decimals={0}
-                unit="USD"
-              />
-              <ParameterItem
-                name="District Hospital"
-                value={params.perDiemCosts.L2}
-                description="Cost per patient episode at district hospital"
-                clinicalMeaning="Includes advanced diagnostics, specialist care, and procedures"
-                decimals={0}
-                unit="USD"
-              />
-              <ParameterItem
-                name="Tertiary Hospital"
-                value={params.perDiemCosts.L3}
-                description="Cost per patient episode at tertiary hospital"
-                clinicalMeaning="Includes complex procedures, intensive care, and subspecialty services"
-                decimals={0}
-                unit="USD"
-              />
-            </div>
-          </div>
-          
-          <div>
-            <h4 className="font-medium text-gray-900 dark:text-white mb-3">AI Implementation Costs (USD)</h4>
-            <div className="space-y-2">
-              <ParameterItem
-                name="AI Fixed Cost"
-                value={params.aiFixedCost}
-                description="Fixed cost of AI implementation"
-                clinicalMeaning="One-time setup costs for AI systems including software, hardware, and training"
-                decimals={0}
-                unit="USD"
-              />
-              <ParameterItem
-                name="AI Variable Cost"
-                value={params.aiVariableCost}
-                description="Variable cost per episode touched by AI"
-                clinicalMeaning="Ongoing costs per patient interaction with AI systems"
-                decimals={2}
-                unit="USD/episode"
-              />
-            </div>
-          </div>
-        </div>
-      </ParameterSection>
-
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-6">
-        <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">Clinical Interpretation Notes</h3>
-        <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-          <li>• <strong>Resolution rates</strong> should sum with mortality and referral rates to approximately 100% for each level</li>
-          <li>• <strong>Health system multipliers</strong> &lt; 1.0 indicate better performance, &gt; 1.0 indicate worse performance</li>
-          <li>• <strong>Queue dynamics</strong> become critical when system congestion exceeds 50-60%</li>
-          <li>• <strong>AI effects</strong> are multiplicative - multiple interventions can compound benefits</li>
-          <li>• <strong>Cost-effectiveness</strong> depends on disease burden, intervention costs, and health system efficiency</li>
-        </ul>
       </div>
     </div>
   );

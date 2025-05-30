@@ -28,7 +28,8 @@ const ParameterGuide: React.FC = () => {
       'childhood_pneumonia': 'Childhood Pneumonia',
       'maternal_sepsis': 'Maternal Sepsis',
       'tuberculosis': 'Tuberculosis',
-      'acute_diarrhea': 'Acute Diarrhea'
+      'acute_diarrhea': 'Acute Diarrhea',
+      'hiv_management_chronic': 'HIV Management (Chronic)'
     };
     return diseaseNames[diseaseKey] || diseaseKey;
   };
@@ -70,7 +71,6 @@ const ParameterGuide: React.FC = () => {
   );
 
   const ActiveInterventions = () => {
-    const activeCount = Object.values(aiInterventions).filter(Boolean).length;
     const interventionNames = {
       triageAI: 'AI-Powered Triage',
       chwAI: 'CHW Decision Support',
@@ -218,6 +218,14 @@ const ParameterGuide: React.FC = () => {
             For acute conditions like pneumonia, the difference between levels is dramatic. For chronic conditions, 
             the differences may be smaller but still clinically significant over time.
           </p>
+          {selectedDisease === 'hiv_management_chronic' && (
+            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded">
+              <p className="text-blue-800 dark:text-blue-200 text-sm">
+                <strong>Note for HIV Management:</strong> "Recovery rates" for HIV represent successful achievement of stable clinical management and viral suppression, not cure. 
+                Patients achieving these rates maintain stable health status while continuing treatment. Higher rates at formal care levels reflect access to antiretroviral therapy and specialized monitoring.
+              </p>
+            </div>
+          )}
         </div>
       </ClinicalSection>
 

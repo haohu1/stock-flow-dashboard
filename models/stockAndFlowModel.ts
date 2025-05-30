@@ -806,7 +806,12 @@ export const diseaseProfiles = {
     // Capacity and competition parameters
     capacityShare: 0.08,      // CHF patients use ~8% of overall health system capacity
     competitionSensitivity: 1.3, // CHF patients are more affected by congestion (elderly, complex needs)
-    clinicalPriority: 0.85    // High priority due to acute decompensation risk
+    clinicalPriority: 0.85,   // High priority due to acute decompensation risk
+    // Queue-specific parameters
+    queueAbandonmentRate: 0.02, // 2% - Patients feel very unwell, less likely to leave
+    queueBypassRate: 0.03,    // 3% - Limited traditional options for heart failure
+    queueClearanceRate: 0.20, // 20% - Complex management, multiple medications
+    congestionMortalityMultiplier: 2.0 // 100% increase - Acute decompensation is dangerous
   },
   tuberculosis: {
     lambda: 0.00615,          // 0.615% annual incidence (615 per 100,000), reflecting South African TB burden
@@ -830,7 +835,12 @@ export const diseaseProfiles = {
     // Capacity and competition parameters
     capacityShare: 0.05,      // TB patients use ~5% of overall health system capacity
     competitionSensitivity: 0.9, // TB patients less affected by congestion (scheduled visits)
-    clinicalPriority: 0.7     // Moderate priority (chronic condition with scheduled care)
+    clinicalPriority: 0.7,    // Moderate priority (chronic condition with scheduled care)
+    // Queue-specific parameters
+    queueAbandonmentRate: 0.04, // 4% - Patients understand importance of treatment
+    queueBypassRate: 0.05,    // 5% - Less traditional treatment, more education
+    queueClearanceRate: 0.25, // 25% - Complex protocols, counseling needed
+    congestionMortalityMultiplier: 1.2 // 20% increase - Generally slower progression
   },
   childhood_pneumonia: { // Primarily non-severe childhood pneumonia
     lambda: 0.90,             // very high incidence in under-fives (episodes per child-year)
@@ -854,7 +864,12 @@ export const diseaseProfiles = {
     // Capacity and competition parameters
     capacityShare: 0.15,      // Childhood pneumonia uses ~15% of health system capacity (high volume)
     competitionSensitivity: 1.5, // Children more affected by congestion (urgent needs, less able to wait)
-    clinicalPriority: 0.9     // Very high priority (acute respiratory distress in children)
+    clinicalPriority: 0.9,    // Very high priority (acute respiratory distress in children)
+    // Queue-specific parameters
+    queueAbandonmentRate: 0.03, // 3% - Parents very concerned about child breathing
+    queueBypassRate: 0.08,    // 8% - Some traditional treatments but parents more cautious
+    queueClearanceRate: 0.25, // 25% - Careful assessment, oxygen needs
+    congestionMortalityMultiplier: 2.5 // 150% increase - Respiratory distress progresses rapidly
   },
   malaria: { // Uncomplicated and severe malaria in Nigeria (high-burden setting)
     lambda: 0.20,             // 20% annual incidence in endemic regions of Nigeria (higher than national avg of ~6%)
@@ -878,7 +893,12 @@ export const diseaseProfiles = {
     // Capacity and competition parameters
     capacityShare: 0.10,      // Malaria uses ~10% of health system capacity in endemic areas
     competitionSensitivity: 1.2, // Malaria patients moderately affected by congestion
-    clinicalPriority: 0.8     // High priority (rapid progression possible)
+    clinicalPriority: 0.8,    // High priority (rapid progression possible)
+    // Queue-specific parameters
+    queueAbandonmentRate: 0.06, // 6% - Patients know it's serious but may seek traditional care
+    queueBypassRate: 0.15,    // 15% - Traditional antimalarials sometimes used
+    queueClearanceRate: 0.40, // 40% - RDT + ACT protocol is fast
+    congestionMortalityMultiplier: 1.8 // 80% increase - Can progress to severe malaria
   },
   fever: { // Fever of Unknown Origin (non-specific)
     lambda: 0.60,             // moderate-high incidence (episodes per person-year)
@@ -902,7 +922,12 @@ export const diseaseProfiles = {
     // Capacity and competition parameters
     capacityShare: 0.12,      // Fever uses ~12% of health system capacity (common presentation)
     competitionSensitivity: 1.0, // Standard sensitivity to congestion
-    clinicalPriority: 0.6     // Moderate priority (often self-limiting)
+    clinicalPriority: 0.6,    // Moderate priority (often self-limiting)
+    // Queue-specific parameters
+    queueAbandonmentRate: 0.12, // 12% - May feel better while waiting
+    queueBypassRate: 0.25,    // 25% - Many traditional remedies available
+    queueClearanceRate: 0.45, // 45% - Rapid assessment possible
+    congestionMortalityMultiplier: 1.3 // 30% increase - Variable depending on cause
   },
   diarrhea: { // Acute diarrheal disease, primarily in children
     lambda: 1.50,             // very high incidence especially in children (episodes per child-year)
@@ -926,7 +951,12 @@ export const diseaseProfiles = {
     // Capacity and competition parameters
     capacityShare: 0.18,      // Diarrhea uses ~18% of health system capacity (very high volume in children)
     competitionSensitivity: 1.4, // Children with diarrhea highly affected by congestion (dehydration risk)
-    clinicalPriority: 0.85    // High priority (rapid dehydration in children)
+    clinicalPriority: 0.85,   // High priority (rapid dehydration in children)
+    // Queue-specific parameters
+    queueAbandonmentRate: 0.08, // 8% - Parents concerned but may try home remedies
+    queueBypassRate: 0.18,    // 18% - ORS available, traditional treatments common
+    queueClearanceRate: 0.40, // 40% - Simple ORS/zinc protocols
+    congestionMortalityMultiplier: 1.6 // 60% increase - Dehydration progresses rapidly in children
   },
   anemia: { // Focus on Iron Deficiency Anemia in women/children
     lambda: 0.20,             // 20% annual incidence of symptomatic anemia needing attention
@@ -950,7 +980,12 @@ export const diseaseProfiles = {
     // Capacity and competition parameters
     capacityShare: 0.04,      // Anemia uses ~4% of health system capacity
     competitionSensitivity: 0.8, // Less affected by congestion (chronic condition)
-    clinicalPriority: 0.5     // Lower priority (rarely acute)
+    clinicalPriority: 0.5,    // Lower priority (rarely acute)
+    // Queue-specific parameters
+    queueAbandonmentRate: 0.10, // 10% - Chronic condition, less urgent feeling
+    queueBypassRate: 0.12,    // 12% - Traditional iron-rich foods/herbs
+    queueClearanceRate: 0.35, // 35% - Blood test + iron supplementation
+    congestionMortalityMultiplier: 1.0 // 0% increase - Rarely emergency, delays don't increase mortality
   },
   hiv_management_chronic: { // Chronic care for stable HIV on ART
     lambda: 0.005,            // 0.5% annual new diagnoses needing linkage to chronic ART care (South Africa)
@@ -974,7 +1009,12 @@ export const diseaseProfiles = {
     // Capacity and competition parameters
     capacityShare: 0.06,      // HIV chronic care uses ~6% of health system capacity
     competitionSensitivity: 0.7, // Less affected by congestion (scheduled appointments)
-    clinicalPriority: 0.7     // Moderate priority (stable chronic care)
+    clinicalPriority: 0.7,    // Moderate priority (stable chronic care)
+    // Queue-specific parameters
+    queueAbandonmentRate: 0.02, // 2% - Patients committed to chronic care
+    queueBypassRate: 0.02,    // 2% - Patients understand need for formal care
+    queueClearanceRate: 0.30, // 30% - Standard chronic care visits
+    congestionMortalityMultiplier: 1.1 // 10% increase - Stable patients less affected by delays
   },
   high_risk_pregnancy_low_anc: { // High-risk pregnancy with limited/no antenatal care
     lambda: 0.02,             // 2% of women of reproductive age annually experience this (very rough estimate)
@@ -998,7 +1038,12 @@ export const diseaseProfiles = {
     // Capacity and competition parameters
     capacityShare: 0.03,      // High-risk pregnancy uses ~3% of health system capacity
     competitionSensitivity: 2.0, // Extremely affected by congestion (obstetric emergencies)
-    clinicalPriority: 0.95    // Very high priority (maternal/fetal emergencies)
+    clinicalPriority: 0.95,   // Very high priority (maternal/fetal emergencies)
+    // Queue-specific parameters
+    queueAbandonmentRate: 0.01, // 1% - Life-threatening urgency, unlikely to abandon
+    queueBypassRate: 0.02,    // 2% - Limited safe traditional options
+    queueClearanceRate: 0.15, // 15% - Complex obstetric assessments
+    congestionMortalityMultiplier: 3.0 // 200% increase - Obstetric emergencies can't wait
   },
   urti: { // Upper Respiratory Tract Infection
     lambda: 2.0,              // very high incidence (2 episodes per person-year)
@@ -1022,7 +1067,12 @@ export const diseaseProfiles = {
     // Capacity and competition parameters
     capacityShare: 0.20,      // URTIs use ~20% of health system capacity (very high volume)
     competitionSensitivity: 0.6, // Less affected by congestion (can wait)
-    clinicalPriority: 0.3     // Low priority (self-limiting)
+    clinicalPriority: 0.3,    // Low priority (self-limiting)
+    // Queue-specific parameters
+    queueAbandonmentRate: 0.15, // 15% - Patients know it's minor, likely to leave
+    queueBypassRate: 0.20,    // 20% - Many home remedies
+    queueClearanceRate: 0.50, // 50% - Quick consultations
+    congestionMortalityMultiplier: 1.0 // 0% increase - Self-limiting, no mortality impact
   },
   hiv_opportunistic: { // HIV-related opportunistic infections (South African context)
     lambda: 0.04,             // 4% annual incidence among PLHIV (higher in South Africa with ~13.5% HIV prevalence)
@@ -1046,7 +1096,12 @@ export const diseaseProfiles = {
     // Capacity and competition parameters
     capacityShare: 0.04,      // HIV OIs use ~4% of health system capacity
     competitionSensitivity: 1.6, // Highly affected by congestion (immunocompromised)
-    clinicalPriority: 0.9     // Very high priority (life-threatening infections)
+    clinicalPriority: 0.9,    // Very high priority (life-threatening infections)
+    // Queue-specific parameters
+    queueAbandonmentRate: 0.01, // 1% - Extremely sick patients, won't leave
+    queueBypassRate: 0.01,    // 1% - Too sick, need urgent formal care
+    queueClearanceRate: 0.15, // 15% - Complex diagnosis and treatment
+    congestionMortalityMultiplier: 2.5 // 150% increase - Immunocompromised patients deteriorate quickly
   }
 };
 

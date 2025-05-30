@@ -1705,6 +1705,25 @@ export const applyAIInterventions = (
     modifiedParams.selfCareAIActive = true; // Set the flag indicating self-care AI is active
   }
   
+  // Ensure all probability parameters stay within valid bounds (0 to 1) after AI effects are applied
+  const probabilityParams = [
+    'muI', 'mu0', 'mu1', 'mu2', 'mu3', 
+    'deltaU', 'deltaI', 'delta0', 'delta1', 'delta2', 'delta3', 
+    'rho0', 'rho1', 'rho2', 
+    'phi0', 'sigmaI'
+  ] as const;
+  
+  for (const param of probabilityParams) {
+    if (modifiedParams[param] > 1) {
+      console.warn(`AI intervention caused ${param} to exceed 1.0 (${modifiedParams[param]}), capping at 1.0`);
+      modifiedParams[param] = 1;
+    }
+    if (modifiedParams[param] < 0) {
+      console.warn(`AI intervention caused ${param} to go below 0 (${modifiedParams[param]}), setting to 0`);
+      modifiedParams[param] = 0;
+    }
+  }
+  
   return modifiedParams;
 };
 

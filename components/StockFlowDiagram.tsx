@@ -103,12 +103,12 @@ const StockFlowDiagram: React.FC = () => {
       { id: 'formal', name: 'Formal Care', description: 'Entry to health system', type: 'formal', x: 250, y: 150, width: nodeWidth, height: nodeHeight },
       { id: 'informal', name: 'Informal Care', description: 'Self-care/traditional healers', type: 'informal', x: 250, y: 325, width: nodeWidth, height: nodeHeight },
       { id: 'untreated', name: 'Untreated', description: 'No care received', type: 'stock', x: 250, y: 500, width: nodeWidth, height: nodeHeight },
-      { id: 'l0', name: 'CHW (L0)', description: 'Community Health Workers', type: 'level0', x: 550, y: 100, width: nodeWidth, height: nodeHeight },
-      { id: 'l1', name: 'Primary (L1)', description: 'Primary Care Facilities', type: 'level1', x: 550, y: 250, width: nodeWidth, height: nodeHeight },
-      { id: 'l2', name: 'District (L2)', description: 'District Hospitals', type: 'level2', x: 550, y: 400, width: nodeWidth, height: nodeHeight },
-      { id: 'l3', name: 'Tertiary (L3)', description: 'Tertiary Hospitals', type: 'level3', x: 550, y: 550, width: nodeWidth, height: nodeHeight },
-      { id: 'resolved', name: 'Resolved', description: 'Cases resolved', type: 'outcome', x: 950, y: 200, width: nodeWidth, height: nodeHeight },
-      { id: 'deaths', name: 'Deaths', description: 'Deaths from all causes', type: 'outcome', x: 950, y: 450, width: nodeWidth, height: nodeHeight },
+      { id: 'l0', name: 'CHW (L0)', description: 'Community Health Workers', type: 'level0', x: 650, y: 100, width: nodeWidth, height: nodeHeight },
+      { id: 'l1', name: 'Primary (L1)', description: 'Primary Care Facilities', type: 'level1', x: 650, y: 250, width: nodeWidth, height: nodeHeight },
+      { id: 'l2', name: 'District (L2)', description: 'District Hospitals', type: 'level2', x: 650, y: 400, width: nodeWidth, height: nodeHeight },
+      { id: 'l3', name: 'Tertiary (L3)', description: 'Tertiary Hospitals', type: 'level3', x: 650, y: 550, width: nodeWidth, height: nodeHeight },
+      { id: 'resolved', name: 'Resolved', description: 'Cases resolved', type: 'outcome', x: 1100, y: 200, width: nodeWidth, height: nodeHeight },
+      { id: 'deaths', name: 'Deaths', description: 'Deaths from all causes', type: 'outcome', x: 1100, y: 450, width: nodeWidth, height: nodeHeight },
     ];
     
     // Add queue nodes if congestion exists
@@ -126,6 +126,20 @@ const StockFlowDiagram: React.FC = () => {
 
     const fmt = (num: number) => num < 0.01 && num !== 0 ? num.toFixed(4) : num < 0.1 && num !== 0 ? num.toFixed(3) : num.toFixed(2);
 
+    // Calculate capacity constraints for flow rates
+    const congestion = params.systemCongestion || 0;
+    const competitionSensitivity = params.competitionSensitivity || 1.0;
+    // Remove the cap to allow over-congestion effects (effectiveCongestion can now be > 1)
+    const effectiveCongestion = congestion * competitionSensitivity;
+    // Use an exponential function for more sensitivity at high congestion levels
+    const capacityMultiplier = Math.exp(-effectiveCongestion * 2);
+    
+    // Calculate effective flow rates (capacity-constrained when congestion > 0)
+    const effectiveRho0 = params.rho0 * capacityMultiplier;
+    const effectiveRho1 = params.rho1 * capacityMultiplier;
+    const effectiveRho2 = params.rho2 * capacityMultiplier;
+    const effectiveFormalToL0 = 1.0 * capacityMultiplier; // Formal care to L0 is also capacity constrained
+
     let links: Link[] = [
       // From New Cases
       { id: 'link_new_untreated', source: 'new', target: 'untreated', label: `(1-${getUnicodeBaseSymbol('phi', '0')})r: ${fmt((1 - params.phi0) * params.informalCareRatio)}`, value: (1 - params.phi0) * params.informalCareRatio * weeklyIncidence, aiIntervention: null, parameter: null, controlPoints: { x1: 150, y1: 475 }, labelOffset: {dy: -15} },
@@ -133,75 +147,113 @@ const StockFlowDiagram: React.FC = () => {
       { id: 'link_new_formal', source: 'new', target: 'formal', label: `${getUnicodeBaseSymbol('phi', '0')}: ${fmt(params.phi0)}`, value: params.phi0 * weeklyIncidence, aiIntervention: (aiInterventions.triageAI || aiInterventions.selfCareAI) ? (aiInterventions.triageAI ? 'triageAI' : 'selfCareAI') : null, parameter: 'phi0', controlPoints: { x1: 150, y1: 175 }, labelOffset: {dy: -15} },
       
       // From Untreated to Deaths
-      { id: 'link_untreated_deaths', source: 'untreated', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', 'U')}: ${fmt(params.deltaU)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 600, y1: 500 }, labelOffset: {dx: 30, dy: 15} },
+      { id: 'link_untreated_deaths', source: 'untreated', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', 'U')}: ${fmt(params.deltaU)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 675, y1: 500 }, labelOffset: {dx: 30, dy: 15} },
       
       // From Untreated to Resolved (new link for spontaneous recovery)
-      { id: 'link_untreated_resolved', source: 'untreated', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', 'U')}: ${fmt(params.muU)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 600, y1: 325 }, labelOffset: {dy: 20, dx: 10} },
+      { id: 'link_untreated_resolved', source: 'untreated', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', 'U')}: ${fmt(params.muU)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 675, y1: 325 }, labelOffset: {dy: 20, dx: 10} },
       
       // From Informal Care
       { id: 'link_informal_formal', source: 'informal', target: 'formal', label: `${getUnicodeBaseSymbol('sigma', 'I')}: ${fmt(params.sigmaI)}`, value: null, aiIntervention: (aiInterventions.triageAI || aiInterventions.selfCareAI) ? (aiInterventions.triageAI ? 'triageAI' : 'selfCareAI') : null, parameter: 'sigmaI', controlPoints: { x1: 250, y1: 225 }, labelOffset: {dx: -20} },
-      { id: 'link_informal_resolved', source: 'informal', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', 'I')}: ${fmt(params.muI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'muI', controlPoints: { x1: 600, y1: 225 }, labelOffset: {dy: -20} },
-      { id: 'link_informal_deaths', source: 'informal', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', 'I')}: ${fmt(params.deltaI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'deltaI', controlPoints: { x1: 600, y1: 375 }, labelOffset: {dy: 20} },
+      { id: 'link_informal_resolved', source: 'informal', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', 'I')}: ${fmt(params.muI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'muI', controlPoints: { x1: 675, y1: 225 }, labelOffset: {dy: -20} },
+      { id: 'link_informal_deaths', source: 'informal', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', 'I')}: ${fmt(params.deltaI)}`, value: null, aiIntervention: aiInterventions.selfCareAI ? 'selfCareAI' : null, parameter: 'deltaI', controlPoints: { x1: 675, y1: 375 }, labelOffset: {dy: 20} },
       
       // From Formal Care to L0 only
-      { id: 'link_formal_l0', source: 'formal', target: 'l0', label: `(to L0): ${fmt(1.0)}`, value: null, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: null, controlPoints: { x1: 400, y1: 125 }, labelOffset: {dy: -10} },
+      { id: 'link_formal_l0', source: 'formal', target: 'l0', label: `(to L0): ${fmt(effectiveFormalToL0)}${congestion > 0 ? '*' : ''}`, value: null, aiIntervention: aiInterventions.triageAI ? 'triageAI' : null, parameter: null, controlPoints: { x1: 450, y1: 125 }, labelOffset: {dy: -10} },
       
       // From L0 (CHW)
-      { id: 'link_l0_l1', source: 'l0', target: 'l1', label: `${getUnicodeBaseSymbol('rho', '0')}: ${fmt(params.rho0)}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: 'rho0', controlPoints: { x1: 550, y1: 175 }, labelOffset: {dx: -25} },
-      { id: 'link_l0_resolved', source: 'l0', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', '0')}: ${fmt(params.mu0)}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: 'mu0', controlPoints: { x1: 750, y1: 150 }, labelOffset: {dy: -15} },
-      { id: 'link_l0_deaths', source: 'l0', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', '0')}: ${fmt(params.delta0)}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: 'delta0', controlPoints: { x1: 750, y1: 300 }, labelOffset: {dy: 25, dx: 20} },
+      { id: 'link_l0_l1', source: 'l0', target: 'l1', label: `${getUnicodeBaseSymbol('rho', '0')}: ${fmt(effectiveRho0)}${congestion > 0 ? '*' : ''}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: 'rho0', controlPoints: { x1: 650, y1: 175 }, labelOffset: {dx: -25} },
+      { id: 'link_l0_resolved', source: 'l0', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', '0')}: ${fmt(params.mu0)}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: 'mu0', controlPoints: { x1: 875, y1: 150 }, labelOffset: {dy: -15} },
+      { id: 'link_l0_deaths', source: 'l0', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', '0')}: ${fmt(params.delta0)}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: 'delta0', controlPoints: { x1: 875, y1: 300 }, labelOffset: {dy: 25, dx: 20} },
       
       // From L1 (Primary)
-      { id: 'link_l1_l2', source: 'l1', target: 'l2', label: `${getUnicodeBaseSymbol('rho', '1')}: ${fmt(params.rho1)}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: 'rho1', controlPoints: { x1: 550, y1: 325 }, labelOffset: {dx: -25} },
-      { id: 'link_l1_resolved', source: 'l1', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', '1')}: ${fmt(params.mu1)}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: 'mu1', controlPoints: { x1: 750, y1: 225 }, labelOffset: {dy: -15} },
-      { id: 'link_l1_deaths', source: 'l1', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', '1')}: ${fmt(params.delta1)}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: 'delta1', controlPoints: { x1: 750, y1: 350 }, labelOffset: {dy: 20} },
+      { id: 'link_l1_l2', source: 'l1', target: 'l2', label: `${getUnicodeBaseSymbol('rho', '1')}: ${fmt(effectiveRho1)}${congestion > 0 ? '*' : ''}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: 'rho1', controlPoints: { x1: 650, y1: 325 }, labelOffset: {dx: -25} },
+      { id: 'link_l1_resolved', source: 'l1', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', '1')}: ${fmt(params.mu1)}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: 'mu1', controlPoints: { x1: 875, y1: 225 }, labelOffset: {dy: -15} },
+      { id: 'link_l1_deaths', source: 'l1', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', '1')}: ${fmt(params.delta1)}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: 'delta1', controlPoints: { x1: 875, y1: 350 }, labelOffset: {dy: 20} },
       
       // From L2 (District)
-      { id: 'link_l2_l3', source: 'l2', target: 'l3', label: `${getUnicodeBaseSymbol('rho', '2')}: ${fmt(params.rho2)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 550, y1: 475 }, labelOffset: {dx: -25} },
-      { id: 'link_l2_resolved', source: 'l2', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', '2')}: ${fmt(params.mu2)}`, value: null, aiIntervention: aiInterventions.bedManagementAI ? 'bedManagementAI' : null, parameter: 'mu2', controlPoints: { x1: 750, y1: 325 }, labelOffset: {dy: -20} },
-      { id: 'link_l2_deaths', source: 'l2', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', '2')}: ${fmt(params.delta2)}`, value: null, aiIntervention: aiInterventions.hospitalDecisionAI ? 'hospitalDecisionAI' : null, parameter: 'delta2', controlPoints: { x1: 750, y1: 425 }, labelOffset: {dy: 20} },
+      { id: 'link_l2_l3', source: 'l2', target: 'l3', label: `${getUnicodeBaseSymbol('rho', '2')}: ${fmt(effectiveRho2)}${congestion > 0 ? '*' : ''}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: 'rho2', controlPoints: { x1: 650, y1: 475 }, labelOffset: {dx: -25} },
+      { id: 'link_l2_resolved', source: 'l2', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', '2')}: ${fmt(params.mu2)}`, value: null, aiIntervention: (aiInterventions.diagnosticAI || aiInterventions.bedManagementAI) ? (aiInterventions.diagnosticAI ? 'diagnosticAI' : 'bedManagementAI') : null, parameter: 'mu2', controlPoints: { x1: 875, y1: 325 }, labelOffset: {dy: -20} },
+      { id: 'link_l2_deaths', source: 'l2', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', '2')}: ${fmt(params.delta2)}`, value: null, aiIntervention: (aiInterventions.diagnosticAI || aiInterventions.hospitalDecisionAI) ? (aiInterventions.diagnosticAI ? 'diagnosticAI' : 'hospitalDecisionAI') : null, parameter: 'delta2', controlPoints: { x1: 875, y1: 425 }, labelOffset: {dy: 20} },
       
       // From L3 (Tertiary)
-      { id: 'link_l3_resolved', source: 'l3', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', '3')}: ${fmt(params.mu3)}`, value: null, aiIntervention: aiInterventions.bedManagementAI ? 'bedManagementAI' : null, parameter: 'mu3', controlPoints: { x1: 750, y1: 375 }, labelOffset: {dy: -20, dx: -15} },
-      { id: 'link_l3_deaths', source: 'l3', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', '3')}: ${fmt(params.delta3)}`, value: null, aiIntervention: aiInterventions.hospitalDecisionAI ? 'hospitalDecisionAI' : null, parameter: 'delta3', controlPoints: { x1: 750, y1: 500 }, labelOffset: {dy: 15} },
+      { id: 'link_l3_resolved', source: 'l3', target: 'resolved', label: `${getUnicodeBaseSymbol('mu', '3')}: ${fmt(params.mu3)}`, value: null, aiIntervention: aiInterventions.bedManagementAI ? 'bedManagementAI' : null, parameter: 'mu3', controlPoints: { x1: 875, y1: 375 }, labelOffset: {dy: -20, dx: -15} },
+      { id: 'link_l3_deaths', source: 'l3', target: 'deaths', label: `${getUnicodeBaseSymbol('delta', '3')}: ${fmt(params.delta3)}`, value: null, aiIntervention: aiInterventions.hospitalDecisionAI ? 'hospitalDecisionAI' : null, parameter: 'delta3', controlPoints: { x1: 875, y1: 500 }, labelOffset: {dy: 15} },
     ];
     
     // Add queue links if congestion exists
     if (params.systemCongestion && params.systemCongestion > 0) {
+      // Calculate queue flow rates based on model parameters
+      const congestion = params.systemCongestion;
+      const competitionSensitivity = params.competitionSensitivity || 0.5;
+      // Remove the cap to allow over-congestion effects (effectiveCongestion can now be > 1)
+      const effectiveCongestion = congestion * competitionSensitivity;
+      
+      // Queue dynamics parameters
+      const queueAbandonmentRate = params.queueAbandonmentRate || 0.05;
+      const queueBypassRate = params.queueBypassRate || 0.10;
+      const queueClearanceRate = params.queueClearanceRate || 0.3;
+      
+      // AI effects on queue clearance
+      const resolutionBoostEffect = params.resolutionBoost || 0;
+      const pointOfCareEffect = params.pointOfCareResolution || 0;
+      const lengthOfStayEffect = params.lengthOfStayReduction || 0;
+      const dischargeOptEffect = params.dischargeOptimization || 0;
+      const treatmentEffEffect = params.treatmentEfficiency || 0;
+      const resourceUtilEffect = params.resourceUtilization || 0;
+      
+      // Calculate available capacity with AI improvements
+      // Use exponential function for more sensitivity at high congestion levels
+      const capacityMultiplierForQueues = Math.exp(-effectiveCongestion * 2);
+      const baseCapacity = capacityMultiplierForQueues * queueClearanceRate;
+      const availableCapacityL0 = Math.max(0, baseCapacity * (1 + resolutionBoostEffect));
+      const availableCapacityL1 = Math.max(0, baseCapacity * (1 + pointOfCareEffect));
+      const availableCapacityL2 = Math.max(0, baseCapacity * (1 + lengthOfStayEffect + dischargeOptEffect + treatmentEffEffect));
+      const availableCapacityL3 = Math.max(0, baseCapacity * (1 + lengthOfStayEffect + dischargeOptEffect + treatmentEffEffect + resourceUtilEffect));
+      
+      // Calculate queue mortality rates (simplified for display)
+      const baseMortality = params.delta1 || 0.02;
+      const congestionMortalityMult = params.congestionMortalityMultiplier || 1.3;
+      const queueMortalityRate = baseMortality * congestionMortalityMult * competitionSensitivity;
+      const queueMortalityRateL2 = params.delta2 * congestionMortalityMult * competitionSensitivity;
+      const queueMortalityRateL3 = params.delta3 * congestionMortalityMult * competitionSensitivity;
+      
+      // Calculate queue entry rate (proportion of demand that gets queued due to capacity constraints)
+      // Use a sigmoid function to map effectiveCongestion to a 0-1 range
+      const queueEntryRate = 1 / (1 + Math.exp(-2 * (effectiveCongestion - 0.5)));
       // Formal care to queues (when capacity is constrained)
       links.push(
-        { id: 'link_formal_q0', source: 'formal', target: 'q0', label: `Queue`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 350, y1: 100 }, labelOffset: {dy: -10} },
-        { id: 'link_l0_q1', source: 'l0', target: 'q1', label: `Queue`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 175 }, labelOffset: {dy: -10} },
-        { id: 'link_l1_q2', source: 'l1', target: 'q2', label: `Queue`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 325 }, labelOffset: {dy: -10} },
-        { id: 'link_l2_q3', source: 'l2', target: 'q3', label: `Queue`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 475 }, labelOffset: {dy: -10} },
+        { id: 'link_formal_q0', source: 'formal', target: 'q0', label: `Queue: ${fmt(queueEntryRate)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 325, y1: 100 }, labelOffset: {dy: -10} },
+        { id: 'link_l0_q1', source: 'l0', target: 'q1', label: `Queue: ${fmt(queueEntryRate)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 525, y1: 150 }, labelOffset: {dy: -10} },
+        { id: 'link_l1_q2', source: 'l1', target: 'q2', label: `Queue: ${fmt(queueEntryRate)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 525, y1: 300 }, labelOffset: {dy: -10} },
+        { id: 'link_l2_q3', source: 'l2', target: 'q3', label: `Queue: ${fmt(queueEntryRate)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 525, y1: 450 }, labelOffset: {dy: -10} },
       );
       
       // Queues to healthcare levels (clearance)
       links.push(
-        { id: 'link_q0_l0', source: 'q0', target: 'l0', label: `Clear`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 75 }, labelOffset: {dy: -10} },
-        { id: 'link_q1_l1', source: 'q1', target: 'l1', label: `Clear`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 225 }, labelOffset: {dy: -10} },
-        { id: 'link_q2_l2', source: 'q2', target: 'l2', label: `Clear`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 375 }, labelOffset: {dy: -10} },
-        { id: 'link_q3_l3', source: 'q3', target: 'l3', label: `Clear`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 475, y1: 525 }, labelOffset: {dy: -10} },
+        { id: 'link_q0_l0', source: 'q0', target: 'l0', label: `Clear: ${fmt(availableCapacityL0)}`, value: null, aiIntervention: aiInterventions.chwAI ? 'chwAI' : null, parameter: null, controlPoints: { x1: 525, y1: 75 }, labelOffset: {dy: -10} },
+        { id: 'link_q1_l1', source: 'q1', target: 'l1', label: `Clear: ${fmt(availableCapacityL1)}`, value: null, aiIntervention: aiInterventions.diagnosticAI ? 'diagnosticAI' : null, parameter: null, controlPoints: { x1: 525, y1: 225 }, labelOffset: {dy: -10} },
+        { id: 'link_q2_l2', source: 'q2', target: 'l2', label: `Clear: ${fmt(availableCapacityL2)}`, value: null, aiIntervention: (aiInterventions.bedManagementAI || aiInterventions.hospitalDecisionAI) ? (aiInterventions.bedManagementAI ? 'bedManagementAI' : 'hospitalDecisionAI') : null, parameter: null, controlPoints: { x1: 525, y1: 375 }, labelOffset: {dy: -10} },
+        { id: 'link_q3_l3', source: 'q3', target: 'l3', label: `Clear: ${fmt(availableCapacityL3)}`, value: null, aiIntervention: (aiInterventions.bedManagementAI || aiInterventions.hospitalDecisionAI) ? (aiInterventions.bedManagementAI ? 'bedManagementAI' : 'hospitalDecisionAI') : null, parameter: null, controlPoints: { x1: 525, y1: 525 }, labelOffset: {dy: -10} },
       );
       
       // Queue mortality
       links.push(
-        { id: 'link_q0_deaths', source: 'q0', target: 'deaths', label: `Q-mort`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 700, y1: 250 }, labelOffset: {dy: 10} },
-        { id: 'link_q1_deaths', source: 'q1', target: 'deaths', label: `Q-mort`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 700, y1: 300 }, labelOffset: {dy: 10} },
-        { id: 'link_q2_deaths', source: 'q2', target: 'deaths', label: `Q-mort`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 700, y1: 375 }, labelOffset: {dy: 10} },
-        { id: 'link_q3_deaths', source: 'q3', target: 'deaths', label: `Q-mort`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 700, y1: 475 }, labelOffset: {dy: 10} },
+        { id: 'link_q0_deaths', source: 'q0', target: 'deaths', label: `Q-mort: ${fmt(queueMortalityRate)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 750, y1: 250 }, labelOffset: {dy: 10} },
+        { id: 'link_q1_deaths', source: 'q1', target: 'deaths', label: `Q-mort: ${fmt(queueMortalityRate)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 750, y1: 300 }, labelOffset: {dy: 10} },
+        { id: 'link_q2_deaths', source: 'q2', target: 'deaths', label: `Q-mort: ${fmt(queueMortalityRateL2)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 750, y1: 375 }, labelOffset: {dy: 10} },
+        { id: 'link_q3_deaths', source: 'q3', target: 'deaths', label: `Q-mort: ${fmt(queueMortalityRateL3)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 750, y1: 475 }, labelOffset: {dy: 10} },
       );
       
       // Queue abandonment/bypass
       links.push(
-        { id: 'link_q0_informal', source: 'q0', target: 'informal', label: `Abandon`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 325, y1: 200 }, labelOffset: {dy: -10} },
-        { id: 'link_q1_informal', source: 'q1', target: 'informal', label: `Abandon`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 325, y1: 275 }, labelOffset: {dy: -10} },
-        { id: 'link_q2_informal', source: 'q2', target: 'informal', label: `Abandon`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 325, y1: 350 }, labelOffset: {dy: -10} },
-        { id: 'link_q3_informal', source: 'q3', target: 'informal', label: `Abandon`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 325, y1: 425 }, labelOffset: {dy: -10} },
+        { id: 'link_q0_informal', source: 'q0', target: 'informal', label: `Abandon: ${fmt(queueAbandonmentRate)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 325, y1: 200 }, labelOffset: {dy: -10} },
+        { id: 'link_q1_informal', source: 'q1', target: 'informal', label: `Abandon: ${fmt(queueAbandonmentRate)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 325, y1: 275 }, labelOffset: {dy: -10} },
+        { id: 'link_q2_informal', source: 'q2', target: 'informal', label: `Abandon: ${fmt(queueAbandonmentRate)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 325, y1: 350 }, labelOffset: {dy: -10} },
+        { id: 'link_q3_informal', source: 'q3', target: 'informal', label: `Abandon: ${fmt(queueAbandonmentRate)}`, value: null, aiIntervention: null, parameter: null, controlPoints: { x1: 325, y1: 425 }, labelOffset: {dy: -10} },
       );
     }
 
-    const svgWidth = 1100;
+    const svgWidth = 1300;
     const svgHeight = 700;
 
     svg

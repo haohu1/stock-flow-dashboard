@@ -288,8 +288,12 @@ const runWeek = (
   // Calculate capacity-constrained flows
   // System congestion reduces the ability to admit new patients
   // Disease-specific effects: higher competition sensitivity = more affected by congestion
-  const effectiveCongestion = Math.min(1, congestion * competitionSensitivity);
-  const capacityMultiplier = 1 - effectiveCongestion;
+  // Remove the cap to allow over-congestion effects (effectiveCongestion can now be > 1)
+  const effectiveCongestion = congestion * competitionSensitivity;
+  
+  // Use an exponential function for more sensitivity at high congestion levels
+  // This creates a more dramatic effect as congestion approaches and exceeds 100%
+  const capacityMultiplier = Math.exp(-effectiveCongestion * 2);
   
   // Calculate desired flows (before capacity constraints)
   const desiredL0Flow = formalToL0;
@@ -332,10 +336,10 @@ const runWeek = (
   
   // Queue mortality - higher for higher priority diseases and longer waits
   const baseMortality = params.delta1 || 0.02;
-  const queueMortalityL0 = currentQueues.L0 * baseMortality * (congestionMortalityMult - 1) * competitionSensitivity;
-  const queueMortalityL1 = currentQueues.L1 * baseMortality * (congestionMortalityMult - 1) * competitionSensitivity;
-  const queueMortalityL2 = currentQueues.L2 * params.delta2 * (congestionMortalityMult - 1) * competitionSensitivity;
-  const queueMortalityL3 = currentQueues.L3 * params.delta3 * (congestionMortalityMult - 1) * competitionSensitivity;
+  const queueMortalityL0 = currentQueues.L0 * baseMortality * congestionMortalityMult * competitionSensitivity;
+  const queueMortalityL1 = currentQueues.L1 * baseMortality * congestionMortalityMult * competitionSensitivity;
+  const queueMortalityL2 = currentQueues.L2 * params.delta2 * congestionMortalityMult * competitionSensitivity;
+  const queueMortalityL3 = currentQueues.L3 * params.delta3 * congestionMortalityMult * competitionSensitivity;
   const queueMortality = queueMortalityL0 + queueMortalityL1 + queueMortalityL2 + queueMortalityL3;
   
   // Queue abandonment - patients give up and return to untreated
@@ -359,10 +363,10 @@ const runWeek = (
   const treatmentEffEffect = params.treatmentEfficiency || 0;       // Hospital Decision AI
   const resourceUtilEffect = params.resourceUtilization || 0;      // Hospital Decision AI
   
-  let availableCapacityL0 = Math.max(0, (1 - effectiveCongestion) * queueClearanceRate);
-  let availableCapacityL1 = Math.max(0, (1 - effectiveCongestion) * queueClearanceRate);
-  let availableCapacityL2 = Math.max(0, (1 - effectiveCongestion) * queueClearanceRate);
-  let availableCapacityL3 = Math.max(0, (1 - effectiveCongestion) * queueClearanceRate);
+  let availableCapacityL0 = Math.max(0, capacityMultiplier * queueClearanceRate);
+  let availableCapacityL1 = Math.max(0, capacityMultiplier * queueClearanceRate);
+  let availableCapacityL2 = Math.max(0, capacityMultiplier * queueClearanceRate);
+  let availableCapacityL3 = Math.max(0, capacityMultiplier * queueClearanceRate);
   
   // Apply AI improvements to queue clearance
   availableCapacityL0 *= (1 + resolutionBoostEffect);              // CHW AI improves L0 throughput
@@ -1236,7 +1240,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     diagnosticAI: {
       mu1Effect: 0.30,      // 30% increase in resolution (X-ray AI confidence)
       delta1Effect: 0.85,   // 15% mortality reduction (early treatment)
-      rho1Effect: 0.75      // 25% reduction in referrals (confident diagnosis)
+      rho1Effect: 0.75,     // 25% reduction in referrals (confident diagnosis)
+      mu2Effect: 0.15,      // 15% increase at L2 (advanced chest imaging)
+      delta2Effect: 0.88,   // 12% mortality reduction at L2
+      rho2Effect: 0.85      // 15% reduction in L2 referrals
     },
     chwAI: {
       mu0Effect: 0.20,      // 20% increase (respiratory rate counting + protocols)
@@ -1254,7 +1261,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     diagnosticAI: {
       mu1Effect: 0.30,      // 30% increase (AI microscopy, RDT reading)
       delta1Effect: 0.80,   // 20% mortality reduction
-      rho1Effect: 0.75      // 25% referral reduction
+      rho1Effect: 0.75,     // 25% referral reduction
+      mu2Effect: 0.12,      // 12% increase at L2 (severe malaria management)
+      delta2Effect: 0.85,   // 15% mortality reduction at L2
+      rho2Effect: 0.90      // 10% reduction in L2 referrals
     },
     chwAI: {
       mu0Effect: 0.25,      // 25% increase (RDT guidance, ACT dosing)
@@ -1281,7 +1291,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     diagnosticAI: {
       mu1Effect: 0.25,      // 25% increase (dehydration + electrolyte assessment)
       delta1Effect: 0.85,   // 15% mortality reduction
-      rho1Effect: 0.80      // 20% referral reduction
+      rho1Effect: 0.80,     // 20% referral reduction
+      mu2Effect: 0.10,      // 10% increase at L2 (severe dehydration management)
+      delta2Effect: 0.90,   // 10% mortality reduction at L2
+      rho2Effect: 0.92      // 8% reduction in L2 referrals
     },
     triageAI: {
       phi0Effect: 0.12,     // 12% increase in care seeking (danger signs)
@@ -1299,7 +1312,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     diagnosticAI: {
       mu1Effect: 0.35,      // 35% increase (CAD4TB X-ray screening)
       delta1Effect: 0.75,   // 25% mortality reduction (early detection)
-      rho1Effect: 0.75      // 25% referral reduction (X-ray confidence)
+      rho1Effect: 0.75,     // 25% referral reduction (X-ray confidence)
+      mu2Effect: 0.20,      // 20% increase at L2 (drug resistance prediction)
+      delta2Effect: 0.80,   // 20% mortality reduction at L2
+      rho2Effect: 0.80      // 20% reduction in L2 referrals
     },
     hospitalDecisionAI: {
       delta2Effect: 0.85,   // 15% mortality reduction (MDR-TB detection)
@@ -1321,7 +1337,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     diagnosticAI: {
       mu1Effect: 0.20,      // 20% increase (ultrasound AI)
       delta1Effect: 0.75,   // 25% mortality reduction
-      rho1Effect: 1.20      // 20% increase in appropriate referrals (high-risk cases need specialist care)
+      rho1Effect: 1.20,     // 20% increase in appropriate referrals (high-risk cases need specialist care)
+      mu2Effect: 0.15,      // 15% increase at L2 (fetal monitoring AI)
+      delta2Effect: 0.80,   // 20% mortality reduction at L2
+      rho2Effect: 1.10      // 10% increase in L2 referrals (complex obstetric cases)
     },
     triageAI: {
       phi0Effect: 0.20,     // 20% increase in facility delivery
@@ -1355,7 +1374,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     diagnosticAI: {
       mu1Effect: 0.03,      // 3% increase (basic assessment)
       delta1Effect: 0.90,   // 10% mortality reduction
-      rho1Effect: 1.10      // 10% increase in referrals (complex cases need specialist care)
+      rho1Effect: 1.10,     // 10% increase in referrals (complex cases need specialist care)
+      mu2Effect: 0.08,      // 8% increase at L2 (echocardiogram AI, fluid management)
+      delta2Effect: 0.85,   // 15% mortality reduction at L2
+      rho2Effect: 1.05      // 5% increase in L2 referrals
     },
     bedManagementAI: {
       mu2Effect: 0.05,      // 5% increase (optimal fluid management)
@@ -1377,7 +1399,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     diagnosticAI: {
       mu1Effect: 0.10,      // 10% increase (viral load prediction)
       delta1Effect: 0.85,   // 15% mortality reduction
-      rho1Effect: 0.90      // 10% referral reduction
+      rho1Effect: 0.90,     // 10% referral reduction
+      mu2Effect: 0.12,      // 12% increase at L2 (resistance testing AI)
+      delta2Effect: 0.82,   // 18% mortality reduction at L2
+      rho2Effect: 0.88      // 12% reduction in L2 referrals
     }
   },
   
@@ -1392,7 +1417,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     diagnosticAI: {
       mu1Effect: 0.05,      // 5% increase (rule out serious causes)
       delta1Effect: 0.98,   // 2% mortality reduction
-      rho1Effect: 0.70      // 30% referral reduction (high confidence benign)
+      rho1Effect: 0.70,     // 30% referral reduction (high confidence benign)
+      mu2Effect: 0.03,      // 3% increase at L2 (minimal complexity)
+      delta2Effect: 0.98,   // 2% mortality reduction at L2
+      rho2Effect: 0.75      // 25% reduction in L2 referrals
     },
     selfCareAI: {
       muIEffect: 0.05,      // 5% - minor improvement
@@ -1410,7 +1438,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     diagnosticAI: {
       mu1Effect: 0.15,      // 15% increase (better differential diagnosis)
       delta1Effect: 0.88,   // 12% mortality reduction
-      rho1Effect: 0.85      // 15% referral reduction
+      rho1Effect: 0.85,     // 15% referral reduction
+      mu2Effect: 0.10,      // 10% increase at L2 (advanced diagnostic workup)
+      delta2Effect: 0.90,   // 10% mortality reduction at L2
+      rho2Effect: 0.87      // 13% reduction in L2 referrals
     },
     triageAI: {
       phi0Effect: 0.10,     // 10% increase in care seeking (identify serious causes)
@@ -1432,7 +1463,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     diagnosticAI: {
       mu1Effect: 0.20,      // 20% increase (point-of-care hemoglobin testing)
       delta1Effect: 0.90,   // 10% mortality reduction
-      rho1Effect: 0.80      // 20% referral reduction
+      rho1Effect: 0.80,     // 20% referral reduction
+      mu2Effect: 0.15,      // 15% increase at L2 (comprehensive workup for severe anemia)
+      delta2Effect: 0.85,   // 15% mortality reduction at L2
+      rho2Effect: 0.82      // 18% reduction in L2 referrals
     },
     selfCareAI: {
       muIEffect: 0.03,      // 3% increase (dietary guidance)
@@ -1450,7 +1484,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     diagnosticAI: {
       mu1Effect: 0.30,      // 30% increase (better OI recognition and differentiation)
       delta1Effect: 0.85,   // 15% mortality reduction
-      rho1Effect: 1.20      // 20% increase referrals (complex OIs need specialist care)
+      rho1Effect: 1.20,     // 20% increase referrals (complex OIs need specialist care)
+      mu2Effect: 0.25,      // 25% increase at L2 (complex OI management protocols)
+      delta2Effect: 0.80,   // 20% mortality reduction at L2
+      rho2Effect: 1.10      // 10% increase in L2 referrals (very complex cases)
     },
     triageAI: {
       phi0Effect: 0.15,     // 15% increase in care seeking (symptom recognition)

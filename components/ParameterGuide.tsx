@@ -382,7 +382,7 @@ const ParameterGuide: React.FC = () => {
             <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-sm">
               <p className="text-red-800 dark:text-red-200">
                 <strong>Clinical Insight:</strong> The mortality heterogeneity spans several orders of magnitude. 
-                Upper respiratory infections have essentially zero mortality risk, while congestive heart failure has >5% weekly death risk when untreated. 
+                Upper respiratory infections have essentially zero mortality risk, while congestive heart failure has &gt;5% weekly death risk when untreated. 
                 This justifies disease-specific treatment protocols and resource allocation priorities.
               </p>
             </div>
@@ -535,7 +535,7 @@ const ParameterGuide: React.FC = () => {
                   <li>• <strong>Serious:</strong> High-risk pregnancy (3%), TB (2%), Pneumonia (1.5%)</li>
                   <li>• <strong>Moderate:</strong> Malaria (0.5%), Fever (0.3%)</li>
                   <li>• <strong>Low risk:</strong> Diarrhea (0.1%), Anemia (0.05%)</li>
-                  <li>• <strong>Minimal:</strong> URTI (<0.01%)</li>
+                  <li>• <strong>Minimal:</strong> URTI (&lt;0.01%)</li>
                 </ul>
               </div>
               

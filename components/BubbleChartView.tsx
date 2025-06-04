@@ -67,36 +67,60 @@ const BubbleChartView: React.FC = () => {
     const height = 500;
     const margin = { top: 40, right: 40, bottom: 60, left: 60 };
     
-    // Get valid scenarios - show scenarios that match the selected diseases
-    const validScenarios = scenarios.filter(s => {
-      if (!s.results) return false;
-      
-      // Debug logging for scenario filtering
-      console.log(`BubbleChart filtering scenario "${s.name}": selectedDiseases=${Array.from(selectedDiseases)}, scenario.selectedDiseases=${s.selectedDiseases}, scenario.parameters.disease=${s.parameters.disease}`);
-      
-      // If multiple diseases are currently selected in the filter
+    // Get valid scenarios - when multiple diseases selected, prioritize aggregated scenarios
+    const validScenarios = (() => {
       if (selectedDiseases.size > 1) {
-        // Show scenarios that either:
-        // 1. Are combined multi-disease scenarios with multiple diseases
-        // 2. Are individual scenarios for diseases that are currently selected
-        if (s.selectedDiseases && s.selectedDiseases.length > 1) {
-          // Multi-disease combined scenario - check if any of its diseases are selected
-          const matches = s.selectedDiseases.some(disease => selectedDiseases.has(disease));
-          console.log(`  Multi-disease scenario: matches=${matches}`);
-          return matches;
-        } else {
-          // Single-disease scenario - check if its disease is selected
-          const matches = selectedDiseases.has(s.parameters.disease || 'Unknown');
-          console.log(`  Single-disease scenario: matches=${matches}`);
-          return matches;
+        // Multi-disease mode: prefer aggregated/combined scenarios over individual disease scenarios
+        console.log(`BubbleChart: Multi-disease mode with ${selectedDiseases.size} diseases selected`);
+        
+        // First, look for scenarios that represent the aggregated health system total
+        const aggregatedScenarios = scenarios.filter(s => {
+          if (!s.results) return false;
+          
+          // Look for scenarios that:
+          // 1. Have multiple diseases selected (true aggregated scenarios)
+          // 2. OR scenarios where the disease is "health_system_total" (aggregated result indicator)
+          const isAggregatedScenario = (s.selectedDiseases && s.selectedDiseases.length > 1) ||
+                                      s.parameters.disease === 'health_system_total';
+          
+          if (isAggregatedScenario) {
+            // Check if this aggregated scenario matches our current disease selection
+            if (s.selectedDiseases && s.selectedDiseases.length > 1) {
+              // Multi-disease scenario - check if it includes the same diseases we have selected
+              const scenarioDiseases = new Set(s.selectedDiseases);
+              const selectedDiseasesArray = Array.from(selectedDiseases);
+              const hasMatchingDiseases = selectedDiseasesArray.every(d => scenarioDiseases.has(d)) &&
+                                        scenarioDiseases.size === selectedDiseases.size;
+              console.log(`  Aggregated scenario "${s.name}": hasMatchingDiseases=${hasMatchingDiseases}`);
+              return hasMatchingDiseases;
+            } else if (s.parameters.disease === 'health_system_total') {
+              console.log(`  Health system total scenario "${s.name}": including`);
+              return true;
+            }
+          }
+          return false;
+        });
+        
+        if (aggregatedScenarios.length > 0) {
+          console.log(`Found ${aggregatedScenarios.length} aggregated scenarios, using those`);
+          return aggregatedScenarios;
         }
+        
+        // Fallback: if no aggregated scenarios, show individual disease scenarios
+        console.log(`No aggregated scenarios found, falling back to individual disease scenarios`);
+        return scenarios.filter(s => {
+          if (!s.results) return false;
+          return selectedDiseases.has(s.parameters.disease || 'Unknown');
+        });
       } else {
         // Single disease mode - show scenarios for that disease
-        const matches = selectedDiseases.has(s.parameters.disease || 'Unknown');
-        console.log(`  Single disease filter mode: matches=${matches}`);
-        return matches;
+        console.log(`BubbleChart: Single disease mode`);
+        return scenarios.filter(s => {
+          if (!s.results) return false;
+          return selectedDiseases.has(s.parameters.disease || 'Unknown');
+        });
       }
-    });
+    })();
     
     if (validScenarios.length <= 0) return;
 

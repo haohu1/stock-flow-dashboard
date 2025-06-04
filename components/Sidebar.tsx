@@ -26,7 +26,10 @@ import {
   multiConditionMortalityMultiplierAtom,
   multiConditionResolutionReductionAtom,
   multiConditionCareSeekingBoostAtom,
-  multiDiseaseScenarioModeAtom
+  multiDiseaseScenarioModeAtom,
+  userOverriddenCongestionAtom,
+  calculatedCongestionAtom,
+  effectiveCongestionAtom
 } from '../lib/store';
 import { healthSystemStrengthDefaults } from '../models/stockAndFlowModel';
 import { countryProfiles } from '../models/countrySpecificModel';
@@ -54,6 +57,11 @@ const Sidebar: React.FC = () => {
   const [selectedCountry, setSelectedCountry] = useAtom(selectedCountryAtom);
   const [isUrban, setIsUrban] = useAtom(isUrbanSettingAtom);
   const [useCountrySpecific, setUseCountrySpecific] = useAtom(useCountrySpecificModelAtom);
+  
+  // Congestion atoms
+  const [userOverriddenCongestion, setUserOverriddenCongestion] = useAtom(userOverriddenCongestionAtom);
+  const [calculatedCongestion] = useAtom(calculatedCongestionAtom);
+  const [effectiveCongestion] = useAtom(effectiveCongestionAtom);
   const [scenarioMode, setScenarioMode] = useAtom(multiDiseaseScenarioModeAtom);
   const [multiConditionMode, setMultiConditionMode] = useAtom(multiConditionModeAtom);
   const [mortalityMultiplier, setMortalityMultiplier] = useAtom(multiConditionMortalityMultiplierAtom);
@@ -487,14 +495,24 @@ const Sidebar: React.FC = () => {
 
       {/* System Congestion Settings */}
       <div className="mb-6">
-        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          System Congestion Level
-        </label>
+        <div className="flex justify-between items-center mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            System Congestion Level
+          </label>
+          {userOverriddenCongestion !== null && (
+            <button
+              onClick={() => setUserOverriddenCongestion(null)}
+              className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400"
+            >
+              Use Auto-Calculated
+            </button>
+          )}
+        </div>
         <select
-          value={baseParams.systemCongestion || 0}
+          value={effectiveCongestion}
           onChange={(e) => {
             const congestion = parseFloat(e.target.value);
-            setBaseParams({ ...baseParams, systemCongestion: congestion });
+            setUserOverriddenCongestion(congestion);
           }}
           className="input w-full"
         >
@@ -503,22 +521,40 @@ const Sidebar: React.FC = () => {
           <option value="0.5">Moderate Congestion (50%)</option>
           <option value="0.7">High Congestion (70%)</option>
           <option value="0.9">Severe Congestion (90%)</option>
+          {/* Show auto-calculated value if it doesn't match predefined options */}
+          {userOverriddenCongestion === null && ![0, 0.2, 0.5, 0.7, 0.9].includes(calculatedCongestion) && (
+            <option value={calculatedCongestion}>
+              Auto-Calculated ({(calculatedCongestion * 100).toFixed(0)}%)
+            </option>
+          )}
         </select>
         <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-left">
-          {baseParams.systemCongestion === 0 && (
+          {effectiveCongestion === 0 && (
             <p>System operating normally with full capacity available. Optimal patient flow and outcomes.</p>
           )}
-          {baseParams.systemCongestion === 0.2 && (
+          {effectiveCongestion === 0.2 && (
             <p>Mild system stress. Some delays in care but generally manageable. Mortality slightly elevated.</p>
           )}
-          {baseParams.systemCongestion === 0.5 && (
+          {effectiveCongestion === 0.5 && (
             <p>Significant congestion. Half of patients face delays. Queue mortality increases substantially.</p>
           )}
-          {baseParams.systemCongestion === 0.7 && (
+          {effectiveCongestion === 0.7 && (
             <p>System under severe strain. Most patients queued. High mortality from delays in care.</p>
           )}
-          {baseParams.systemCongestion === 0.9 && (
+          {effectiveCongestion === 0.9 && (
             <p>Near-collapse conditions. System overwhelmed. Critical patients dying in queues.</p>
+          )}
+          {/* Show calculation details */}
+          {userOverriddenCongestion !== null ? (
+            <div className="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600">
+              <p className="text-blue-600 dark:text-blue-400"><strong>Manual Override:</strong> {(effectiveCongestion * 100).toFixed(0)}%</p>
+              <p className="text-gray-500">Auto-calculated would be: {(calculatedCongestion * 100).toFixed(0)}%</p>
+            </div>
+          ) : (
+            <div className="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600">
+              <p className="text-green-600 dark:text-green-400"><strong>Auto-Calculated:</strong> {(effectiveCongestion * 100).toFixed(0)}%</p>
+              <p className="text-gray-500">Based on {selectedDiseases.length} disease{selectedDiseases.length !== 1 ? 's' : ''} and health system strength</p>
+            </div>
           )}
         </div>
       </div>

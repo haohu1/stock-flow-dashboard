@@ -308,6 +308,260 @@ const ParameterGuide: React.FC = () => {
         </ClinicalSection>
       )}
       
+      {/* Disease-Specific Clinical Parameter Heterogeneity (Multi-Disease) */}
+      {isMultiDiseaseMode && (
+        <ClinicalSection title="Disease-Specific Clinical Parameter Comparison">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+            <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">🧬 Clinical Heterogeneity Analysis</h4>
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              The tables below show the dramatic clinical differences between diseases. This heterogeneity explains why separate simulations 
+              are necessary - averaging these parameters would not reflect real clinical behavior. Each disease has its own mortality risks, 
+              recovery patterns, and optimal care pathways.
+            </p>
+          </div>
+          
+          {/* Mortality Rates Comparison */}
+          <div className="mb-8">
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">☠️ Weekly Mortality Rates by Care Level</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Shows the weekly probability of death for each disease at different care levels. Note the extreme variation - from virtually zero (URTI) to life-threatening (CHF, HIV).
+            </p>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border border-gray-300 dark:border-gray-600">
+                <thead>
+                  <tr className="bg-gray-100 dark:bg-gray-700">
+                    <th className="p-2 text-left border border-gray-300 dark:border-gray-600 font-semibold">Disease</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Untreated (δU)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Informal (δI)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">CHW (δ0)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Primary (δ1)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">District (δ2)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Tertiary (δ3)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Risk Level</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedDiseases.map((disease) => {
+                    const diseaseParams = individualDiseaseParams[disease];
+                    const diseaseName = getDiseaseName(disease);
+                    
+                    if (!diseaseParams) return null;
+                    
+                    const getRiskLevel = (deltaU: number) => {
+                      if (deltaU >= 0.05) return { level: 'Very High', color: 'text-red-700 bg-red-100' };
+                      if (deltaU >= 0.01) return { level: 'High', color: 'text-red-600 bg-red-50' };
+                      if (deltaU >= 0.001) return { level: 'Moderate', color: 'text-yellow-600 bg-yellow-50' };
+                      if (deltaU >= 0.0001) return { level: 'Low', color: 'text-green-600 bg-green-50' };
+                      return { level: 'Very Low', color: 'text-green-700 bg-green-100' };
+                    };
+                    
+                    const riskInfo = getRiskLevel(diseaseParams.deltaU || 0);
+                    
+                    return (
+                      <tr key={disease} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="p-2 border border-gray-300 dark:border-gray-600 font-medium">{diseaseName}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.deltaU)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.deltaI)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.delta0)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.delta1)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.delta2)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.delta3)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">
+                          <span className={`px-2 py-1 rounded text-xs ${riskInfo.color}`}>
+                            {riskInfo.level}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-sm">
+              <p className="text-red-800 dark:text-red-200">
+                <strong>Clinical Insight:</strong> The mortality heterogeneity spans several orders of magnitude. 
+                Upper respiratory infections have essentially zero mortality risk, while congestive heart failure has >5% weekly death risk when untreated. 
+                This justifies disease-specific treatment protocols and resource allocation priorities.
+              </p>
+            </div>
+          </div>
+          
+          {/* Recovery Rates Comparison */}
+          <div className="mb-8">
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">🌱 Weekly Recovery Rates by Care Level</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Shows the weekly probability of recovery for each disease at different care levels. Recovery patterns reflect treatment effectiveness and natural disease course.
+            </p>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border border-gray-300 dark:border-gray-600">
+                <thead>
+                  <tr className="bg-gray-100 dark:bg-gray-700">
+                    <th className="p-2 text-left border border-gray-300 dark:border-gray-600 font-semibold">Disease</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Untreated (μU)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Informal (μI)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">CHW (μ0)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Primary (μ1)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">District (μ2)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Tertiary (μ3)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Treatment Response</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedDiseases.map((disease) => {
+                    const diseaseParams = individualDiseaseParams[disease];
+                    const diseaseName = getDiseaseName(disease);
+                    
+                    if (!diseaseParams) return null;
+                    
+                    const getTreatmentResponse = (mu0: number, mu3: number) => {
+                      const improvement = mu3 / (mu0 || 0.001); // Fold improvement from CHW to tertiary
+                      if (improvement >= 3) return { level: 'Excellent', color: 'text-green-700 bg-green-100' };
+                      if (improvement >= 2) return { level: 'Good', color: 'text-green-600 bg-green-50' };
+                      if (improvement >= 1.5) return { level: 'Moderate', color: 'text-yellow-600 bg-yellow-50' };
+                      if (improvement >= 1.1) return { level: 'Modest', color: 'text-orange-600 bg-orange-50' };
+                      return { level: 'Limited', color: 'text-red-600 bg-red-50' };
+                    };
+                    
+                    const responseInfo = getTreatmentResponse(diseaseParams.mu0 || 0, diseaseParams.mu3 || 0);
+                    
+                    return (
+                      <tr key={disease} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="p-2 border border-gray-300 dark:border-gray-600 font-medium">{diseaseName}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.muU)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.muI)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.mu0)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.mu1)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.mu2)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.mu3)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">
+                          <span className={`px-2 py-1 rounded text-xs ${responseInfo.color}`}>
+                            {responseInfo.level}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-sm">
+              <p className="text-green-800 dark:text-green-200">
+                <strong>Clinical Insight:</strong> Recovery rates show which diseases benefit most from higher-level care. 
+                Diarrhea achieves excellent outcomes at CHW level (85% weekly recovery), while TB requires specialized, long-term treatment (3-6% weekly recovery across all levels). 
+                This guides optimal resource allocation and referral strategies.
+              </p>
+            </div>
+          </div>
+          
+          {/* Referral Patterns Comparison */}
+          <div className="mb-8">
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">🔄 Referral Patterns Between Care Levels</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Shows the weekly probability of referral from each care level. High referral rates may indicate complex conditions requiring specialized care or limited capacity at lower levels.
+            </p>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border border-gray-300 dark:border-gray-600">
+                <thead>
+                  <tr className="bg-gray-100 dark:bg-gray-700">
+                    <th className="p-2 text-left border border-gray-300 dark:border-gray-600 font-semibold">Disease</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">CHW → Primary (ρ0)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Primary → District (ρ1)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">District → Tertiary (ρ2)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Care Seeking (φ0)</th>
+                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Complexity Level</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedDiseases.map((disease) => {
+                    const diseaseParams = individualDiseaseParams[disease];
+                    const diseaseName = getDiseaseName(disease);
+                    
+                    if (!diseaseParams) return null;
+                    
+                    const getComplexityLevel = (rho0: number, rho1: number, phi0: number) => {
+                      const totalReferralPressure = (rho0 || 0) + (rho1 || 0) + (1 - (phi0 || 0));
+                      if (totalReferralPressure >= 1.5) return { level: 'Very High', color: 'text-red-700 bg-red-100' };
+                      if (totalReferralPressure >= 1.0) return { level: 'High', color: 'text-red-600 bg-red-50' };
+                      if (totalReferralPressure >= 0.7) return { level: 'Moderate', color: 'text-yellow-600 bg-yellow-50' };
+                      if (totalReferralPressure >= 0.4) return { level: 'Low', color: 'text-green-600 bg-green-50' };
+                      return { level: 'Very Low', color: 'text-green-700 bg-green-100' };
+                    };
+                    
+                    const complexityInfo = getComplexityLevel(diseaseParams.rho0 || 0, diseaseParams.rho1 || 0, diseaseParams.phi0 || 0);
+                    
+                    return (
+                      <tr key={disease} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="p-2 border border-gray-300 dark:border-gray-600 font-medium">{diseaseName}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.rho0)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.rho1)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.rho2)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatPercentage(diseaseParams.phi0)}</td>
+                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">
+                          <span className={`px-2 py-1 rounded text-xs ${complexityInfo.color}`}>
+                            {complexityInfo.level}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm">
+              <p className="text-blue-800 dark:text-blue-200">
+                <strong>Clinical Insight:</strong> Referral patterns reflect disease complexity and required expertise. 
+                High-risk pregnancy has 90% CHW→Primary referral (appropriate for specialist obstetric care), 
+                while URTI has 5% referral (most cases manageable at community level). 
+                These patterns should align with clinical guidelines and available expertise.
+              </p>
+            </div>
+          </div>
+          
+          {/* Clinical Summary */}
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6">
+            <h4 className="text-lg font-semibold text-purple-800 dark:text-purple-200 mb-4">📊 Clinical Parameter Heterogeneity Summary</h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+              <div>
+                <h5 className="font-semibold text-purple-700 dark:text-purple-300 mb-3">Mortality Risk Stratification</h5>
+                <ul className="space-y-1 text-purple-600 dark:text-purple-400">
+                  <li>• <strong>Life-threatening:</strong> CHF (9% untreated), HIV opportunistic (8%)</li>
+                  <li>• <strong>Serious:</strong> High-risk pregnancy (3%), TB (2%), Pneumonia (1.5%)</li>
+                  <li>• <strong>Moderate:</strong> Malaria (0.5%), Fever (0.3%)</li>
+                  <li>• <strong>Low risk:</strong> Diarrhea (0.1%), Anemia (0.05%)</li>
+                  <li>• <strong>Minimal:</strong> URTI (<0.01%)</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h5 className="font-semibold text-purple-700 dark:text-purple-300 mb-3">Optimal Care Level by Disease</h5>
+                <ul className="space-y-1 text-purple-600 dark:text-purple-400">
+                  <li>• <strong>Self-care effective:</strong> URTI (70% spontaneous recovery)</li>
+                  <li>• <strong>CHW-manageable:</strong> Diarrhea (85% recovery), Malaria (80%)</li>
+                  <li>• <strong>Primary care optimal:</strong> Pneumonia, Fever, TB</li>
+                  <li>• <strong>Hospital-dependent:</strong> CHF, High-risk pregnancy</li>
+                  <li>• <strong>Specialist required:</strong> HIV (chronic management)</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-purple-300 dark:border-purple-700">
+              <p className="text-purple-700 dark:text-purple-300 text-sm">
+                <strong>Key Takeaway:</strong> This heterogeneity demonstrates why health system planning must be disease-specific. 
+                A "one-size-fits-all" approach fails to optimize outcomes or resource allocation. Each disease requires tailored 
+                care pathways, different levels of expertise, and appropriate technology deployment for maximum health impact.
+              </p>
+            </div>
+          </div>
+        </ClinicalSection>
+      )}
+      
       {/* Disease Burden & Care Seeking (Single Disease) */}
       {!isMultiDiseaseMode && (
         <ClinicalSection title="Disease Burden & Patient Care-Seeking Behavior">

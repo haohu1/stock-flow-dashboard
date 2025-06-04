@@ -149,9 +149,18 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     const height = 600;
     const margin = { top: 40, right: 150, bottom: 80, left: 80 };
     
-    // Get valid scenarios with impact data
+    // Get valid scenarios with impact data - when multiple diseases selected, only show aggregated scenarios
     const impactData = scenarios
-      .filter(s => selectedDiseases.has(s.parameters.disease || 'Unknown'))
+      .filter(s => {
+        // If multiple diseases are currently selected in the filter, 
+        // only show scenarios that represent aggregated multi-disease results
+        if (selectedDiseases.size > 1) {
+          return s.selectedDiseases && s.selectedDiseases.length > 1;
+        } else {
+          // Single disease mode - show scenarios for that disease
+          return selectedDiseases.has(s.parameters.disease || 'Unknown');
+        }
+      })
       .map(calculateImpactData)
       .filter((d): d is ImpactFeasibilityData => d !== null);
     

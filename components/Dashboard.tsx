@@ -511,7 +511,7 @@ const Dashboard: React.FC = () => {
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
               >
-                Disease Comparison
+                Health System Total
               </button>
             </nav>
           </div>
@@ -679,9 +679,9 @@ const Dashboard: React.FC = () => {
         // Disease comparison view
         <div className="space-y-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Disease Comparison</h3>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Total Health System Burden</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Comparing outcomes across {Object.keys(resultsMap).length} selected diseases with the same geography and intervention settings.
+              Aggregated results from {selectedDiseases.length} diseases representing the total health system burden.
             </p>
             
             {/* Enhanced warning for incomplete data situations */}
@@ -694,103 +694,73 @@ const Dashboard: React.FC = () => {
               </div>
             )}
             
-            {/* Warning for partial results */}
-            {Object.keys(resultsMap).length > 0 && 
-              selectedDiseases.length > Object.keys(resultsMap).length && (
-              <div className="bg-yellow-50 dark:bg-yellow-900 p-3 rounded-lg mb-4 text-sm">
-                <p className="font-medium text-yellow-800 dark:text-yellow-200">Partial results available</p>
-                <p className="text-yellow-700 dark:text-yellow-300">
-                  Only showing results for {Object.keys(resultsMap).length} of {selectedDiseases.length} selected diseases.
-                  Run a new simulation to see complete results.
+            {/* Show aggregated health system results only when multiple diseases */}
+            {results && (
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6">
+                <h3 className="text-xl font-semibold text-green-800 dark:text-green-200 mb-4">
+                  Total Health System Burden
+                </h3>
+                <p className="text-sm text-green-700 dark:text-green-300 mb-4">
+                  Aggregated results from all {selectedDiseases.length} diseases: {selectedDiseases.map(d => d.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())).join(', ')}
                 </p>
-              </div>
-            )}
-            
-            {/* Only show results if we have data */}
-            {Object.keys(resultsMap).length > 0 && (
-              <>
-                {/* Detailed comparison table - Single unified view replacing the multiple panels */}
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-800">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Disease</th>
-                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Deaths</th>
-                        {baseline && (
-                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Deaths Averted</th>
-                        )}
-                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Costs</th>
-                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">DALYs</th>
-                        {baseline && (
-                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">DALYs Averted</th>
-                        )}
-                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Avg. Resolution (weeks)</th>
-                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ICER ($/DALY)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {Object.entries(resultsMap).map(([disease, diseaseResults]) => {
-                        const metrics = calculateMetricsForDisease(disease, diseaseResults);
-                        
-                        return (
-                          <tr key={`table-${disease}`}>
-                            <td className="px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-                              <div className="flex items-center">
-                                <div 
-                                  className="w-3 h-3 rounded-full mr-2" 
-                                  style={{ backgroundColor: getDiseaseColor(disease) }}
-                                ></div>
-                                {formatDiseaseName(disease)}
-                                {disease === selectedDisease && (
-                                  <span className="ml-2 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-xs rounded">
-                                    Primary
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 text-right">
-                              {diseaseResults ? formatNumber(diseaseResults.cumulativeDeaths || 0) : 'N/A'}
-                            </td>
-                            {baseline && (
-                              <td className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 text-right">
-                                {diseaseResults ? (
-                                  <span className={metrics.deathsAverted > 0 ? 'text-green-500' : 'text-red-500'}>
-                                    {metrics.deathsAverted > 0 ? '+' : ''}{formatNumber(metrics.deathsAverted)}
-                                  </span>
-                                ) : 'N/A'}
-                              </td>
-                            )}
-                            <td className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 text-right">
-                              {diseaseResults ? '$' + formatNumber(diseaseResults.totalCost || 0) : 'N/A'}
-                            </td>
-                            <td className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 text-right">
-                              {diseaseResults ? formatNumber(diseaseResults.dalys || 0) : 'N/A'}
-                            </td>
-                            {baseline && (
-                              <td className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 text-right">
-                                {diseaseResults ? (
-                                  <span className={metrics.dalysAverted > 0 ? 'text-green-500' : 'text-red-500'}>
-                                    {metrics.dalysAverted > 0 ? '+' : ''}{formatNumber(metrics.dalysAverted)}
-                                  </span>
-                                ) : 'N/A'}
-                              </td>
-                            )}
-                            <td className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 text-right">
-                              {diseaseResults?.averageTimeToResolution ? diseaseResults.averageTimeToResolution.toFixed(1) : 'N/A'}
-                            </td>
-                            <td className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 text-right">
-                              {!diseaseResults ? 'N/A' : 
-                                metrics.icer === undefined ? 'N/A' : 
-                                metrics.icer === 1 ? 'DOMINANT' :
-                                `$${formatNumber(metrics.icer)}/DALY`}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-green-300 dark:border-green-700">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Total Deaths</h4>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {formatNumber(results.cumulativeDeaths || 0)}
+                    </div>
+                    {baseline && (
+                      <div className="text-sm text-green-600 dark:text-green-400 mt-1">
+                        {(baseline.cumulativeDeaths - results.cumulativeDeaths) > 0 ? '+' : ''}{formatNumber(baseline.cumulativeDeaths - results.cumulativeDeaths)} averted
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-green-300 dark:border-green-700">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Total DALYs</h4>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {formatNumber(results.dalys || 0)}
+                    </div>
+                    {baseline && (
+                      <div className="text-sm text-green-600 dark:text-green-400 mt-1">
+                        {(baseline.dalys - results.dalys) > 0 ? '+' : ''}{formatNumber(baseline.dalys - results.dalys)} averted
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-green-300 dark:border-green-700">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Total Costs</h4>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                      ${formatNumber(results.totalCost || 0)}
+                    </div>
+                    {baseline && (
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        vs ${formatNumber(baseline.totalCost || 0)} baseline
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-green-300 dark:border-green-700">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ICER</h4>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {!results.icer ? 'N/A' : 
+                        results.icer === 1 ? 'DOMINANT' :
+                        `$${formatNumber(results.icer)}`}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Per DALY averted
+                    </div>
+                  </div>
                 </div>
-              </>
+                
+                <div className="mt-4 p-3 bg-green-100 dark:bg-green-800/30 rounded-md">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <strong>Multi-Disease Methodology:</strong> Each disease ran its own separate 52-week simulation using disease-specific parameters. 
+                    The values above represent the summed outcomes across all diseases, showing the true total health system burden.
+                  </p>
+                </div>
+              </div>
             )}
           </div>
         </div>

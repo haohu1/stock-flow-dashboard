@@ -67,10 +67,18 @@ const BubbleChartView: React.FC = () => {
     const height = 500;
     const margin = { top: 40, right: 40, bottom: 60, left: 60 };
     
-    // Get valid scenarios
+    // Get valid scenarios - when multiple diseases selected, only show aggregated scenarios
     const validScenarios = scenarios.filter(s => {
-      return s.results && 
-             selectedDiseases.has(s.parameters.disease || 'Unknown');
+      if (!s.results) return false;
+      
+      // If multiple diseases are currently selected in the filter, 
+      // only show scenarios that represent aggregated multi-disease results
+      if (selectedDiseases.size > 1) {
+        return s.selectedDiseases && s.selectedDiseases.length > 1;
+      } else {
+        // Single disease mode - show scenarios for that disease
+        return selectedDiseases.has(s.parameters.disease || 'Unknown');
+      }
     });
     
     if (validScenarios.length <= 0) return;

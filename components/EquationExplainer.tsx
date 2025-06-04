@@ -435,61 +435,36 @@ const EquationExplainer: React.FC = () => {
       
       {isMultiDiseaseMode && (
         <>
-          {/* Overview of Multi-Disease Approach */}
-          <div className="mb-6">
-            <h4 className="text-lg font-semibold text-purple-800 dark:text-purple-200 mb-3">Multi-Disease Model Overview</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              The model simulates {selectedDiseases.length} diseases independently, each with its own clinical parameters and disease-specific progression.
-              The final health system burden is the sum of all individual disease impacts.
-            </p>
-          </div>
-          
           <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-4">
             <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-3">🔄 Multi-Disease Calculation Approach</h4>
+            <p className="text-sm text-purple-700 dark:text-purple-300 mb-4">
+              The model simulates <strong>{selectedDiseases.length} diseases independently</strong>, each with its own clinical parameters and disease-specific progression.
+              Selected diseases: <em>{selectedDiseases.map(d => d.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())).join(', ')}</em>
+            </p>
+            
             <div className="space-y-3 text-sm">
               <div className="bg-white dark:bg-gray-800 p-3 rounded border border-purple-300 dark:border-purple-700">
                 <h5 className="font-medium text-purple-800 dark:text-purple-200 mb-2">Step 1: Individual Disease Calculations</h5>
                 <p className="text-purple-700 dark:text-purple-300">
-                  <strong>Each disease is calculated separately</strong> using its own distinct parameters (λ, φ₀, μ, δ, ρ values). 
-                  The model runs independent stock-and-flow calculations for each of the {selectedDiseases.length} selected diseases:
-                </p>
-                <ul className="list-disc list-inside text-xs text-purple-600 dark:text-purple-400 mt-2 ml-2">
-                  {selectedDiseases.map(d => (
-                    <li key={d}>{d.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} - with disease-specific clinical parameters</li>
-                  ))}
-                </ul>
-              </div>
-              
-              <div className="bg-white dark:bg-gray-800 p-3 rounded border border-purple-300 dark:border-purple-700">
-                <h5 className="font-medium text-purple-800 dark:text-purple-200 mb-2">Step 2: Separate Simulations</h5>
-                <p className="text-purple-700 dark:text-purple-300">
-                  <strong>Each disease simulation runs independently</strong> for the full 52 weeks using its own parameters.
-                  <br />
-                  Each disease calculates its own deaths, DALYs, costs, and resolutions separately using disease-specific flows.
+                  Each disease uses its own distinct parameters (λ, φ₀, μ, δ, ρ values) and runs independent stock-and-flow calculations.
                 </p>
               </div>
               
               <div className="bg-white dark:bg-gray-800 p-3 rounded border border-purple-300 dark:border-purple-700">
-                <h5 className="font-medium text-purple-800 dark:text-purple-200 mb-2">Step 3: Outcome Summation</h5>
+                <h5 className="font-medium text-purple-800 dark:text-purple-200 mb-2">Step 2: Separate 52-Week Simulations</h5>
                 <p className="text-purple-700 dark:text-purple-300">
-                  <strong>Final outcomes are summed across diseases:</strong> Total Deaths = Deaths₁ + Deaths₂ + Deaths₃..., 
-                  Total DALYs = DALYs₁ + DALYs₂ + DALYs₃..., Total Costs = Costs₁ + Costs₂ + Costs₃...
-                  <br />
-                  This represents the true combined health system burden from all diseases.
+                  Each disease simulation runs independently for the full 52 weeks, calculating its own deaths, DALYs, costs, and resolutions.
+                </p>
+              </div>
+              
+              <div className="bg-white dark:bg-gray-800 p-3 rounded border border-purple-300 dark:border-purple-700">
+                <h5 className="font-medium text-purple-800 dark:text-purple-200 mb-2">Step 3: Final Aggregation</h5>
+                <p className="text-purple-700 dark:text-purple-300">
+                  <strong>Total outcomes = Sum across all diseases:</strong> Deaths₁ + Deaths₂ + Deaths₃..., DALYs₁ + DALYs₂ + DALYs₃..., etc.
+                  <br />This represents the true combined health system burden.
                 </p>
               </div>
             </div>
-          </div>
-
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
-            <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Multi-Disease Methodology</h4>
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Separate Disease Calculations:</strong> Each of the {selectedDiseases.length} diseases runs its own complete stock-and-flow simulation 
-              using disease-specific parameters. Deaths, DALYs, and costs are calculated separately for each disease, then summed for total burden.
-            </p>
-            <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
-              Selected diseases: {selectedDiseases.map(d => d.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())).join(', ')}
-            </p>
           </div>
           
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-4">

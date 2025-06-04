@@ -67,17 +67,34 @@ const BubbleChartView: React.FC = () => {
     const height = 500;
     const margin = { top: 40, right: 40, bottom: 60, left: 60 };
     
-    // Get valid scenarios - when multiple diseases selected, only show aggregated scenarios
+    // Get valid scenarios - show scenarios that match the selected diseases
     const validScenarios = scenarios.filter(s => {
       if (!s.results) return false;
       
-      // If multiple diseases are currently selected in the filter, 
-      // only show scenarios that represent aggregated multi-disease results
+      // Debug logging for scenario filtering
+      console.log(`BubbleChart filtering scenario "${s.name}": selectedDiseases=${Array.from(selectedDiseases)}, scenario.selectedDiseases=${s.selectedDiseases}, scenario.parameters.disease=${s.parameters.disease}`);
+      
+      // If multiple diseases are currently selected in the filter
       if (selectedDiseases.size > 1) {
-        return s.selectedDiseases && s.selectedDiseases.length > 1;
+        // Show scenarios that either:
+        // 1. Are combined multi-disease scenarios with multiple diseases
+        // 2. Are individual scenarios for diseases that are currently selected
+        if (s.selectedDiseases && s.selectedDiseases.length > 1) {
+          // Multi-disease combined scenario - check if any of its diseases are selected
+          const matches = s.selectedDiseases.some(disease => selectedDiseases.has(disease));
+          console.log(`  Multi-disease scenario: matches=${matches}`);
+          return matches;
+        } else {
+          // Single-disease scenario - check if its disease is selected
+          const matches = selectedDiseases.has(s.parameters.disease || 'Unknown');
+          console.log(`  Single-disease scenario: matches=${matches}`);
+          return matches;
+        }
       } else {
         // Single disease mode - show scenarios for that disease
-        return selectedDiseases.has(s.parameters.disease || 'Unknown');
+        const matches = selectedDiseases.has(s.parameters.disease || 'Unknown');
+        console.log(`  Single disease filter mode: matches=${matches}`);
+        return matches;
       }
     });
     

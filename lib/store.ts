@@ -651,6 +651,9 @@ export const selectedScenarioIdAtom = atom<string | null>(null);
 // Custom scenario name atom
 export const customScenarioNameAtom = atom<string>('');
 
+// Multi-disease scenario creation mode
+export const multiDiseaseScenarioModeAtom = atom<'aggregated' | 'individual'>('aggregated');
+
 // Add current settings as a new scenario
 export const addScenarioAtom = atom(
   null,
@@ -669,6 +672,7 @@ export const addScenarioAtom = atom(
     const selectedAIScenario = get(selectedAIScenarioAtom);
     const timeToScaleParams = get(aiTimeToScaleParametersAtom);
     const customScenarioName = get(customScenarioNameAtom);
+    const scenarioMode = get(multiDiseaseScenarioModeAtom);
     
     // Enhanced debug logs with full data inspection
     console.log('DETAILED DEBUG - Adding scenario(s) for diseases:', selectedDiseases);
@@ -730,95 +734,158 @@ export const addScenarioAtom = atom(
       baseName = `Scenario ${scenarioNumber}`;
     }
     
-    // Check if we should create separate scenarios for each disease
+    // Create scenarios based on user choice for multi-disease mode
     if (selectedDiseases.length > 1 && Object.keys(resultsMap).length > 1) {
-      console.log('Creating separate scenarios for each disease');
+      console.log(`Creating ${scenarioMode} scenario(s) for multi-disease mode`);
       
       // Track the newly created scenarios
       const newScenarios = [...scenarios];
       let lastScenarioId = null;
       
-      // Create a scenario for each disease
-      selectedDiseases.forEach((diseaseName, index) => {
-        // Skip diseases with no results
-        if (!resultsMap[diseaseName]) {
-          console.log(`Skipping ${diseaseName} as it has no results`);
-          return;
-        }
+      if (scenarioMode === 'aggregated') {
+        // Create the aggregated health system scenario for bubble charts
+        console.log('Creating aggregated health system scenario');
         
-        console.log(`Creating scenario for disease: ${diseaseName}`);
-        
-        // Create a single-disease results map
-        const singleDiseaseMap: Record<string, SimulationResults | null> = {
-          [diseaseName]: resultsMap[diseaseName]
-        };
-        
-        // Create a deep copy of the single result
-        const diseaseResultsCopy = (() => {
-          if (!resultsMap[diseaseName]) {
-            return undefined;
-          }
-          
-          // Make a proper deep copy of this disease's result
-          const diseaseResult = resultsMap[diseaseName];
-          
-          const resultCopy: SimulationResults = {
-            cumulativeDeaths: diseaseResult.cumulativeDeaths,
-            cumulativeResolved: diseaseResult.cumulativeResolved,
-            totalCost: diseaseResult.totalCost,
-            averageTimeToResolution: diseaseResult.averageTimeToResolution,
-            dalys: diseaseResult.dalys,
-            icer: diseaseResult.icer,
-            weeklyStates: diseaseResult.weeklyStates.map(state => ({...state})),
-          };
-          
-          return { [diseaseName]: resultCopy };
-        })();
-        
-        // Use just the base name without the disease name for multi-disease scenarios
-        const scenarioName = baseName;
-        
-        // Create the scenario with proper copies
-        const newScenario: Scenario = {
-          id: `scenario-${Date.now()}-${index}`,
-          name: scenarioName,
+        // Use the main results which are already aggregated from runSimulationAtom
+        const aggregatedScenario: Scenario = {
+          id: `scenario-${Date.now()}-aggregated`,
+          name: baseName, // Use the base name for the aggregated scenario
           parameters: { 
             ...params,
             healthSystemStrength,
-            disease: diseaseName,  // Set the primary disease to this disease
+            disease: 'health_system_total', // Special identifier for aggregated scenario
             population
           },
           aiInterventions: { ...aiInterventions },
           effectMagnitudes: { ...effectMagnitudes },
-          // Set the primary result to this disease's result
-          results: resultsMap[diseaseName] ? { 
-            ...JSON.parse(JSON.stringify(resultsMap[diseaseName])),
-            weeklyStates: resultsMap[diseaseName].weeklyStates.map(state => ({...state}))
+          // Use the main results which represent the aggregated health system total
+          results: results ? { 
+            ...JSON.parse(JSON.stringify(results)),
+            weeklyStates: results.weeklyStates.map(state => ({...state}))
           } : null,
           baselineResults: baseline ? { 
             ...JSON.parse(JSON.stringify(baseline)),
             weeklyStates: baseline.weeklyStates.map(state => ({...state}))
           } : null,
-          // Store just this disease
-          selectedDiseases: [diseaseName],
-          diseaseResultsMap: diseaseResultsCopy,
+          // Store all selected diseases
+          selectedDiseases: [...selectedDiseases],
+          diseaseResultsMap: (() => {
+            // Create deep copy of the full results map for the aggregated scenario
+            const deepCopy: Record<string, SimulationResults | null> = {};
+            Object.entries(resultsMap).forEach(([disease, results]) => {
+              if (!results) {
+                deepCopy[disease] = null;
+                return;
+              }
+              deepCopy[disease] = {
+                cumulativeDeaths: results.cumulativeDeaths,
+                cumulativeResolved: results.cumulativeResolved,
+                totalCost: results.totalCost,
+                averageTimeToResolution: results.averageTimeToResolution,
+                dalys: results.dalys,
+                icer: results.icer,
+                weeklyStates: results.weeklyStates.map(state => ({...state})),
+              };
+            });
+            return deepCopy;
+          })(),
           timeToScaleParams: timeToScaleParams
         };
         
-        // Check the created scenario
-        console.log(`Created scenario for ${diseaseName}:`, {
-          id: newScenario.id,
-          name: newScenario.name,
-          disease: diseaseName,
-          deaths: resultsMap[diseaseName]?.cumulativeDeaths,
-          costs: resultsMap[diseaseName]?.totalCost,
-          icer: resultsMap[diseaseName]?.icer
+        console.log(`Created aggregated scenario:`, {
+          id: aggregatedScenario.id,
+          name: aggregatedScenario.name,
+          disease: 'health_system_total',
+          selectedDiseases: aggregatedScenario.selectedDiseases,
+          deaths: results?.cumulativeDeaths,
+          costs: results?.totalCost,
+          icer: results?.icer
         });
         
-        // Add to the list of new scenarios
-        newScenarios.push(newScenario);
-        lastScenarioId = newScenario.id;
-      });
+        // Add the aggregated scenario
+        newScenarios.push(aggregatedScenario);
+        lastScenarioId = aggregatedScenario.id;
+        
+        console.log(`Created 1 aggregated health system scenario`);
+      } else {
+        // Create individual disease scenarios for detailed analysis
+        console.log('Creating individual disease scenarios');
+        
+        selectedDiseases.forEach((diseaseName, index) => {
+          // Skip diseases with no results
+          if (!resultsMap[diseaseName]) {
+            console.log(`Skipping ${diseaseName} as it has no results`);
+            return;
+          }
+          
+          console.log(`Creating individual scenario for disease: ${diseaseName}`);
+          
+          // Create a deep copy of the single result
+          const diseaseResultsCopy = (() => {
+            if (!resultsMap[diseaseName]) {
+              return undefined;
+            }
+            
+            const diseaseResult = resultsMap[diseaseName];
+            const resultCopy: SimulationResults = {
+              cumulativeDeaths: diseaseResult.cumulativeDeaths,
+              cumulativeResolved: diseaseResult.cumulativeResolved,
+              totalCost: diseaseResult.totalCost,
+              averageTimeToResolution: diseaseResult.averageTimeToResolution,
+              dalys: diseaseResult.dalys,
+              icer: diseaseResult.icer,
+              weeklyStates: diseaseResult.weeklyStates.map(state => ({...state})),
+            };
+            
+            return { [diseaseName]: resultCopy };
+          })();
+          
+          // Create individual disease scenario name
+          const individualScenarioName = `${baseName} (${diseaseName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())})`;
+          
+          // Create the scenario with proper copies
+          const newScenario: Scenario = {
+            id: `scenario-${Date.now()}-${index}`,
+            name: individualScenarioName,
+            parameters: { 
+              ...params,
+              healthSystemStrength,
+              disease: diseaseName,  // Set the primary disease to this disease
+              population
+            },
+            aiInterventions: { ...aiInterventions },
+            effectMagnitudes: { ...effectMagnitudes },
+            // Set the primary result to this disease's result
+            results: resultsMap[diseaseName] ? { 
+              ...JSON.parse(JSON.stringify(resultsMap[diseaseName])),
+              weeklyStates: resultsMap[diseaseName].weeklyStates.map(state => ({...state}))
+            } : null,
+            baselineResults: baseline ? { 
+              ...JSON.parse(JSON.stringify(baseline)),
+              weeklyStates: baseline.weeklyStates.map(state => ({...state}))
+            } : null,
+            // Store just this disease
+            selectedDiseases: [diseaseName],
+            diseaseResultsMap: diseaseResultsCopy,
+            timeToScaleParams: timeToScaleParams
+          };
+          
+          console.log(`Created individual scenario for ${diseaseName}:`, {
+            id: newScenario.id,
+            name: newScenario.name,
+            disease: diseaseName,
+            deaths: resultsMap[diseaseName]?.cumulativeDeaths,
+            costs: resultsMap[diseaseName]?.totalCost,
+            icer: resultsMap[diseaseName]?.icer
+          });
+          
+          // Add to the list of new scenarios
+          newScenarios.push(newScenario);
+          lastScenarioId = newScenario.id;
+        });
+        
+        console.log(`Created ${selectedDiseases.length} individual disease scenarios`);
+      }
       
       // Save all the new scenarios
       set(scenariosAtom, newScenarios);
@@ -827,8 +894,6 @@ export const addScenarioAtom = atom(
       if (lastScenarioId) {
         set(selectedScenarioIdAtom, lastScenarioId);
       }
-      
-      console.log(`Created ${newScenarios.length - scenarios.length} new scenarios`);
     } else {
       // Original code for creating a single scenario
       console.log('Creating single scenario with all diseases');

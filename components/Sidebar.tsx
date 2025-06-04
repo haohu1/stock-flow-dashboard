@@ -25,7 +25,8 @@ import {
   multiConditionModeAtom,
   multiConditionMortalityMultiplierAtom,
   multiConditionResolutionReductionAtom,
-  multiConditionCareSeekingBoostAtom
+  multiConditionCareSeekingBoostAtom,
+  multiDiseaseScenarioModeAtom
 } from '../lib/store';
 import { healthSystemStrengthDefaults } from '../models/stockAndFlowModel';
 import { countryProfiles } from '../models/countrySpecificModel';
@@ -53,6 +54,7 @@ const Sidebar: React.FC = () => {
   const [selectedCountry, setSelectedCountry] = useAtom(selectedCountryAtom);
   const [isUrban, setIsUrban] = useAtom(isUrbanSettingAtom);
   const [useCountrySpecific, setUseCountrySpecific] = useAtom(useCountrySpecificModelAtom);
+  const [scenarioMode, setScenarioMode] = useAtom(multiDiseaseScenarioModeAtom);
   const [multiConditionMode, setMultiConditionMode] = useAtom(multiConditionModeAtom);
   const [mortalityMultiplier, setMortalityMultiplier] = useAtom(multiConditionMortalityMultiplierAtom);
   const [resolutionReduction, setResolutionReduction] = useAtom(multiConditionResolutionReductionAtom);
@@ -599,6 +601,43 @@ const Sidebar: React.FC = () => {
           </label>
         </div>
       </div>
+
+      {/* Multi-disease scenario mode choice */}
+      {selectedDiseases.length > 1 && (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-lg border border-blue-200 dark:border-blue-700">
+          <label className="block text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+            Multi-Disease Scenario Type
+          </label>
+          <div className="space-y-2">
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="scenarioMode"
+                value="aggregated"
+                checked={scenarioMode === 'aggregated'}
+                onChange={(e) => setScenarioMode(e.target.value as 'aggregated' | 'individual')}
+                className="form-radio h-4 w-4 text-blue-600"
+              />
+              <span className="ml-2 text-sm text-blue-800 dark:text-blue-200">
+                <strong>Health System Total</strong> - Single scenario with combined results (for bubble charts)
+              </span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="scenarioMode"
+                value="individual"
+                checked={scenarioMode === 'individual'}
+                onChange={(e) => setScenarioMode(e.target.value as 'aggregated' | 'individual')}
+                className="form-radio h-4 w-4 text-blue-600"
+              />
+              <span className="ml-2 text-sm text-blue-800 dark:text-blue-200">
+                <strong>Individual Diseases</strong> - Separate scenarios for each disease (for detailed analysis)
+              </span>
+            </label>
+          </div>
+        </div>
+      )}
 
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

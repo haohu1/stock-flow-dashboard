@@ -6,5 +6,39 @@
   - Local:        http://localhost:3000
 
  ✓ Starting...
- ✓ Ready in 931ms
-[?25h
+ ✓ Ready in 920ms
+
+
+## EquationExplainer Multi-Disease Review - 2025-06-04
+
+### Changes Made:
+1. **Removed orphaned variables** - Cleaned up leftover variables without associated equation blocks (lines 154-163)
+
+2. **Reorganized component structure** for better readability:
+   - Added clear multi-disease overview section at the top
+   - Separated core system equations (with expandable details) from detailed system equations
+   - Better visual hierarchy with proper section headers
+
+3. **Improved multi-disease flow**:
+   - Clear explanation of how diseases are calculated independently
+   - Individual disease parameter buttons show incidence rates and burden categories
+   - Disease-specific equations are shown when clicking on a disease
+   - Clear aggregation section showing how results are summed
+
+4. **Type safety improvements**:
+   - Added proper TypeScript types for equations and variables
+   - Removed 'any' types where possible
+   - Better type definitions for function parameters
+
+5. **Visual improvements**:
+   - Better use of color coding (purple for multi-disease, orange for individual diseases)
+   - Clear separation between different equation sections
+   - Expandable core equations for less clutter
+
+### Result:
+The equation tab is now much more readable and informative for multi-disease scenarios. Users can:
+- Understand the overall calculation approach
+- View core system equations that apply to all diseases
+- Click individual diseases to see their specific parameters and equations
+- Understand how results are aggregated across diseases
+

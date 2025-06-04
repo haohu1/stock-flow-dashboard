@@ -26,6 +26,10 @@ const EquationExplainer: React.FC = () => {
   
   // State for which disease equations to show
   const [selectedDiseaseForEquations, setSelectedDiseaseForEquations] = useState<string | null>(null);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  
+  // Type for core equation keys
+  type CoreEquationKey = 'incidence' | 'careseeking' | 'outcomes' | 'referrals' | 'capacity';
 
   // Helper to create LaTeX multiplier symbol (e.g., "α_{L0}", "β_I")
   const getLatexMultiplierSymbol = (type: 'mu' | 'delta' | 'rho', level: string): string => {
@@ -39,7 +43,7 @@ const EquationExplainer: React.FC = () => {
   };
 
   // Function to generate equations for a specific disease
-  const generateEquationsForDisease = (disease: string, diseaseParams: any) => {
+  const generateEquationsForDisease = (disease: string, diseaseParams: Record<string, number>) => {
     return [
       {
         title: `Weekly Incidence - ${disease.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
@@ -75,42 +79,94 @@ const EquationExplainer: React.FC = () => {
     ];
   };
 
-  const equations = [
+  // Simplified core equations for better readability
+  const coreEquations: Array<{
+    title: string;
+    equation: string;
+    explanation: string;
+    example: string;
+    key: CoreEquationKey;
+  }> = [
     {
-      title: 'Weekly Incidence',
+      title: '📈 Weekly Incidence',
       equation: 'New = \\frac{\\lambda \\cdot Pop}{52}',
-      explanation: 'New cases entering the system each week based on annual incidence rate.',
+      explanation: 'How many new cases enter the health system each week.',
+      example: `${formatDecimal((params.lambda * population) / 52, 0)} new cases per week`,
+      key: 'incidence'
+    },
+    {
+      title: '🏥 Care Seeking Behavior', 
+      equation: 'Formal = \\phi_0 \\cdot New \\\\ Informal = (1-\\phi_0) \\cdot (1-r) \\cdot New \\\\ Untreated = (1-\\phi_0) \\cdot r \\cdot New',
+      explanation: 'How patients choose their initial care pathway.',
+      example: `${formatDecimal(params.phi0 * 100, 0)}% seek formal care, ${formatDecimal((1-params.phi0) * (1-params.informalCareRatio) * 100, 0)}% informal care, ${formatDecimal((1-params.phi0) * params.informalCareRatio * 100, 0)}% remain untreated`,
+      key: 'careseeking'
+    },
+    {
+      title: '⚕️ Patient Outcomes',
+      equation: 'Deaths = \\sum \\delta \\cdot Patients \\\\ Resolved = \\sum \\mu \\cdot Patients',
+      explanation: 'Weekly deaths and recoveries across all care levels.',
+      example: 'Each care level has different resolution and mortality rates',
+      key: 'outcomes'
+    },
+    {
+      title: '🔄 Referral System',
+      equation: 'Referrals = \\rho \\cdot Patients',
+      explanation: 'How patients move between care levels.',
+      example: `CHW → Primary: ${formatDecimal(params.rho0 * 100, 0)}%, Primary → Hospital: ${formatDecimal(params.rho1 * 100, 0)}%`,
+      key: 'referrals'
+    },
+    {
+      title: '⏳ Capacity & Queues',
+      equation: 'Capacity = e^{-2 \\cdot congestion} \\\\ Queue = (Demand - Capacity) \\cdot (1-AI_{prevention})',
+      explanation: 'How system congestion creates queues and delays care.',
+      example: `${formatDecimal((params.systemCongestion || 0) * 100, 0)}% congestion reduces capacity to ${formatDecimal(Math.exp(-2 * (params.systemCongestion || 0)) * 100, 0)}%`,
+      key: 'capacity'
+    }
+  ];
+
+  // Detailed equations for each section (shown when expanded)
+  const detailedEquations: Record<CoreEquationKey, { variables: Array<{ symbol: string; name: string; value: string | number }> }> = {
+    incidence: {
       variables: [
         { symbol: '\\lambda', name: 'Annual Incidence Rate', value: params.lambda },
-        { symbol: 'Pop', name: 'Population', value: population.toLocaleString() },
-      ],
-      example: `For a population of ${population.toLocaleString()} with λ = ${formatDecimal(params.lambda, 2)}, approximately ${formatDecimal((params.lambda * population) / 52, 0)} new cases per week.`
+        { symbol: 'Pop', name: 'Population', value: population.toLocaleString() }
+      ]
     },
-    {
-      title: 'Initial Care Seeking',
-      equation: 'U_{new} = r \\cdot (1 - \\phi_0) \\cdot New \\\\ I_{new} = (1 - r) \\cdot (1 - \\phi_0) \\cdot New \\\\ Formal_{new} = \\phi_0 \\cdot New',
-      explanation: 'Distribution of new cases between untreated, informal care, and formal care pathways. Note: r (informal care ratio) represents the proportion of untreated patients who remain untreated vs. moving to informal care.',
+    careseeking: {
       variables: [
-        { symbol: '\\phi_0', name: 'Initial Formal Care Seeking', value: params.phi0 },
-        { symbol: 'r', name: 'Untreated Ratio (informalCareRatio)', value: params.informalCareRatio },
-        { symbol: 'New', name: 'New Weekly Cases', value: 'Dynamic' },
-      ],
-      example: `With φ_0 = ${formatDecimal(params.phi0, 2)}, ${formatDecimal(params.phi0 * 100, 0)}% of new cases directly enter formal care. Of the remaining ${formatDecimal((1-params.phi0) * 100, 0)}%, ${formatDecimal(params.informalCareRatio * 100, 0)}% remain untreated (U_new) and ${formatDecimal((1-params.informalCareRatio) * 100, 0)}% seek informal care (I_new).`
+        { symbol: '\\phi_0', name: 'Formal Care Seeking Rate', value: params.phi0 },
+        { symbol: 'r', name: 'Untreated Ratio', value: params.informalCareRatio }
+      ]
     },
-    {
-      title: 'Untreated Patients',
-      equation: 'U_{deaths} = \\delta_U \\cdot U_t \\\\ U_{resolved} = \\mu_U \\cdot U_t \\\\ U_{t+1} = U_t + U_{new} - U_{deaths} - U_{resolved}',
-      explanation: 'Weekly transitions for patients who remain completely untreated. Note: The health system multipliers for δ_U have already been applied to the parameter. Each week, the untreated population changes based on inflows from new cases and outflows from deaths and resolution.',
+    outcomes: {
       variables: [
-        { symbol: 'U_t', name: 'Current Untreated Cases', value: 'Dynamic' },
-        { symbol: 'U_{t+1}', name: 'Untreated Cases Next Week', value: 'Dynamic' },
-        { symbol: '\\delta_U', name: 'Untreated Death Rate (weekly probability, including multiplier)', value: params.deltaU },
-        { symbol: '\\mu_U', name: 'Untreated Spontaneous Resolution Rate (weekly probability)', value: params.muU },
-        { symbol: getLatexMultiplierSymbol('delta', 'U'), name: 'Untreated Death Multiplier (pre-applied)', value: activeMultipliers.delta_multiplier_U },
-        { symbol: 'r', name: 'Untreated Ratio (informalCareRatio)', value: params.informalCareRatio },
-      ],
-      example: `The base untreated death rate has been adjusted by the health system multiplier ${getLatexMultiplierSymbol('delta', 'U')} = ${formatDecimal(activeMultipliers.delta_multiplier_U, 2)}, resulting in an effective weekly death rate of ${formatDecimal(params.deltaU * 100, 2)}% for untreated patients. Each week, ${formatDecimal(params.muU * 100, 2)}% of untreated patients recover spontaneously, and new untreated patients (U_new = ${formatDecimal(params.informalCareRatio * (1-params.phi0) * 100, 1)}% of New) join the population.`
+        { symbol: '\\delta', name: 'Death Rates (by level)', value: 'Varies' },
+        { symbol: '\\mu', name: 'Resolution Rates (by level)', value: 'Varies' }
+      ]
     },
+    referrals: {
+      variables: [
+        { symbol: '\\rho_0', name: 'CHW Referral Rate', value: params.rho0 },
+        { symbol: '\\rho_1', name: 'Primary Care Referral Rate', value: params.rho1 },
+        { symbol: '\\rho_2', name: 'Hospital Referral Rate', value: params.rho2 }
+      ]
+    },
+    capacity: {
+      variables: [
+        { symbol: 'congestion', name: 'System Congestion', value: params.systemCongestion || 0 },
+        { symbol: 'AI_{prevention}', name: 'AI Queue Prevention', value: params.queuePreventionRate || 0 }
+      ]
+    }
+  };
+
+  // System-level equations that apply to all diseases
+  const systemEquations: Array<{
+    title: string;
+    equation: string;
+    explanation: string;
+    variables: Array<{ symbol: string; name: string; value: string | number }>;
+    example: string;
+  }> = [
     {
       title: 'Informal Care Transitions',
       equation: 'I_{formal} = \\sigma_I \\cdot I_t \\\\ I_{resolved} = \\mu_I \\cdot I_t \\\\ I_{deaths} = \\delta_I \\cdot I_t \\\\ I_{t+1} = I_t + I_{new} - I_{formal} - I_{resolved} - I_{deaths}',
@@ -379,6 +435,15 @@ const EquationExplainer: React.FC = () => {
       
       {isMultiDiseaseMode && (
         <>
+          {/* Overview of Multi-Disease Approach */}
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold text-purple-800 dark:text-purple-200 mb-3">Multi-Disease Model Overview</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              The model simulates {selectedDiseases.length} diseases independently, each with its own clinical parameters and disease-specific progression.
+              The final health system burden is the sum of all individual disease impacts.
+            </p>
+          </div>
+          
           <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-4">
             <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-3">🔄 Multi-Disease Calculation Approach</h4>
             <div className="space-y-3 text-sm">
@@ -487,7 +552,8 @@ const EquationExplainer: React.FC = () => {
                 📊 Individual Disease Equations: {selectedDiseaseForEquations.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
               </h4>
               <p className="text-sm text-orange-700 dark:text-orange-300 mb-4">
-                These equations show how <strong>{selectedDiseaseForEquations.replace(/_/g, ' ')}</strong> is calculated separately using its own parameters before being summed with other diseases.
+                These equations show how <strong>{selectedDiseaseForEquations.replace(/_/g, ' ')}</strong> is calculated separately using its own disease-specific parameters.
+                This disease flows through the same healthcare system structure shown below, but with its unique clinical characteristics.
               </p>
               
               <div className="space-y-6">
@@ -549,6 +615,12 @@ const EquationExplainer: React.FC = () => {
               </p>
             </div>
           </div>
+          
+          <div className="mt-6 mb-4 border-t border-gray-300 dark:border-gray-600 pt-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400 italic">
+              The equations below describe how the healthcare system works. In multi-disease mode, each disease flows through this same system independently.
+            </p>
+          </div>
         </>
       )}
       
@@ -592,8 +664,67 @@ const EquationExplainer: React.FC = () => {
         Values shown reflect current parameter settings, with health system multipliers already applied to the parameters.
       </p>
       
+      {/* Core System Equations */}
+      <div className="mb-8">
+        <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Core System Equations</h4>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          These equations describe the fundamental flow of patients through the healthcare system. They apply equally to all diseases.
+        </p>
+        
+        <div className="space-y-4">
+          {coreEquations.map((eq) => (
+            <div key={eq.key} className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+              <button
+                onClick={() => setExpandedSection(expandedSection === eq.key ? null : eq.key)}
+                className="w-full text-left"
+              >
+                <h5 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-2">{eq.title}</h5>
+                <div className="text-sm text-gray-800 dark:text-gray-200 mb-2">
+                  <BlockMath math={eq.equation} />
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{eq.explanation}</p>
+                <p className="text-sm text-blue-600 dark:text-blue-400 italic mt-2">{eq.example}</p>
+                <div className="text-xs text-blue-500 dark:text-blue-400 mt-2">
+                  {expandedSection === eq.key ? '▲ Hide details' : '▼ Show details'}
+                </div>
+              </button>
+              
+              {expandedSection === eq.key && detailedEquations[eq.key] && (
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {detailedEquations[eq.key].variables.map((v, i) => (
+                      <div key={i} className="flex justify-between p-2 bg-blue-50 dark:bg-blue-900 rounded-md">
+                        <div>
+                          <span className="font-mono text-blue-800 dark:text-blue-200">
+                            <InlineMath math={v.symbol} />
+                          </span>
+                          <span className="text-xs text-gray-600 dark:text-gray-400 ml-2">
+                            {v.name}
+                          </span>
+                        </div>
+                        <div className="font-mono text-gray-800 dark:text-gray-200">
+                          {v.value !== undefined && v.value !== null ? 
+                            (typeof v.value === 'string' ? v.value : formatDecimal(v.value, 4)) 
+                            : 'N/A'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Detailed System Equations */}
       <div className="space-y-8">
-        {equations.map((eq, index) => (
+        <h4 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Detailed System Equations</h4>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          These equations show the complete mathematical formulation of the model, including all state transitions and AI intervention effects.
+        </p>
+        
+        {systemEquations.map((eq, index) => (
           <div key={index} className="border-t border-gray-200 dark:border-gray-700 pt-4">
             <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-2">{eq.title}</h4>
             

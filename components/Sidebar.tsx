@@ -86,20 +86,22 @@ const Sidebar: React.FC = () => {
   // Initialize disease options
   useEffect(() => {
     const options = [
-      // Infectious Diseases
-      { id: 'tuberculosis', name: 'Tuberculosis', group: 'Infectious Diseases', checked: selectedDiseases.includes('tuberculosis') },
-      { id: 'childhood_pneumonia', name: 'Childhood Pneumonia', group: 'Infectious Diseases', checked: selectedDiseases.includes('childhood_pneumonia') },
-      { id: 'malaria', name: 'Malaria', group: 'Infectious Diseases', checked: selectedDiseases.includes('malaria') },
-      { id: 'fever', name: 'Fever of Unknown Origin', group: 'Infectious Diseases', checked: selectedDiseases.includes('fever') },
-      { id: 'diarrhea', name: 'Diarrheal Disease', group: 'Infectious Diseases', checked: selectedDiseases.includes('diarrhea') },
-      { id: 'hiv_opportunistic', name: 'HIV Opportunistic Infections', group: 'Infectious Diseases', checked: selectedDiseases.includes('hiv_opportunistic') },
-      { id: 'urti', name: 'Upper Respiratory Tract Infection (URTI)', group: 'Infectious Diseases', checked: selectedDiseases.includes('urti') },
+      // Major Infectious Diseases
+      { id: 'tuberculosis', name: 'Tuberculosis', group: 'Major Infectious Diseases', checked: selectedDiseases.includes('tuberculosis') },
+      { id: 'malaria', name: 'Malaria', group: 'Major Infectious Diseases', checked: selectedDiseases.includes('malaria') },
+      { id: 'hiv_opportunistic', name: 'HIV Opportunistic Infections', group: 'Major Infectious Diseases', checked: selectedDiseases.includes('hiv_opportunistic') },
+      { id: 'childhood_pneumonia', name: 'Childhood Pneumonia', group: 'Major Infectious Diseases', checked: selectedDiseases.includes('childhood_pneumonia') },
+      { id: 'diarrhea', name: 'Diarrheal Disease', group: 'Major Infectious Diseases', checked: selectedDiseases.includes('diarrhea') },
       
-      // General & Chronic Conditions (merged with Maternal & Neonatal)
-      { id: 'high_risk_pregnancy_low_anc', name: 'High-Risk Pregnancy (Low ANC)', group: 'General & Chronic Conditions', checked: selectedDiseases.includes('high_risk_pregnancy_low_anc') },
-      { id: 'anemia', name: 'Anemia', group: 'General & Chronic Conditions', checked: selectedDiseases.includes('anemia') },
-      { id: 'hiv_management_chronic', name: 'HIV Management (Chronic)', group: 'General & Chronic Conditions', checked: selectedDiseases.includes('hiv_management_chronic') },
-      { id: 'congestive_heart_failure', name: 'Congestive Heart Failure', group: 'General & Chronic Conditions', checked: selectedDiseases.includes('congestive_heart_failure') },
+      // Common Infections
+      { id: 'fever', name: 'Fever of Unknown Origin', group: 'Common Infections', checked: selectedDiseases.includes('fever') },
+      { id: 'urti', name: 'Upper Respiratory Tract Infection', group: 'Common Infections', checked: selectedDiseases.includes('urti') },
+      
+      // Chronic Conditions
+      { id: 'hiv_management_chronic', name: 'HIV Management (Chronic)', group: 'Chronic Conditions', checked: selectedDiseases.includes('hiv_management_chronic') },
+      
+      // Non-Communicable (Benchmark)
+      { id: 'congestive_heart_failure', name: 'Congestive Heart Failure', group: 'Non-Communicable (Benchmark)', checked: selectedDiseases.includes('congestive_heart_failure') },
     ];
     
     setDiseaseOptions(options);

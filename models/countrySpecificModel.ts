@@ -88,18 +88,30 @@ export const countryProfiles: Record<string, CountryProfile> = {
 // Disease burden multipliers by country
 export const countryDiseaseBurdens: Record<string, Record<string, DiseaseBurdenMultiplier>> = {
   nigeria: {
-    tb: { country: 'Nigeria', disease: 'tb', incidenceMultiplier: 0.8, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.7, notes: 'Lower TB burden than Kenya but poor case detection' },
+    tuberculosis: { country: 'Nigeria', disease: 'tuberculosis', incidenceMultiplier: 0.8, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.7, notes: 'Lower TB burden than Kenya but poor case detection' },
     malaria: { country: 'Nigeria', disease: 'malaria', incidenceMultiplier: 1.5, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.8, notes: 'High malaria endemicity, especially in rural areas' },
-    pneumonia_childhood: { country: 'Nigeria', disease: 'pneumonia_childhood', incidenceMultiplier: 1.8, mortalityMultiplier: 1.6, careSeekingMultiplier: 0.6, notes: 'Very high childhood pneumonia burden' },
+    childhood_pneumonia: { country: 'Nigeria', disease: 'childhood_pneumonia', incidenceMultiplier: 1.8, mortalityMultiplier: 1.6, careSeekingMultiplier: 0.6, notes: 'Very high childhood pneumonia burden' },
     diarrhea: { country: 'Nigeria', disease: 'diarrhea', incidenceMultiplier: 1.7, mortalityMultiplier: 1.5, careSeekingMultiplier: 0.65, notes: 'Major cause of under-5 mortality' },
-    hiv_management: { country: 'Nigeria', disease: 'hiv_management', incidenceMultiplier: 0.6, mortalityMultiplier: 0.8, careSeekingMultiplier: 0.8, notes: 'Lower HIV prevalence than East/Southern Africa' },
+    hiv_management_chronic: { country: 'Nigeria', disease: 'hiv_management_chronic', incidenceMultiplier: 0.6, mortalityMultiplier: 0.8, careSeekingMultiplier: 0.8, notes: 'Lower HIV prevalence than East/Southern Africa' },
+    hiv_opportunistic: { country: 'Nigeria', disease: 'hiv_opportunistic', incidenceMultiplier: 0.6, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.7, notes: 'Lower HIV burden but weaker health system' },
+    fever: { country: 'Nigeria', disease: 'fever', incidenceMultiplier: 1.4, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.6, notes: 'High burden of febrile illnesses' },
+    urti: { country: 'Nigeria', disease: 'urti', incidenceMultiplier: 1.3, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.7, notes: 'Common but often self-treated' },
+    anemia: { country: 'Nigeria', disease: 'anemia', incidenceMultiplier: 1.4, mortalityMultiplier: 1.2, careSeekingMultiplier: 0.7, notes: 'High burden, nutritional deficiencies' },
+    high_risk_pregnancy_low_anc: { country: 'Nigeria', disease: 'high_risk_pregnancy_low_anc', incidenceMultiplier: 1.6, mortalityMultiplier: 1.5, careSeekingMultiplier: 0.5, notes: 'High maternal mortality, low facility delivery' },
+    congestive_heart_failure: { country: 'Nigeria', disease: 'congestive_heart_failure', incidenceMultiplier: 1.2, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.6, notes: 'Growing NCD burden, limited cardiac care' }
   },
   kenya: {
-    tb: { country: 'Kenya', disease: 'tb', incidenceMultiplier: 1.5, mortalityMultiplier: 1.4, careSeekingMultiplier: 0.85, notes: 'High TB burden, strong TB program' },
+    tuberculosis: { country: 'Kenya', disease: 'tuberculosis', incidenceMultiplier: 1.5, mortalityMultiplier: 1.4, careSeekingMultiplier: 0.85, notes: 'High TB burden, strong TB program' },
     malaria: { country: 'Kenya', disease: 'malaria', incidenceMultiplier: 1.1, mortalityMultiplier: 1.0, careSeekingMultiplier: 0.9, notes: 'Endemic in western regions' },
-    pneumonia_childhood: { country: 'Kenya', disease: 'pneumonia_childhood', incidenceMultiplier: 1.2, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.8, notes: 'Significant but declining' },
+    childhood_pneumonia: { country: 'Kenya', disease: 'childhood_pneumonia', incidenceMultiplier: 1.2, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.8, notes: 'Significant but declining' },
     diarrhea: { country: 'Kenya', disease: 'diarrhea', incidenceMultiplier: 1.1, mortalityMultiplier: 1.0, careSeekingMultiplier: 0.8, notes: 'Improved water/sanitation reducing burden' },
-    hiv_management: { country: 'Kenya', disease: 'hiv_management', incidenceMultiplier: 1.8, mortalityMultiplier: 1.5, careSeekingMultiplier: 0.9, notes: 'High HIV prevalence, good treatment programs' },
+    hiv_management_chronic: { country: 'Kenya', disease: 'hiv_management_chronic', incidenceMultiplier: 1.8, mortalityMultiplier: 1.5, careSeekingMultiplier: 0.9, notes: 'High HIV prevalence, good treatment programs' },
+    hiv_opportunistic: { country: 'Kenya', disease: 'hiv_opportunistic', incidenceMultiplier: 2.0, mortalityMultiplier: 1.6, careSeekingMultiplier: 0.85, notes: 'High HIV-TB co-infection' },
+    fever: { country: 'Kenya', disease: 'fever', incidenceMultiplier: 1.2, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.8, notes: 'Better health seeking behavior' },
+    urti: { country: 'Kenya', disease: 'urti', incidenceMultiplier: 1.1, mortalityMultiplier: 1.0, careSeekingMultiplier: 0.85, notes: 'Good primary care access' },
+    anemia: { country: 'Kenya', disease: 'anemia', incidenceMultiplier: 1.2, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.8, notes: 'Moderate burden' },
+    high_risk_pregnancy_low_anc: { country: 'Kenya', disease: 'high_risk_pregnancy_low_anc', incidenceMultiplier: 1.3, mortalityMultiplier: 1.2, careSeekingMultiplier: 0.7, notes: 'Improving maternal health' },
+    congestive_heart_failure: { country: 'Kenya', disease: 'congestive_heart_failure', incidenceMultiplier: 1.3, mortalityMultiplier: 1.2, careSeekingMultiplier: 0.7, notes: 'Limited cardiac services' }
   },
   south_africa: {
     tuberculosis: { country: 'South Africa', disease: 'tuberculosis', incidenceMultiplier: 2.2, mortalityMultiplier: 1.8, careSeekingMultiplier: 0.9, notes: 'Highest TB burden globally (400+ per 100k), extensive drug resistance, strong detection but high mortality' },
@@ -190,6 +202,8 @@ export function adjustParametersForCountry(
   isUrban: boolean,
   disease: string
 ): CountrySpecificParameters {
+  console.log(`Adjusting parameters for country: ${countryCode}, urban: ${isUrban}, disease: ${disease}`);
+  
   const country = countryProfiles[countryCode];
   if (!country) {
     throw new Error(`Country profile not found for ${countryCode}`);
@@ -217,26 +231,38 @@ export function adjustParametersForCountry(
     adjustedParams.phi0 *= burdenMultipliers.careSeekingMultiplier;
   }
 
-  // Apply urban/rural adjustments
+  // Apply country-specific urban/rural adjustments
   if (!isUrban) {
-    // Rural areas have worse outcomes
-    adjustedParams.phi0 *= 0.6; // 40% lower formal care seeking
-    adjustedParams.sigmaI *= 0.5; // 50% lower transition to formal care
-    adjustedParams.informalCareRatio *= 1.5; // More reliance on informal care
+    console.log(`  Applying rural adjustments for ${disease} in ${countryCode}`);
     
-    // Worse resolution rates in rural areas
-    adjustedParams.mu0 *= 0.7;
-    adjustedParams.mu1 *= 0.6;
-    adjustedParams.mu2 *= 0.7;
-    adjustedParams.mu3 *= 0.8;
+    // Country-specific rural multipliers based on health system infrastructure
+    const ruralMultipliers = getRuralMultipliers(countryCode, disease);
     
-    // Higher mortality in rural areas
-    adjustedParams.deltaU *= 1.3;
-    adjustedParams.deltaI *= 1.4;
-    adjustedParams.delta0 *= 1.2;
-    adjustedParams.delta1 *= 1.3;
-    adjustedParams.delta2 *= 1.2;
-    adjustedParams.delta3 *= 1.1;
+    // Care-seeking adjustments
+    adjustedParams.phi0 *= ruralMultipliers.phi0;
+    adjustedParams.sigmaI *= ruralMultipliers.sigmaI;
+    adjustedParams.informalCareRatio *= ruralMultipliers.informalRatio;
+    
+    // Resolution rate adjustments with caps to prevent extreme values
+    adjustedParams.mu0 *= Math.max(0.5, ruralMultipliers.mu0);
+    adjustedParams.mu1 *= Math.max(0.4, ruralMultipliers.mu1);
+    adjustedParams.mu2 *= Math.max(0.5, ruralMultipliers.mu2);
+    adjustedParams.mu3 *= Math.max(0.6, ruralMultipliers.mu3);
+    
+    // Mortality adjustments with tighter caps to prevent extreme compound effects
+    const oldDeltaU = adjustedParams.deltaU;
+    adjustedParams.deltaU *= Math.min(1.5, ruralMultipliers.deltaU);
+    adjustedParams.deltaI *= Math.min(1.5, ruralMultipliers.deltaI);
+    adjustedParams.delta0 *= Math.min(1.4, ruralMultipliers.delta0);
+    adjustedParams.delta1 *= Math.min(1.4, ruralMultipliers.delta1);
+    adjustedParams.delta2 *= Math.min(1.3, ruralMultipliers.delta2);
+    adjustedParams.delta3 *= Math.min(1.2, ruralMultipliers.delta3);
+    console.log(`  Rural mortality adjustment: deltaU ${oldDeltaU} -> ${adjustedParams.deltaU}`);
+    
+    // Referral rate adjustments
+    adjustedParams.rho0 *= Math.max(0.4, ruralMultipliers.rho0);
+    adjustedParams.rho1 *= Math.max(0.4, ruralMultipliers.rho1);
+    adjustedParams.rho2 *= Math.max(0.4, ruralMultipliers.rho2);
   }
 
   // Apply infrastructure and workforce adjustments
@@ -257,21 +283,132 @@ export function adjustParametersForCountry(
   adjustedParams.infrastructureMultiplier = infrastructureMultiplier;
   adjustedParams.healthWorkforceDensityMultiplier = workforceMultiplier;
 
+  // Apply vertical program overrides for specific disease-country combinations
+  adjustedParams = applyVerticalProgramEffects(adjustedParams, countryCode, disease, isUrban);
+  
   return adjustedParams;
+}
+
+// Get country-specific rural multipliers
+function getRuralMultipliers(countryCode: string, disease: string): any {
+  const baseRuralMultipliers = {
+    nigeria: {
+      phi0: 0.6,      // 40% reduction in care-seeking (improved from 50%)
+      sigmaI: 0.5,    // 50% reduction in transition to formal care
+      informalRatio: 1.6, // 60% more reliance on informal care
+      mu0: 0.7, mu1: 0.6, mu2: 0.7, mu3: 0.75,
+      deltaU: 1.3, deltaI: 1.3, delta0: 1.2, delta1: 1.2, delta2: 1.15, delta3: 1.1,
+      rho0: 0.6, rho1: 0.5, rho2: 0.4
+    },
+    kenya: {
+      phi0: 0.7,      // 30% reduction (better CHW coverage)
+      sigmaI: 0.6,    // 40% reduction
+      informalRatio: 1.5, // 50% more reliance on informal care
+      mu0: 0.8, mu1: 0.7, mu2: 0.75, mu3: 0.8,
+      deltaU: 1.3, deltaI: 1.3, delta0: 1.2, delta1: 1.2, delta2: 1.15, delta3: 1.1,
+      rho0: 0.7, rho1: 0.6, rho2: 0.5
+    },
+    south_africa: {
+      phi0: 0.6,      // 40% reduction
+      sigmaI: 0.5,    // 50% reduction
+      informalRatio: 1.4, // 40% more reliance on informal care
+      mu0: 0.7, mu1: 0.6, mu2: 0.7, mu3: 0.75,
+      deltaU: 1.3, deltaI: 1.4, delta0: 1.25, delta1: 1.3, delta2: 1.2, delta3: 1.15,
+      rho0: 0.6, rho1: 0.5, rho2: 0.4
+    }
+  };
+  
+  const multipliers = baseRuralMultipliers[countryCode as keyof typeof baseRuralMultipliers] || baseRuralMultipliers.nigeria;
+  
+  // Disease-specific adjustments for strong vertical programs
+  if (countryCode === 'kenya' && disease === 'tuberculosis') {
+    // Kenya's strong TB program maintains effectiveness in rural areas
+    multipliers.mu0 = 0.9;
+    multipliers.mu1 = 0.85;
+    multipliers.rho0 = 0.85;
+  }
+  
+  if (countryCode === 'south_africa' && (disease === 'hiv_management_chronic' || disease === 'hiv_opportunistic')) {
+    // South Africa's ART program reaches rural areas effectively
+    multipliers.phi0 = 0.8;
+    multipliers.mu1 = 0.8;
+    multipliers.deltaU = 1.2;
+  }
+  
+  if (disease === 'high_risk_pregnancy_low_anc') {
+    // Maternal health gets priority in all countries
+    multipliers.rho0 = Math.min(0.9, multipliers.rho0 * 1.3);
+    multipliers.rho1 = Math.min(0.9, multipliers.rho1 * 1.3);
+  }
+  
+  return multipliers;
+}
+
+// Apply vertical program effects that override general system weaknesses
+function applyVerticalProgramEffects(
+  params: CountrySpecificParameters,
+  countryCode: string,
+  disease: string,
+  isUrban: boolean
+): CountrySpecificParameters {
+  // Kenya TB program
+  if (countryCode === 'kenya' && disease === 'tuberculosis') {
+    params.mu0 *= 1.2;  // CHWs trained in TB
+    params.mu1 *= 1.3;  // Strong DOTS program
+    params.phi0 = Math.max(params.phi0, 0.5); // Active case finding
+  }
+  
+  // South Africa HIV program
+  if (countryCode === 'south_africa' && (disease === 'hiv_management_chronic' || disease === 'hiv_opportunistic')) {
+    params.mu1 *= 1.4;  // Excellent ART coverage
+    params.mu2 *= 1.3;  // Strong hospital programs
+    params.deltaU *= 0.7; // ART reduces mortality even with delays
+    params.phi0 = Math.max(params.phi0, 0.7); // Active testing campaigns
+  }
+  
+  // Nigeria malaria programs in endemic areas
+  if (countryCode === 'nigeria' && disease === 'malaria') {
+    params.mu0 *= 1.3;  // CHWs have RDTs and ACTs
+    params.phi0 = Math.max(params.phi0, 0.4); // Community awareness high
+  }
+  
+  // Maternal health programs (all countries)
+  if (disease === 'high_risk_pregnancy_low_anc') {
+    params.rho0 *= 1.5; // Priority referrals
+    params.rho1 *= 1.4; // Emergency transport
+    if (!isUrban) {
+      params.phi0 = Math.max(params.phi0, 0.35); // Maternal waiting homes
+    }
+  }
+  
+  return params;
 }
 
 function calculateInfrastructureMultiplier(country: CountryProfile): number {
   // Based on hospital beds per 1000 population
-  // WHO minimum standard is 2.5 beds per 1000
-  const bedRatio = country.hospitalBedsPer1000 / 2.5;
-  return 0.5 + (0.5 * Math.min(bedRatio, 1)); // Range 0.5-1.0
+  // Adjusted baseline to 1.5 beds per 1000 (more realistic for LMICs)
+  const bedRatio = country.hospitalBedsPer1000 / 1.5;
+  // More moderate reduction with higher floor
+  return 0.8 + (0.2 * Math.min(bedRatio, 1)); // Range 0.8-1.0
 }
 
 function calculateWorkforceMultiplier(country: CountryProfile): number {
-  // Based on physician density
-  // WHO minimum standard is 2.3 per 1000
-  const physicianRatio = country.physicianDensityPer1000 / 2.3;
-  return 0.6 + (0.4 * Math.min(physicianRatio, 1)); // Range 0.6-1.0
+  // Based on physician density but accounting for task-shifting
+  // Adjusted baseline to 1.0 per 1000 (more realistic for LMICs)
+  const physicianRatio = country.physicianDensityPer1000 / 1.0;
+  
+  // Country-specific adjustments for CHW programs
+  let chwBonus = 0;
+  if (country.countryCode === 'KEN') {
+    chwBonus = 0.15; // Kenya has strong CHW program
+  } else if (country.countryCode === 'ZAF') {
+    chwBonus = 0.10; // South Africa has ward-based outreach teams
+  } else if (country.countryCode === 'NGA') {
+    chwBonus = 0.10; // Nigeria has significant CHW programs (increased from 0.05)
+  }
+  
+  // Range 0.8-1.1 with CHW bonus (raised floor from 0.7 to 0.8)
+  return Math.min(1.1, 0.8 + (0.3 * Math.min(physicianRatio, 1)) + chwBonus);
 }
 
 function adjustAIEffectivenessForSeverity(

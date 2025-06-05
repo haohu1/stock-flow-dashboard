@@ -93,6 +93,7 @@ export interface ModelParameters {
   queueAbandonmentRate?: number; // Weekly rate of patients abandoning queues
   queueBypassRate?: number;      // Weekly rate of patients seeking alternative care
   queueClearanceRate?: number;   // Fraction of queue that can be cleared per week
+  queueSelfResolveRate?: number; // Weekly rate of queued patients self-resolving
   
   // AI routing parameters
   visitReduction?: number;       // Reduction in initial visits (self-care AI effect)
@@ -204,9 +205,20 @@ const runWeek = (
   const effectiveIncidence = weeklyIncidence * (1 - visitReduction);
   const avoidedVisits = weeklyIncidence * visitReduction; // These resolve at home
   
+  // Get congestion level early for feedback effects
+  const congestion = params.systemCongestion || 0;
+  
+  // Congestion feedback - reduce new arrivals when system is overwhelmed
+  let arrivalMultiplier = 1.0;
+  if (congestion > 0.5) {
+    // People hear hospitals are full and some stay home
+    // At 50% congestion: no reduction, at 100% congestion: 25% reduction
+    arrivalMultiplier = 1 - ((congestion - 0.5) * 0.5);
+  }
+  
   // Calculate flow from new cases (using effective incidence after visit reduction)
-  const directToFormal = params.phi0 * effectiveIncidence;
-  const stayUntreated = (1 - params.phi0) * effectiveIncidence;
+  const directToFormal = params.phi0 * effectiveIncidence * arrivalMultiplier;
+  const stayUntreated = (1 - params.phi0) * effectiveIncidence * arrivalMultiplier;
   
   // Use the configurable parameter to determine how many untreated patients move to informal care
   const toInformalCare = (1 - params.informalCareRatio) * stayUntreated;
@@ -225,7 +237,6 @@ const runWeek = (
   
   // Calculate distribution from F (formal care) with smart routing
   const directRoutingImprovement = params.directRoutingImprovement || 0;
-  const congestion = params.systemCongestion || 0;
   
   // With smart routing, some patients can bypass congested lower levels
   let formalToL0 = state.F;
@@ -245,26 +256,36 @@ const runWeek = (
   
   const remainingFormal = 0;  // No patients remain in formal care
   
+  // System adaptation when congested - staff work harder, treat more locally
+  let muBoost = 1.0;
+  let rhoReduction = 1.0;
+  if (congestion > 0.5) {
+    // Staff work faster when overwhelmed: up to 20% faster resolution
+    muBoost = 1 + ((congestion - 0.5) * 0.4);
+    // Fewer referrals when congested: up to 30% reduction
+    rhoReduction = 1 - ((congestion - 0.5) * 0.6);
+  }
+  
   // Calculate transitions from L0 (community health workers)
-  const l0Referral = params.rho0 * state.L0;
-  const l0Resolved = params.mu0 * state.L0;
+  const l0Referral = params.rho0 * state.L0 * rhoReduction;
+  const l0Resolved = params.mu0 * state.L0 * muBoost;
   const l0Deaths = params.delta0 * state.L0;
   const remainingL0 = state.L0 - l0Referral - l0Resolved - l0Deaths;
   
   // Calculate transitions from L1 (primary care)
-  const l1Referral = params.rho1 * state.L1;
-  const l1Resolved = params.mu1 * state.L1;
+  const l1Referral = params.rho1 * state.L1 * rhoReduction;
+  const l1Resolved = params.mu1 * state.L1 * muBoost;
   const l1Deaths = params.delta1 * state.L1;
   const remainingL1 = state.L1 - l1Referral - l1Resolved - l1Deaths;
   
   // Calculate transitions from L2 (district hospital)
-  const l2Referral = params.rho2 * state.L2;
-  const l2Resolved = params.mu2 * state.L2;
+  const l2Referral = params.rho2 * state.L2 * rhoReduction;
+  const l2Resolved = params.mu2 * state.L2 * muBoost;
   const l2Deaths = params.delta2 * state.L2;
   const remainingL2 = state.L2 - l2Referral - l2Resolved - l2Deaths;
   
   // Calculate transitions from L3 (tertiary hospital)
-  const l3Resolved = params.mu3 * state.L3;
+  const l3Resolved = params.mu3 * state.L3 * muBoost;
   const l3Deaths = params.delta3 * state.L3;
   const remainingL3 = state.L3 - l3Resolved - l3Deaths;
   
@@ -291,9 +312,9 @@ const runWeek = (
   // Remove the cap to allow over-congestion effects (effectiveCongestion can now be > 1)
   const effectiveCongestion = congestion * competitionSensitivity;
   
-  // Use an exponential function for more sensitivity at high congestion levels
-  // This creates a more dramatic effect as congestion approaches and exceeds 100%
-  const capacityMultiplier = Math.exp(-effectiveCongestion * 2);
+  // More gradual capacity reduction to prevent catastrophic failure
+  // At 50% congestion: 75% capacity, at 100% congestion: 50% capacity
+  const capacityMultiplier = Math.max(0.2, 1 - (effectiveCongestion * 0.5));
   
   // Calculate desired flows (before capacity constraints)
   const desiredL0Flow = formalToL0;
@@ -334,12 +355,11 @@ const runWeek = (
   // Process existing queues - some get served as capacity becomes available
   const queueClearanceRate = params.queueClearanceRate || 0.3; // Default: 30% of queue can be cleared per week if capacity available
   
-  // Queue mortality - higher for higher priority diseases and longer waits
-  const baseMortality = params.delta1 || 0.02;
-  const queueMortalityL0 = currentQueues.L0 * baseMortality * congestionMortalityMult * competitionSensitivity;
-  const queueMortalityL1 = currentQueues.L1 * baseMortality * congestionMortalityMult * competitionSensitivity;
-  const queueMortalityL2 = currentQueues.L2 * params.delta2 * congestionMortalityMult * competitionSensitivity;
-  const queueMortalityL3 = currentQueues.L3 * params.delta3 * congestionMortalityMult * competitionSensitivity;
+  // Queue mortality - same as untreated mortality since they're waiting for care
+  const queueMortalityL0 = currentQueues.L0 * params.deltaU;
+  const queueMortalityL1 = currentQueues.L1 * params.deltaU;
+  const queueMortalityL2 = currentQueues.L2 * params.deltaU;
+  const queueMortalityL3 = currentQueues.L3 * params.deltaU;
   const queueMortality = queueMortalityL0 + queueMortalityL1 + queueMortalityL2 + queueMortalityL3;
   
   // Queue abandonment - patients give up and return to untreated
@@ -353,6 +373,13 @@ const runWeek = (
   const queueBypassL1 = currentQueues.L1 * queueBypassRate;
   const queueBypassL2 = currentQueues.L2 * queueBypassRate;
   const queueBypassL3 = currentQueues.L3 * queueBypassRate;
+  
+  // Queue self-resolution - patients get better while waiting
+  const queueSelfResolveRate = params.queueSelfResolveRate || 0.10;
+  const queueSelfResolveL0 = currentQueues.L0 * queueSelfResolveRate;
+  const queueSelfResolveL1 = currentQueues.L1 * queueSelfResolveRate;
+  const queueSelfResolveL2 = currentQueues.L2 * queueSelfResolveRate;
+  const queueSelfResolveL3 = currentQueues.L3 * queueSelfResolveRate;
   
   // Clear some queue based on freed capacity (priority-based)
   // AI interventions improve queue clearance rates
@@ -374,10 +401,10 @@ const runWeek = (
   availableCapacityL2 *= (1 + lengthOfStayEffect + dischargeOptEffect + treatmentEffEffect); // Multiple hospital AIs
   availableCapacityL3 *= (1 + lengthOfStayEffect + dischargeOptEffect + treatmentEffEffect + resourceUtilEffect); // All hospital AIs
   
-  const queueClearedL0 = Math.min(currentQueues.L0 * availableCapacityL0, currentQueues.L0 - queueMortalityL0 - queueAbandonL0 - queueBypassL0);
-  const queueClearedL1 = Math.min(currentQueues.L1 * availableCapacityL1, currentQueues.L1 - queueMortalityL1 - queueAbandonL1 - queueBypassL1);
-  const queueClearedL2 = Math.min(currentQueues.L2 * availableCapacityL2, currentQueues.L2 - queueMortalityL2 - queueAbandonL2 - queueBypassL2);
-  const queueClearedL3 = Math.min(currentQueues.L3 * availableCapacityL3, currentQueues.L3 - queueMortalityL3 - queueAbandonL3 - queueBypassL3);
+  const queueClearedL0 = Math.min(currentQueues.L0 * availableCapacityL0, currentQueues.L0 - queueMortalityL0 - queueAbandonL0 - queueBypassL0 - queueSelfResolveL0);
+  const queueClearedL1 = Math.min(currentQueues.L1 * availableCapacityL1, currentQueues.L1 - queueMortalityL1 - queueAbandonL1 - queueBypassL1 - queueSelfResolveL1);
+  const queueClearedL2 = Math.min(currentQueues.L2 * availableCapacityL2, currentQueues.L2 - queueMortalityL2 - queueAbandonL2 - queueBypassL2 - queueSelfResolveL2);
+  const queueClearedL3 = Math.min(currentQueues.L3 * availableCapacityL3, currentQueues.L3 - queueMortalityL3 - queueAbandonL3 - queueBypassL3 - queueSelfResolveL3);
   
   // Update levels with capacity-constrained flows plus cleared queues and direct routing
   const newL0 = actualL0Flow + remainingL0 + queueClearedL0;
@@ -785,7 +812,7 @@ export const healthSystemStrengthDefaults = {
 // Predefined disease profiles
 export const diseaseProfiles = {
   congestive_heart_failure: {
-    lambda: 0.012,            // ~1.2% annual incidence in adults >65 years (representative for older adults)
+    lambda: 0.002,            // ~0.2% annual incidence in general population (2,000 cases per million)
     disabilityWeight: 0.42,   // moderate-high disability during acute decompensation
     meanAgeOfInfection: 67,   // primarily affects older adults
     muI: 0.01,                // negligible spontaneous resolution at home (1% per week)
@@ -814,7 +841,7 @@ export const diseaseProfiles = {
     congestionMortalityMultiplier: 2.0 // 100% increase - Acute decompensation is dangerous
   },
   tuberculosis: {
-    lambda: 0.00615,          // 0.615% annual incidence (615 per 100,000), reflecting South African TB burden
+    lambda: 0.003,            // 0.3% annual incidence (300 per 100,000), SSA average
     disabilityWeight: 0.333,  // moderate disability weight for active TB
     meanAgeOfInfection: 35,   // typical age of TB diagnosis
     muI: 0.02,                // very low spontaneous resolution for active TB (2% per week)
@@ -843,21 +870,21 @@ export const diseaseProfiles = {
     congestionMortalityMultiplier: 1.2 // 20% increase - Generally slower progression
   },
   childhood_pneumonia: { // Primarily non-severe childhood pneumonia
-    lambda: 0.90,             // very high incidence in under-fives (episodes per child-year)
+    lambda: 0.05,             // 50,000 cases per million population (affects mainly under-5s)
     disabilityWeight: 0.28,   // moderate disability
     meanAgeOfInfection: 3,    // primarily affects young children
     muI: 0.10,                // some spontaneous resolution, esp. viral (10% per week)
     muU: 0.06,                // limited spontaneous resolution if untreated (6% per week)
     mu0: 0.70,                // CHW with antibiotics (e.g. Amox DT) for non-severe (70% per week)
     mu1: 0.80,                // primary care with antibiotics for non-severe (80% per week)
-    mu2: 0.70,                // district hospital for severe pneumonia (resolution may take longer) (70% per week)
-    mu3: 0.80,                // tertiary care for very severe/complicated pneumonia (80% per week)
+    mu2: 0.85,                // district hospital with oxygen and IV antibiotics (85% per week)
+    mu3: 0.90,                // tertiary care with ventilatory support if needed (90% per week)
     deltaI: 0.035,            // mortality with informal care (3.5% per week)
     deltaU: 0.05,             // mortality if completely untreated (5% per week)
     delta0: 0.01,             // mortality under CHW care (covers misclassification/delay for severe) (1% per week)
     delta1: 0.005,            // mortality under primary care for appropriately treated non-severe (0.5% per week)
-    delta2: 0.02,             // mortality for severe pneumonia at district hospital (2% per week)
-    delta3: 0.015,            // mortality for very severe/complicated at tertiary (1.5% per week)
+    delta2: 0.008,            // mortality with oxygen and proper antibiotics (0.8% per week)
+    delta3: 0.005,            // low mortality with full respiratory support (0.5% per week)
     rho0: 0.60,               // CHW referral to primary for danger signs/non-response (60%)
     rho1: 0.30,               // primary care referral to district for severe cases (30%)
     rho2: 0.20,               // district referral to tertiary for highly complex cases (20%)
@@ -879,14 +906,14 @@ export const diseaseProfiles = {
     muU: 0.08,                // Limited spontaneous resolution if completely untreated (8% weekly)
     mu0: 0.75,                // CHW with RDTs and ACTs for uncomplicated cases (75% weekly resolution)
     mu1: 0.80,                // Primary care with ACTs and better monitoring (80% weekly resolution)
-    mu2: 0.50,                // District hospital for severe malaria, IV artesunate (50% weekly - recovery takes longer)
-    mu3: 0.60,                // Tertiary care for complicated malaria (60% weekly resolution)
+    mu2: 0.90,                // District hospital with IV artesunate for severe malaria (90% weekly resolution)
+    mu3: 0.95,                // Tertiary care with ICU support for complicated malaria (95% weekly resolution)
     deltaI: 0.075,            // Mortality with informal care (7.5% weekly - comparable to untreated)
     deltaU: 0.075,            // Mortality if completely untreated (7.5% weekly, ~5%-10% range)
     delta0: 0.001,            // Mortality under CHW care (0.1% weekly - includes some misdiagnosis/late referral)
     delta1: 0.001,            // Mortality under primary care (0.1% weekly - similar to CHW)
-    delta2: 0.10,             // Mortality for severe cases at district hospitals (10% weekly - severe cases, high fatality)
-    delta3: 0.05,             // Mortality for complicated cases at tertiary centers (5% weekly, 2%-10% range)
+    delta2: 0.01,             // Mortality with proper severe malaria treatment (1% weekly - AQUAMAT trial)
+    delta3: 0.005,            // Low mortality at tertiary with full ICU support (0.5% weekly)
     rho0: 0.25,               // CHW referral to primary (danger signs/severe cases) - lower than previous estimate
     rho1: 0.20,               // Primary care referral to district (severe malaria) - lower than previous estimate
     rho2: 0.10,               // District to tertiary referral (very complicated cases) - lower rate as suggested
@@ -930,7 +957,7 @@ export const diseaseProfiles = {
     congestionMortalityMultiplier: 1.3 // 30% increase - Variable depending on cause
   },
   diarrhea: { // Acute diarrheal disease, primarily in children
-    lambda: 1.50,             // very high incidence especially in children (episodes per child-year)
+    lambda: 0.30,             // population-adjusted incidence (300,000 cases per million annually)
     disabilityWeight: 0.15,   // moderate disability (dehydration)
     meanAgeOfInfection: 2,    // primarily affects young children
     muI: 0.35,                // moderate spontaneous resolution with home fluids (35% per week)
@@ -959,7 +986,7 @@ export const diseaseProfiles = {
     congestionMortalityMultiplier: 1.6 // 60% increase - Dehydration progresses rapidly in children
   },
   anemia: { // Focus on Iron Deficiency Anemia in women/children
-    lambda: 0.20,             // 20% annual incidence of symptomatic anemia needing attention
+    lambda: 0.05,             // 5% annual incidence of symptomatic anemia needing treatment (50,000 per million)
     disabilityWeight: 0.06,   // moderate for symptomatic anemia
     meanAgeOfInfection: 15,   // bimodal (young children, women of reproductive age)
     muI: 0.05,                // some response to dietary changes or informal iron (5% weekly improvement)
@@ -988,7 +1015,7 @@ export const diseaseProfiles = {
     congestionMortalityMultiplier: 1.0 // 0% increase - Rarely emergency, delays don't increase mortality
   },
   hiv_management_chronic: { // Chronic care for stable HIV on ART
-    lambda: 0.005,            // 0.5% annual new diagnoses needing linkage to chronic ART care (South Africa)
+    lambda: 0.01,             // 1% annual new diagnoses needing linkage to chronic ART care (South Africa context)
     disabilityWeight: 0.078,  // low for stable HIV on ART
     meanAgeOfInfection: 30,   // typical age of diagnosis
     muI: 0,                   // No spontaneous viral suppression with self-management 
@@ -1046,7 +1073,7 @@ export const diseaseProfiles = {
     congestionMortalityMultiplier: 3.0 // 200% increase - Obstetric emergencies can't wait
   },
   urti: { // Upper Respiratory Tract Infection
-    lambda: 2.0,              // very high incidence (2 episodes per person-year)
+    lambda: 0.80,              // high incidence (800,000 episodes per million population)
     disabilityWeight: 0.01,   // very low disability
     meanAgeOfInfection: 10,   // affects all ages, common in children
     muI: 0.70,                // high spontaneous resolution (70% per week)
@@ -1075,7 +1102,7 @@ export const diseaseProfiles = {
     congestionMortalityMultiplier: 1.0 // 0% increase - Self-limiting, no mortality impact
   },
   hiv_opportunistic: { // HIV-related opportunistic infections (South African context)
-    lambda: 0.04,             // 4% annual incidence among PLHIV (higher in South Africa with ~13.5% HIV prevalence)
+    lambda: 0.005,            // Population-adjusted incidence (5,000 cases per million annually)
     disabilityWeight: 0.582,  // high disability during acute OI episode
     meanAgeOfInfection: 32,   // typical age for HIV-related OIs
     muI: 0,                   // No spontaneous resolution with informal care
@@ -1840,9 +1867,10 @@ export const getDefaultParameters = (): ModelParameters => ({
   congestionMortalityMultiplier: 1.5,  // Default: 50% increase in mortality when congested
   
   // Queue dynamics parameters
-  queueAbandonmentRate: 0.05,  // Default: 5% abandon per week
-  queueBypassRate: 0.10,       // Default: 10% seek alternative care per week
+  queueAbandonmentRate: 0.15,  // Default: 15% abandon per week (increased from 5%)
+  queueBypassRate: 0.20,       // Default: 20% seek alternative care per week (increased from 10%)
   queueClearanceRate: 0.3,     // Default: 30% of queue can be cleared per week
+  queueSelfResolveRate: 0.10,  // Default: 10% self-resolve per week (new parameter)
 });
 
 export const sanitizeModelParameters = (params: ModelParameters): ModelParameters => {

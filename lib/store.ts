@@ -8,7 +8,9 @@ import {
   runSimulation,
   calculateICER,
   healthSystemStrengthDefaults,
-  diseaseProfiles
+  diseaseProfiles,
+  AIUptakeParameters,
+  defaultAIUptakeParameters
 } from '../models/stockAndFlowModel';
 import {
   CountrySpecificParameters,
@@ -156,7 +158,8 @@ export const getDerivedParamsForDisease = (
   aiCostParams?: AICostParameters,
   useCountrySpecific?: boolean,
   countryCode?: string,
-  isUrban?: boolean
+  isUrban?: boolean,
+  aiUptakeParams?: AIUptakeParameters
 ): ModelParameters => {
   // Start with base parameters
   let params = { ...baseParams };
@@ -237,7 +240,7 @@ export const getDerivedParamsForDisease = (
   }
 
   // Apply AI interventions with disease-specific effects
-  return applyAIInterventions(params, aiInterventions, effectMagnitudes, aiCostParams, undefined, disease);
+  return applyAIInterventions(params, aiInterventions, effectMagnitudes, aiCostParams, undefined, disease, aiUptakeParams, isUrban);
 };
 
 // Store individual disease parameters for multi-disease mode
@@ -251,6 +254,7 @@ export const individualDiseaseParametersAtom = atom<Record<string, ModelParamete
     const effectMagnitudes = get(effectMagnitudesAtom);
     const activeMultipliers = get(healthSystemMultipliersAtom);
     const aiCostParams = get(aiCostParametersAtom);
+    const aiUptakeParams = get(aiUptakeParametersAtom);
     const useCountrySpecific = get(useCountrySpecificModelAtom);
     const countryCode = get(selectedCountryAtom);
     const isUrban = get(isUrbanSettingAtom);
@@ -268,7 +272,8 @@ export const individualDiseaseParametersAtom = atom<Record<string, ModelParamete
         aiCostParams,
         useCountrySpecific,
         countryCode,
-        isUrban
+        isUrban,
+        aiUptakeParams
       );
     });
     
@@ -290,6 +295,7 @@ export const derivedParametersAtom = atom(
     const effectMagnitudes = get(effectMagnitudesAtom);
     const activeMultipliers = get(healthSystemMultipliersAtom);
     const aiCostParams = get(aiCostParametersAtom);
+    const aiUptakeParams = get(aiUptakeParametersAtom);
     const useCountrySpecific = get(useCountrySpecificModelAtom);
     const countryCode = get(selectedCountryAtom);
     const isUrban = get(isUrbanSettingAtom);
@@ -320,7 +326,9 @@ export const derivedParametersAtom = atom(
         effectMagnitudes,
         aiCostParams,
         undefined,
-        'health_system_total' // Use a special disease identifier for total system
+        'health_system_total', // Use a special disease identifier for total system
+        aiUptakeParams,
+        isUrban
       );
       
       console.log("derivedParametersAtom: Aggregated lambda =", finalParams.lambda, "from diseases:", selectedDiseases.map(d => {
@@ -330,6 +338,8 @@ export const derivedParametersAtom = atom(
       
       // Apply dynamic congestion
       const effectiveCongestion = get(effectiveCongestionAtom);
+      
+      console.log('Multi-disease mode - applying congestion:', effectiveCongestion);
       
       return {
         ...finalParams,
@@ -347,11 +357,14 @@ export const derivedParametersAtom = atom(
         aiCostParams,
         useCountrySpecific,
         countryCode,
-        isUrban
+        isUrban,
+        aiUptakeParams
       );
       
       // Apply dynamic congestion
       const effectiveCongestion = get(effectiveCongestionAtom);
+      
+      console.log('Single disease mode - applying congestion:', effectiveCongestion);
       
       return {
         ...singleDiseaseParams,
@@ -380,6 +393,7 @@ export interface AICostParameters {
   hospitalDecisionAI: { fixed: number, variable: number };
   selfCareAI: { fixed: number, variable: number };
 }
+
 
 // Time-to-scale parameters for each AI intervention
 export interface AITimeToScaleParameters {
@@ -410,6 +424,9 @@ export const aiTimeToScaleParametersAtom = atom<AITimeToScaleParameters>({
   hospitalDecisionAI: 0.40, // 1.5-2 years
   selfCareAI: 0.75       // 3-6 months
 });
+
+// AI uptake parameters atom with defaults
+export const aiUptakeParametersAtom = atom<AIUptakeParameters>(defaultAIUptakeParameters);
 
 // AI intervention effect magnitudes
 export const effectMagnitudesAtom = atom<{[key: string]: number}>({});
@@ -442,6 +459,7 @@ export const runSimulationAtom = atom(
       const effectMagnitudes = get(effectMagnitudesAtom);
       const activeMultipliers = get(healthSystemMultipliersAtom);
       const aiCostParams = get(aiCostParametersAtom);
+      const aiUptakeParams = get(aiUptakeParametersAtom);
       const baseline = get(baselineResultsAtom);
       
       console.log("  Running separate simulations for", selectedDiseases.length, "diseases then summing outcomes");
@@ -449,6 +467,10 @@ export const runSimulationAtom = atom(
       // Run separate simulation for each disease
       const diseaseResults: Record<string, SimulationResults> = {};
       const diseaseParamsMap: Record<string, ModelParameters> = {};
+      
+      // Get the aggregated parameters with proper congestion
+      const aggregatedParams = get(derivedParametersAtom);
+      console.log('Using aggregated parameters with congestion:', aggregatedParams.systemCongestion);
       
       selectedDiseases.forEach(disease => {
         // Get disease-specific parameters
@@ -462,8 +484,12 @@ export const runSimulationAtom = atom(
           aiCostParams,
           useCountrySpecific,
           countryCode,
-          isUrban
+          isUrban,
+          aiUptakeParams
         );
+        
+        // Apply the system-wide congestion to each disease simulation
+        diseaseParams.systemCongestion = aggregatedParams.systemCongestion;
         
         diseaseParamsMap[disease] = diseaseParams;
         
@@ -474,7 +500,8 @@ export const runSimulationAtom = atom(
         });
         
         diseaseResults[disease] = diseaseResult;
-        console.log(`  ${disease}: ${diseaseResult.cumulativeDeaths} deaths, ${diseaseResult.dalys.toFixed(0)} DALYs, $${diseaseResult.totalCost.toFixed(0)} cost`);
+        console.log(`  ${disease}: ${diseaseResult.cumulativeDeaths} deaths (${(diseaseResult.cumulativeDeaths/population*100).toFixed(2)}%), ${diseaseResult.dalys.toFixed(0)} DALYs, $${diseaseResult.totalCost.toFixed(0)} cost`);
+        console.log(`    Lambda: ${diseaseParams.lambda}, deltaU: ${diseaseParams.deltaU}, congestion: ${diseaseParams.systemCongestion}`);
       });
       
       // Sum outcomes across all diseases
@@ -535,19 +562,9 @@ export const runSimulationAtom = atom(
       const activeMultipliers = get(healthSystemMultipliersAtom);
       const aiCostParams = get(aiCostParametersAtom);
       
-      // Get derived parameters for this disease
-      const params = getDerivedParamsForDisease(
-        baseParams, 
-        healthSystemStrength, 
-        disease, 
-        aiInterventions, 
-        effectMagnitudes, 
-        activeMultipliers, 
-        aiCostParams,
-        useCountrySpecific,
-        countryCode,
-        isUrban
-      );
+      // Get derived parameters for this disease with proper congestion
+      const params = get(derivedParametersAtom);
+      console.log('Single disease simulation with congestion:', params.systemCongestion);
       
       const results = runSimulation(params, {
         numWeeks: weeks,
@@ -1609,7 +1626,9 @@ export const runSensitivityAnalysisAtom = atom(
           modifiedParams = { ...modifiedParams, [paramName]: paramValue };
         }
         
-        const modifiedParamsWithAI = applyAIInterventions(modifiedParams, aiInterventions, effectMagnitudes, aiCostParams);
+        const aiUptakeParams = get(aiUptakeParametersAtom);
+        const isUrban = get(isUrbanSettingAtom);
+        const modifiedParamsWithAI = applyAIInterventions(modifiedParams, aiInterventions, effectMagnitudes, aiCostParams, undefined, undefined, aiUptakeParams, isUrban);
         
         const simResult = runSimulation(modifiedParamsWithAI, {
           numWeeks: weeks,
@@ -1741,7 +1760,9 @@ export const runSensitivityAnalysisAtom = atom(
           } else {
             modifiedParams = { ...modifiedParams, [secondaryParamName]: secondaryValue };
           }
-          const modifiedParamsWithAI = applyAIInterventions(modifiedParams, aiInterventions, effectMagnitudes, aiCostParams);
+          const aiUptakeParams = get(aiUptakeParametersAtom);
+        const isUrban = get(isUrbanSettingAtom);
+        const modifiedParamsWithAI = applyAIInterventions(modifiedParams, aiInterventions, effectMagnitudes, aiCostParams, undefined, undefined, aiUptakeParams, isUrban);
           
           // Run simulation with modified parameters
           const simResult = runSimulation(modifiedParamsWithAI, {

@@ -29,7 +29,8 @@ import {
   multiDiseaseScenarioModeAtom,
   userOverriddenCongestionAtom,
   calculatedCongestionAtom,
-  effectiveCongestionAtom
+  effectiveCongestionAtom,
+  aiUptakeParametersAtom
 } from '../lib/store';
 import { healthSystemStrengthDefaults } from '../models/stockAndFlowModel';
 import { countryProfiles } from '../models/countrySpecificModel';
@@ -67,6 +68,7 @@ const Sidebar: React.FC = () => {
   const [mortalityMultiplier, setMortalityMultiplier] = useAtom(multiConditionMortalityMultiplierAtom);
   const [resolutionReduction, setResolutionReduction] = useAtom(multiConditionResolutionReductionAtom);
   const [careSeekingBoost, setCareSeekingBoost] = useAtom(multiConditionCareSeekingBoostAtom);
+  const [aiUptakeParams, setAIUptakeParams] = useAtom(aiUptakeParametersAtom);
   
   // Local state for disease checkboxes
   const [diseaseOptions, setDiseaseOptions] = useState<{
@@ -82,6 +84,7 @@ const Sidebar: React.FC = () => {
   const [diseaseDescriptionExpanded, setDiseaseDescriptionExpanded] = useState(false);
   const [countryExpanded, setCountryExpanded] = useState(false);
   const [multiConditionExpanded, setMultiConditionExpanded] = useState(false);
+  const [aiUptakeExpanded, setAIUptakeExpanded] = useState(false);
 
   // Initialize disease options
   useEffect(() => {
@@ -639,6 +642,227 @@ const Sidebar: React.FC = () => {
           </label>
         </div>
       </div>
+
+      {/* AI Uptake Parameters - Expandable Section */}
+      {Object.values(aiInterventions).some(v => v) && (
+        <div className="mb-4">
+          <button
+            onClick={() => setAIUptakeExpanded(!aiUptakeExpanded)}
+            className="flex items-center justify-between w-full text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+          >
+            <span>AI Uptake Rates</span>
+            <svg
+              className={`w-4 h-4 transform transition-transform ${aiUptakeExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          {aiUptakeExpanded && (
+            <div className="mt-3 space-y-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              {/* Global uptake multiplier */}
+              <div>
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Global Uptake Multiplier: {(aiUptakeParams.globalUptake * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={aiUptakeParams.globalUptake * 100}
+                  onChange={(e) => setAIUptakeParams({
+                    ...aiUptakeParams,
+                    globalUptake: parseInt(e.target.value) / 100
+                  })}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                />
+              </div>
+
+              {/* Individual intervention uptake rates */}
+              {aiInterventions.triageAI && (
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    AI Health Advisor Uptake: {(aiUptakeParams.triageAI * 100).toFixed(0)}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={aiUptakeParams.triageAI * 100}
+                    onChange={(e) => setAIUptakeParams({
+                      ...aiUptakeParams,
+                      triageAI: parseInt(e.target.value) / 100
+                    })}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                  />
+                </div>
+              )}
+
+              {aiInterventions.chwAI && (
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    CHW AI Uptake: {(aiUptakeParams.chwAI * 100).toFixed(0)}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={aiUptakeParams.chwAI * 100}
+                    onChange={(e) => setAIUptakeParams({
+                      ...aiUptakeParams,
+                      chwAI: parseInt(e.target.value) / 100
+                    })}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                  />
+                </div>
+              )}
+
+              {aiInterventions.diagnosticAI && (
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Diagnostic AI Uptake: {(aiUptakeParams.diagnosticAI * 100).toFixed(0)}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={aiUptakeParams.diagnosticAI * 100}
+                    onChange={(e) => setAIUptakeParams({
+                      ...aiUptakeParams,
+                      diagnosticAI: parseInt(e.target.value) / 100
+                    })}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                  />
+                </div>
+              )}
+
+              {aiInterventions.bedManagementAI && (
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Bed Management AI Uptake: {(aiUptakeParams.bedManagementAI * 100).toFixed(0)}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={aiUptakeParams.bedManagementAI * 100}
+                    onChange={(e) => setAIUptakeParams({
+                      ...aiUptakeParams,
+                      bedManagementAI: parseInt(e.target.value) / 100
+                    })}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                  />
+                </div>
+              )}
+
+              {aiInterventions.hospitalDecisionAI && (
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Hospital Decision AI Uptake: {(aiUptakeParams.hospitalDecisionAI * 100).toFixed(0)}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={aiUptakeParams.hospitalDecisionAI * 100}
+                    onChange={(e) => setAIUptakeParams({
+                      ...aiUptakeParams,
+                      hospitalDecisionAI: parseInt(e.target.value) / 100
+                    })}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                  />
+                </div>
+              )}
+
+              {aiInterventions.selfCareAI && (
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Self-Care AI Uptake: {(aiUptakeParams.selfCareAI * 100).toFixed(0)}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={aiUptakeParams.selfCareAI * 100}
+                    onChange={(e) => setAIUptakeParams({
+                      ...aiUptakeParams,
+                      selfCareAI: parseInt(e.target.value) / 100
+                    })}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                  />
+                </div>
+              )}
+
+              {/* Urban/Rural multipliers */}
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Urban Multiplier: {(aiUptakeParams.urbanMultiplier * 100).toFixed(0)}%
+                  </label>
+                  <input
+                    type="range"
+                    min="50"
+                    max="150"
+                    value={aiUptakeParams.urbanMultiplier * 100}
+                    onChange={(e) => setAIUptakeParams({
+                      ...aiUptakeParams,
+                      urbanMultiplier: parseInt(e.target.value) / 100
+                    })}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Rural Multiplier: {(aiUptakeParams.ruralMultiplier * 100).toFixed(0)}%
+                  </label>
+                  <input
+                    type="range"
+                    min="50"
+                    max="150"
+                    value={aiUptakeParams.ruralMultiplier * 100}
+                    onChange={(e) => setAIUptakeParams({
+                      ...aiUptakeParams,
+                      ruralMultiplier: parseInt(e.target.value) / 100
+                    })}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                  />
+                </div>
+              </div>
+
+              {/* Effective uptake display */}
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Effective uptake rates ({isUrban ? 'Urban' : 'Rural'}):
+                </p>
+                <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1 mt-1">
+                  {aiInterventions.triageAI && (
+                    <div>AI Advisor: {(aiUptakeParams.triageAI * aiUptakeParams.globalUptake * (isUrban ? aiUptakeParams.urbanMultiplier : aiUptakeParams.ruralMultiplier) * 100).toFixed(0)}%</div>
+                  )}
+                  {aiInterventions.chwAI && (
+                    <div>CHW AI: {(aiUptakeParams.chwAI * aiUptakeParams.globalUptake * (isUrban ? aiUptakeParams.urbanMultiplier : aiUptakeParams.ruralMultiplier) * 100).toFixed(0)}%</div>
+                  )}
+                  {aiInterventions.diagnosticAI && (
+                    <div>Diagnostic AI: {(aiUptakeParams.diagnosticAI * aiUptakeParams.globalUptake * (isUrban ? aiUptakeParams.urbanMultiplier : aiUptakeParams.ruralMultiplier) * 100).toFixed(0)}%</div>
+                  )}
+                  {aiInterventions.bedManagementAI && (
+                    <div>Bed Mgmt AI: {(aiUptakeParams.bedManagementAI * aiUptakeParams.globalUptake * (isUrban ? aiUptakeParams.urbanMultiplier : aiUptakeParams.ruralMultiplier) * 100).toFixed(0)}%</div>
+                  )}
+                  {aiInterventions.hospitalDecisionAI && (
+                    <div>Hospital AI: {(aiUptakeParams.hospitalDecisionAI * aiUptakeParams.globalUptake * (isUrban ? aiUptakeParams.urbanMultiplier : aiUptakeParams.ruralMultiplier) * 100).toFixed(0)}%</div>
+                  )}
+                  {aiInterventions.selfCareAI && (
+                    <div>Self-Care AI: {(aiUptakeParams.selfCareAI * aiUptakeParams.globalUptake * (isUrban ? aiUptakeParams.urbanMultiplier : aiUptakeParams.ruralMultiplier) * 100).toFixed(0)}%</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Multi-disease scenario mode choice */}
       {selectedDiseases.length > 1 && (

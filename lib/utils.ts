@@ -171,11 +171,25 @@ export const calculateDefaultCongestion = (
   // Calculate final congestion
   let finalCongestion = baseCongestion * capacityMultiplier * diseaseComplexityMultiplier;
   
+  console.log('calculateDefaultCongestion details:', {
+    totalIncidence,
+    numberOfDiseases,
+    healthSystemStrength,
+    capacityMultiplier,
+    baseCongestion,
+    diseaseComplexityMultiplier,
+    finalCongestion: finalCongestion,
+    finalCongestionBeforeRounding: finalCongestion
+  });
+  
   // Ensure reasonable bounds (0-0.9, never fully congested by default)
   finalCongestion = Math.max(0.0, Math.min(0.9, finalCongestion));
   
   // Round to reasonable precision
-  return Math.round(finalCongestion * 100) / 100;
+  const rounded = Math.round(finalCongestion * 100) / 100;
+  console.log('Final congestion after bounds and rounding:', rounded);
+  
+  return rounded;
 };
 
 // Get congestion level description

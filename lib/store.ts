@@ -48,7 +48,9 @@ export const calculatedCongestionAtom = atom<number>((get) => {
     const individualDiseaseParams = get(individualDiseaseParametersAtom);
     totalIncidence = selectedDiseases.reduce((sum, disease) => {
       const diseaseParams = individualDiseaseParams[disease];
-      return sum + (diseaseParams?.lambda || 0);
+      const lambda = diseaseParams?.lambda || 0;
+      console.log(`  Disease ${disease} lambda:`, lambda);
+      return sum + lambda;
     }, 0);
   } else {
     // For single disease, get from base parameters
@@ -58,12 +60,22 @@ export const calculatedCongestionAtom = atom<number>((get) => {
     totalIncidence = diseaseProfile?.lambda || baseParams.lambda;
   }
   
+  console.log('Congestion calculation:', {
+    selectedDiseases,
+    totalIncidence,
+    healthSystemStrength,
+    numberOfDiseases: selectedDiseases.length
+  });
+  
   // Calculate default congestion based on current state
-  return calculateDefaultCongestion(
+  const congestion = calculateDefaultCongestion(
     totalIncidence,
     selectedDiseases.length,
     healthSystemStrength
   );
+  
+  console.log('Calculated congestion:', congestion);
+  return congestion;
 });
 
 export const effectiveCongestionAtom = atom<number>((get) => {

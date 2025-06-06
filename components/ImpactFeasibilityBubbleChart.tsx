@@ -314,12 +314,35 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .range([0, innerWidth]);
     
     const impactValues = impactData.map(d => d.impact);
-    const maxImpact = yAxisMetric === 'dalys' 
-      ? Math.max(...impactValues, 100) // Minimum of 100 DALYs per 1000 to show threshold clearly
-      : Math.max(...impactValues, 50); // Minimum of 50% for percentage scale
+    
+    // Calculate a smart max value based on actual data
+    const dataMax = Math.max(...impactValues);
+    const impactThreshold = yAxisMetric === 'dalys' ? 100 : 10; // Thresholds for quadrants
+    
+    // Determine the y-axis max:
+    // - If data is well below threshold, scale to show data with some padding
+    // - If data is near or above threshold, ensure threshold is visible
+    let maxImpact;
+    if (dataMax < impactThreshold * 0.5) {
+      // Data is well below threshold - focus on the data range
+      maxImpact = dataMax * 1.2; // 20% padding above max data point
+    } else if (dataMax < impactThreshold * 1.5) {
+      // Data is near threshold - show threshold clearly
+      maxImpact = impactThreshold * 1.3; // Show threshold with 30% padding
+    } else {
+      // Data exceeds threshold significantly - scale to data
+      maxImpact = dataMax * 1.1; // 10% padding for larger values
+    }
+    
+    // Ensure minimum scale for very small values
+    if (yAxisMetric === 'dalys' && maxImpact < 20) {
+      maxImpact = 20;
+    } else if (yAxisMetric === 'percent-deaths' && maxImpact < 5) {
+      maxImpact = 5;
+    }
     
     const yScale = d3.scaleLinear()
-      .domain([0, maxImpact * 1.1])
+      .domain([0, maxImpact])
       .range([innerHeight, 0]);
     
     // Size scale for bubbles - use all scenarios for consistent sizing
@@ -356,7 +379,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     };
     
     // Calculate dynamic thresholds based on data
-    const impactThreshold = yAxisMetric === 'dalys' ? 100 : 10; // Same as in determineQuadrant
+    // (impactThreshold already defined above)
     const timeThreshold = 0.5; // Same as in determineQuadrant
     
     // Convert thresholds to pixel positions
@@ -384,16 +407,26 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .attr("opacity", 0.1);
     
     // Add threshold lines for clarity
-    svg.append("line")
-      .attr("class", "threshold-line")
-      .attr("x1", 0)
-      .attr("x2", innerWidth)
-      .attr("y1", impactThresholdY)
-      .attr("y2", impactThresholdY)
-      .attr("stroke", "#666")
-      .attr("stroke-width", 2)
-      .attr("stroke-dasharray", "5,5")
-      .attr("opacity", 0.5);
+    // Only show impact threshold line if it's within the visible range
+    if (impactThreshold <= maxImpact) {
+      svg.append("line")
+        .attr("class", "threshold-line")
+        .attr("x1", 0)
+        .attr("x2", innerWidth)
+        .attr("y1", impactThresholdY)
+        .attr("y2", impactThresholdY)
+        .attr("stroke", "#666")
+        .attr("stroke-width", 2)
+        .attr("stroke-dasharray", "5,5")
+        .attr("opacity", 0.5);
+      
+      svg.append("text")
+        .attr("x", 5)
+        .attr("y", impactThresholdY - 5)
+        .attr("font-size", "11px")
+        .attr("fill", "#666")
+        .text(yAxisMetric === 'dalys' ? "100 DALYs/1000" : "10% deaths");
+    }
     
     svg.append("line")
       .attr("class", "threshold-line")
@@ -413,13 +446,6 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .attr("font-size", "11px")
       .attr("fill", "#666")
       .text("1 year");
-    
-    svg.append("text")
-      .attr("x", 5)
-      .attr("y", impactThresholdY - 5)
-      .attr("font-size", "11px")
-      .attr("fill", "#666")
-      .text(yAxisMetric === 'dalys' ? "100 DALYs/1000" : "10% deaths");
     
     // Add quadrant labels
     svg.selectAll(".quadrant-label")

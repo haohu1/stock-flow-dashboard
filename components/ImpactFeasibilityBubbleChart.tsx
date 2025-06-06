@@ -33,23 +33,38 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
   const [selectedDiseases, setSelectedDiseases] = useState<Set<string>>(new Set());
   const [availableDiseases, setAvailableDiseases] = useState<string[]>([]);
   const [showLabels, setShowLabels] = useState(true);
+  const [colorBy, setColorBy] = useState<'quadrant' | 'country'>('quadrant');
+  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
+  const [availableCountries, setAvailableCountries] = useState<string[]>([]);
   const chartRef = useRef<HTMLDivElement>(null);
 
-  // Initialize disease filters
+  // Initialize disease and country filters
   useEffect(() => {
     const diseaseSet = new Set<string>();
+    const countrySet = new Set<string>();
+    
     scenarios.forEach(scenario => {
       const disease = scenario.parameters.disease || 'Unknown';
       diseaseSet.add(disease);
+      
+      const country = scenario.countryName || 'Generic';
+      countrySet.add(country);
     });
     
     const diseaseList = Array.from(diseaseSet).sort();
     setAvailableDiseases(diseaseList);
     
+    const countryList = Array.from(countrySet).sort();
+    setAvailableCountries(countryList);
+    
     if (selectedDiseases.size === 0 && diseaseList.length > 0) {
       setSelectedDiseases(new Set(diseaseList));
     }
-  }, [scenarios, selectedDiseases]);
+    
+    if (selectedCountries.size === 0 && countryList.length > 0) {
+      setSelectedCountries(new Set(countryList));
+    }
+  }, [scenarios]);
 
   // Calculate impact metrics for each scenario
   const calculateImpactData = (scenario: Scenario): ImpactFeasibilityData | null => {
@@ -141,6 +156,33 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     }
   };
 
+  // Handle country filter toggle
+  const toggleCountryFilter = (country: string) => {
+    const newSelectedCountries = new Set(selectedCountries);
+    
+    if (newSelectedCountries.has(country)) {
+      if (newSelectedCountries.size > 1) {
+        newSelectedCountries.delete(country);
+      }
+    } else {
+      newSelectedCountries.add(country);
+    }
+    
+    setSelectedCountries(newSelectedCountries);
+  };
+
+  // Select all countries
+  const selectAllCountries = () => {
+    setSelectedCountries(new Set(availableCountries));
+  };
+
+  // Clear all countries (keep at least one selected)
+  const clearAllCountries = () => {
+    if (availableCountries.length > 0) {
+      setSelectedCountries(new Set([availableCountries[0]]));
+    }
+  };
+
   // Create the visualization
   useEffect(() => {
     if (!chartRef.current || scenarios.length <= 1) return;
@@ -158,6 +200,10 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
         // First, look for scenarios that represent the aggregated health system total
         const aggregatedScenarios = scenarios.filter(s => {
           if (!s.results) return false;
+          
+          // Check country filter
+          const countryMatch = selectedCountries.has(s.countryName || 'Generic');
+          if (!countryMatch) return false;
           
           // Look for scenarios that:
           // 1. Have multiple diseases selected (true aggregated scenarios)
@@ -192,14 +238,18 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
         console.log(`No aggregated scenarios found, falling back to individual disease scenarios`);
         return scenarios.filter(s => {
           if (!s.results) return false;
-          return selectedDiseases.has(s.parameters.disease || 'Unknown');
+          const diseaseMatch = selectedDiseases.has(s.parameters.disease || 'Unknown');
+          const countryMatch = selectedCountries.has(s.countryName || 'Generic');
+          return diseaseMatch && countryMatch;
         }).map(calculateImpactData).filter((d): d is ImpactFeasibilityData => d !== null);
       } else {
         // Single disease mode - show scenarios for that disease
         console.log(`ImpactFeasibility: Single disease mode`);
         return scenarios.filter(s => {
           if (!s.results) return false;
-          return selectedDiseases.has(s.parameters.disease || 'Unknown');
+          const diseaseMatch = selectedDiseases.has(s.parameters.disease || 'Unknown');
+          const countryMatch = selectedCountries.has(s.countryName || 'Generic');
+          return diseaseMatch && countryMatch;
         }).map(calculateImpactData).filter((d): d is ImpactFeasibilityData => d !== null);
       }
     })();
@@ -246,10 +296,22 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .domain([0, maxPopulationImpact])
       .range([5, 50]);
     
-    // Color scale for quadrants
-    const colorScale = d3.scaleOrdinal<string>()
+    // Color scale based on colorBy option
+    const quadrantColorScale = d3.scaleOrdinal<string>()
       .domain(['big-bets', 'moonshots', 'quick-wins', 'incremental'])
       .range(['#2a9d8f', '#e9c46a', '#8ecae6', '#e76f51']);
+    
+    const countryColorScale = d3.scaleOrdinal<string>()
+      .domain(availableCountries)
+      .range(d3.schemeSet3);
+    
+    const getColor = (data: ImpactFeasibilityData) => {
+      if (colorBy === 'quadrant') {
+        return quadrantColorScale(data.quadrant);
+      } else {
+        return countryColorScale(data.scenario.countryName || 'Generic');
+      }
+    };
     
     // Calculate dynamic thresholds based on data
     const impactThreshold = yAxisMetric === 'dalys' ? 100 : 10; // Same as in determineQuadrant
@@ -276,7 +338,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .attr("y", d => d.y)
       .attr("width", d => d.width)
       .attr("height", d => d.height)
-      .attr("fill", d => colorScale(d.quadrant))
+      .attr("fill", d => quadrantColorScale(d.quadrant))
       .attr("opacity", 0.1);
     
     // Add threshold lines for clarity
@@ -328,7 +390,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .attr("text-anchor", "middle")
       .attr("font-size", "14px")
       .attr("font-weight", "bold")
-      .attr("fill", d => colorScale(d.quadrant))
+      .attr("fill", d => quadrantColorScale(d.quadrant))
       .attr("opacity", 0.7)
       .text(d => d.label.toUpperCase());
     
@@ -414,7 +476,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .attr("cx", d => xScale(d.timeToScale))
       .attr("cy", d => yScale(d.impact))
       .attr("r", d => sizeScale(d.populationImpact))
-      .style("fill", d => colorScale(d.quadrant))
+      .style("fill", d => getColor(d))
       .style("fill-opacity", 0.7)
       .style("stroke", "white")
       .style("stroke-width", 2)
@@ -497,7 +559,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 4px 8px 4px 0; color: #6B7280;">Quadrant:</td>
-                <td style="padding: 4px 0; text-align: right; font-weight: 500; color: ${colorScale(data.quadrant)};">
+                <td style="padding: 4px 0; text-align: right; font-weight: 500; color: ${quadrantColorScale(data.quadrant)};">
                   ${getQuadrantDisplayName(data.quadrant)}
                 </td>
               </tr>
@@ -527,6 +589,12 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
                 <td style="padding: 4px 8px 4px 0; color: #6B7280;">Disease:</td>
                 <td style="padding: 4px 0; text-align: right; font-weight: 500;">
                   ${data.scenario.parameters.disease || 'Unknown'}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 4px 8px 4px 0; color: #6B7280;">Country:</td>
+                <td style="padding: 4px 0; text-align: right; font-weight: 500;">
+                  ${data.scenario.countryName || 'Generic'} ${data.scenario.isUrban !== undefined ? (data.scenario.isUrban ? '(Urban)' : '(Rural)') : ''}
                 </td>
               </tr>
               ${data.scenario.results?.icer ? `
@@ -602,7 +670,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
         tooltip.remove();
       }
     };
-  }, [scenarios, selectedDiseases, showLabels, baselineMap, yAxisMetric]);
+  }, [scenarios, selectedDiseases, selectedCountries, showLabels, baselineMap, yAxisMetric, colorBy, availableCountries]);
 
   if (scenarios.length <= 1) {
     return (
@@ -630,6 +698,17 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
             >
               <option value="dalys">DALYs per 1,000 population</option>
               <option value="percent-deaths">% Deaths Averted</option>
+            </select>
+          </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-gray-600 dark:text-gray-400">Color by:</label>
+            <select
+              value={colorBy}
+              onChange={(e) => setColorBy(e.target.value as 'quadrant' | 'country')}
+              className="form-select text-sm"
+            >
+              <option value="quadrant">Quadrant</option>
+              <option value="country">Country</option>
             </select>
           </div>
           <label className="flex items-center space-x-2">
@@ -677,6 +756,42 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
           ))}
         </div>
       </div>
+      
+      {/* Country filters */}
+      {availableCountries.length > 1 && (
+        <div className="mb-4 bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
+          <div className="flex justify-between items-center mb-2">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Country:</h4>
+            <div className="flex gap-2">
+              <button
+                onClick={selectAllCountries}
+                className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+              >
+                Select All
+              </button>
+              <button
+                onClick={clearAllCountries}
+                className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {availableCountries.map(country => (
+              <label key={country} className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={selectedCountries.has(country)}
+                  onChange={() => toggleCountryFilter(country)}
+                  className="form-checkbox h-4 w-4 text-blue-600"
+                />
+                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{country}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
       
       {/* Chart container */}
       <div ref={chartRef} className="w-full h-[600px]"></div>

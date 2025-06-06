@@ -55,7 +55,7 @@ const AIScenarioPresets: AIInterventionConfig[] = [
       selfCareAI: true
     },
     effectMagnitudes: {
-      'triageAI_φ₀': 2.0,        // +16% formal care seeking
+      'triageAI_φ₀': 2.0,        // +10% formal care seeking (2.0 × 5%)
       'triageAI_σI': 1.8,        // +27% informal→formal transition
       'chwAI_μ₀': 2.0,           // +10% resolution at CHW
       'chwAI_δ₀': 2.0,           // -16% mortality at CHW
@@ -107,7 +107,7 @@ const AIScenarioPresets: AIInterventionConfig[] = [
       selfCareAI: true           // Low smartphone penetration limits impact
     },
     effectMagnitudes: {
-      'triageAI_φ₀': 0.3,        // Only +2.4% formal care seeking
+      'triageAI_φ₀': 0.3,        // Only +1.5% formal care seeking (0.3 × 5%)
       'triageAI_σI': 0.3,        // Minimal impact due to trust issues
       'chwAI_μ₀': 0.4,           // +2% resolution (connectivity problems)
       'chwAI_δ₀': 0.4,           // -3.2% mortality
@@ -177,7 +177,7 @@ const AIScenarioPresets: AIInterventionConfig[] = [
       selfCareAI: true           // Pregnancy monitoring and education apps
     },
     effectMagnitudes: {
-      'triageAI_φ₀': 2.5,        // +20% facility delivery (critical for maternal outcomes)
+      'triageAI_φ₀': 2.5,        // +12.5% facility delivery (2.5 × 5%, critical for maternal outcomes)
       'triageAI_σI': 2.0,        // +30% transition to facility care
       'chwAI_μ₀': 1.5,           // +7.5% resolution of complications
       'chwAI_δ₀': 3.0,           // -24% mortality (danger sign recognition saves lives)
@@ -227,7 +227,7 @@ const interventionInfo: InterventionInfo[] = [
     name: 'AI Health Advisor', 
     description: 'LLM-powered conversational AI that provides personalized health guidance, symptom assessment, and care navigation through natural language interaction',
     effects: [
-      { param: 'φ₀', effect: '+0.08', description: 'Increases initial formal care seeking. LLMs provide 24/7 multilingual support, understand complex symptoms in context, and build trust through empathetic conversation. This removes barriers of health literacy, language, and access that currently prevent care-seeking.' }
+      { param: 'φ₀', effect: '+0.05', description: 'Increases initial formal care seeking. LLMs provide 24/7 multilingual support, understand complex symptoms in context, and build trust through empathetic conversation. This removes barriers of health literacy, language, and access that currently prevent care-seeking.' }
     ]
   },
   { 
@@ -284,7 +284,7 @@ const interventionInfo: InterventionInfo[] = [
     name: 'AI Self-Care Platform', 
     description: 'Comprehensive self-management ecosystem combining AI health coaching, point-of-care diagnostics, over-the-counter medications, wearable devices, and predictive analytics for empowered patient care',
     effects: [
-      { param: 'φ₀', effect: '+0.07', description: 'Increases initial formal care seeking (health advisor functionality). Comprehensive platform provides 24/7 health guidance, symptom assessment, and care navigation, encouraging appropriate healthcare utilization when needed.' },
+      { param: 'φ₀', effect: '+0.05', description: 'Increases initial formal care seeking (health advisor functionality). Comprehensive platform provides 24/7 health guidance, symptom assessment, and care navigation, encouraging appropriate healthcare utilization when needed.' },
       { param: 'σI', effect: '×1.13', description: 'Accelerates transition from informal to formal care (health advisor functionality). Platform detects concerning symptoms through wearables and user inputs, providing timely guidance to seek professional care when self-management is insufficient.' },
       { param: 'μI', effect: '+0.08', description: 'Improves resolution in informal care settings. AI provides personalized treatment adherence support, symptom tracking with actionable insights, and adaptive health education that improves self-management of minor illnesses and chronic conditions.' },
       { param: 'δI', effect: '×0.85', description: 'Reduces mortality in informal care settings. AI apps detect warning signs early through passive monitoring, ensure medication compliance for chronic diseases, provide emergency guidance, and nudge users to seek care when algorithms detect serious conditions.' },

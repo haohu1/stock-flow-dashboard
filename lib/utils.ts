@@ -154,7 +154,9 @@ export const calculateDefaultCongestion = (
     'fragile_conflict_system': 2.5,     // Highest congestion in conflict areas
     'moderate_urban_system': 1.2,       // Moderate increase
     'strong_urban_system': 0.8,         // Better capacity
-    'well_functioning_system': 0.6      // Best capacity, lowest congestion
+    'well_functioning_system': 0.6,     // Best capacity, lowest congestion
+    'rwanda_health_system': 3.0,        // Highest congestion due to very high utilization
+    'test_perfect_system': 0.0          // ZERO congestion - perfect system
   };
   
   const capacityMultiplier = systemCapacityMultipliers[healthSystemStrength] || 1.0;

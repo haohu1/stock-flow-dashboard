@@ -14,42 +14,31 @@ import {
   loadScenarioAtom,
   deleteScenarioAtom,
   updateScenarioAtom,
-  selectedHealthSystemStrengthAtom,
-  baseParametersAtom,
-  aiInterventionsAtom,
-  effectMagnitudesAtom,
-  healthSystemMultipliersAtom
+  Scenario
 } from '../lib/store';
 import SimulationChart from './SimulationChart';
 import CumulativeOutcomesChart from './CumulativeOutcomesChart';
 import ResultsTable from './ResultsTable';
 import QueueVisualization from './QueueVisualization';
-import { formatNumber } from '../lib/utils';
+import { formatNumber, calculateSuggestedFeasibility } from '../lib/utils';
 import { SimulationResults } from '../models/stockAndFlowModel';
 
 const Dashboard: React.FC = () => {
   const [results] = useAtom(simulationResultsAtom);
   const [resultsMap] = useAtom(simulationResultsMapAtom);
-  const [selectedDiseases] = useAtom(selectedDiseasesAtom);
+  const [selectedDiseases, setSelectedDiseases] = useAtom(selectedDiseasesAtom);
   const [selectedDisease] = useAtom(selectedDiseaseAtom);
   const [baseline] = useAtom(baselineResultsAtom);
   const [baselineMap] = useAtom(baselineResultsMapAtom);
   const [parameters] = useAtom(derivedParametersAtom);
   const [population] = useAtom(populationSizeAtom);
-  const [scenarios] = useAtom(scenariosAtom);
+  const [scenarios, setScenarios] = useAtom(scenariosAtom);
   const [selectedScenarioId] = useAtom(selectedScenarioIdAtom);
   const [, loadScenario] = useAtom(loadScenarioAtom);
   const [, deleteScenario] = useAtom(deleteScenarioAtom);
   const [, updateScenario] = useAtom(updateScenarioAtom);
   const [scenariosExpanded, setScenariosExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'comparison'>('overview');
-
-  // Use effect to ensure the correct primary disease results are shown
-  useEffect(() => {
-    if (hasMultipleDiseaseResults && selectedDisease && resultsMap[selectedDisease]) {
-      setActiveTab('overview');
-    }
-  }, [selectedDisease]);
 
   // Listen for primary disease change events from the sidebar
   useEffect(() => {
@@ -150,6 +139,13 @@ const Dashboard: React.FC = () => {
     // OR we have multiple disease selections with at least some valid results
     return hasMultipleResults || (hasMultipleSelections && hasActualResults);
   })();
+
+  // Use effect to ensure the correct primary disease results are shown
+  useEffect(() => {
+    if (hasMultipleDiseaseResults && selectedDisease && resultsMap[selectedDisease]) {
+      setActiveTab('overview');
+    }
+  }, [selectedDisease, hasMultipleDiseaseResults, resultsMap]);
 
   if (!results) {
     return (
@@ -303,6 +299,7 @@ const Dashboard: React.FC = () => {
                   <li>Check bubble charts for impact vs feasibility</li>
                   <li>Save scenarios for comparison</li>
                   <li>Use Sensitivity tab to test parameter uncertainty</li>
+                  <li>Use "Generate AI Comparison" button in sidebar for quick multi-disease analysis</li>
                 </ul>
               </li>
               <li className="font-medium">Explore documentation:

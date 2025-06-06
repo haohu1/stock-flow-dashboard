@@ -82,6 +82,32 @@ export const countryProfiles: Record<string, CountryProfile> = {
     physicianDensityPer1000: 0.9,
     hospitalBedsPer1000: 2.3,
     description: 'South Africa has the world\'s largest HIV epidemic (20.4% prevalence) with extremely high TB burden including extensive drug resistance. Strong public health system but faces significant inequality and resource constraints. Best health infrastructure in the region but overwhelmed by disease burden.'
+  },
+  rwanda: {
+    country: 'Rwanda',
+    countryCode: 'RWA',
+    region: 'East Africa',
+    diseaseProfile: 'High Utilization LMIC',
+    urbanPopulationPct: 0.17,
+    ruralPopulationPct: 0.83,
+    gdpPerCapitaUSD: 833,
+    healthExpenditurePerCapitaUSD: 84,
+    physicianDensityPer1000: 0.1,
+    hospitalBedsPer1000: 1.6,
+    description: 'Rwanda achieved near-universal health coverage (>90% enrolled in Mutuelle de Santé). Strong CHW network (45,000+ cooperatives) provides primary contact. High system utilization but faces efficiency challenges: long wait times, overcrowded facilities. AI can optimize flow rather than improve access.'
+  },
+  test_country: {
+    country: 'TEST Perfect System',
+    countryCode: 'TEST',
+    region: 'Test Region',
+    diseaseProfile: 'Perfect Care',
+    urbanPopulationPct: 1.0,
+    ruralPopulationPct: 0.0,
+    gdpPerCapitaUSD: 50000,
+    healthExpenditurePerCapitaUSD: 5000,
+    physicianDensityPer1000: 5.0,
+    hospitalBedsPer1000: 10.0,
+    description: 'TEST SETTING: A perfect health system where 100% of patients seek formal care immediately. Self-care AI should have ZERO impact because no one uses informal care. Use this to verify calculations are correct.'
   }
 };
 
@@ -125,6 +151,33 @@ export const countryDiseaseBurdens: Record<string, Record<string, DiseaseBurdenM
     high_risk_pregnancy_low_anc: { country: 'South Africa', disease: 'high_risk_pregnancy_low_anc', incidenceMultiplier: 1.4, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.85, notes: 'Higher maternal risk due to HIV, TB co-infection and socioeconomic factors' },
     urti: { country: 'South Africa', disease: 'urti', incidenceMultiplier: 1.1, mortalityMultiplier: 1.0, careSeekingMultiplier: 0.9, notes: 'Moderate burden, good healthcare access in urban areas' },
     fever: { country: 'South Africa', disease: 'fever', incidenceMultiplier: 1.2, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.85, notes: 'Higher complexity due to HIV/TB co-infections requiring careful evaluation' }
+  },
+  rwanda: {
+    tuberculosis: { country: 'Rwanda', disease: 'tuberculosis', incidenceMultiplier: 0.7, mortalityMultiplier: 0.8, careSeekingMultiplier: 0.95, notes: 'Good TB program with high case detection rate due to CHW network' },
+    malaria: { country: 'Rwanda', disease: 'malaria', incidenceMultiplier: 0.8, mortalityMultiplier: 0.7, careSeekingMultiplier: 0.9, notes: 'Successful malaria control program, cases declining' },
+    childhood_pneumonia: { country: 'Rwanda', disease: 'childhood_pneumonia', incidenceMultiplier: 1.2, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.85, notes: 'Common but CHWs trained in early detection' },
+    diarrhea: { country: 'Rwanda', disease: 'diarrhea', incidenceMultiplier: 1.0, mortalityMultiplier: 0.8, careSeekingMultiplier: 0.85, notes: 'Improved water/sanitation reducing burden' },
+    hiv_management_chronic: { country: 'Rwanda', disease: 'hiv_management_chronic', incidenceMultiplier: 0.5, mortalityMultiplier: 0.6, careSeekingMultiplier: 0.95, notes: 'Excellent HIV program, near elimination of mother-to-child transmission' },
+    hiv_opportunistic: { country: 'Rwanda', disease: 'hiv_opportunistic', incidenceMultiplier: 0.5, mortalityMultiplier: 0.7, careSeekingMultiplier: 0.9, notes: 'Strong HIV care cascade reduces opportunistic infections' },
+    fever: { country: 'Rwanda', disease: 'fever', incidenceMultiplier: 1.1, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.9, notes: 'High health facility use for febrile illness' },
+    urti: { country: 'Rwanda', disease: 'urti', incidenceMultiplier: 1.0, mortalityMultiplier: 0.8, careSeekingMultiplier: 0.85, notes: 'Common but CHWs manage most cases' },
+    congestive_heart_failure: { country: 'Rwanda', disease: 'congestive_heart_failure', incidenceMultiplier: 0.9, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.8, notes: 'Growing NCD burden but limited specialized care' },
+    anemia: { country: 'Rwanda', disease: 'anemia', incidenceMultiplier: 1.1, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.8, notes: 'Common but well-managed through CHW network' },
+    high_risk_pregnancy_low_anc: { country: 'Rwanda', disease: 'high_risk_pregnancy_low_anc', incidenceMultiplier: 0.8, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.9, notes: 'Strong maternal health program with CHW support' }
+  },
+  test_country: {
+    // All diseases have perfect care seeking (1.0) and normal burden
+    tuberculosis: { country: 'test_country', disease: 'tuberculosis', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
+    malaria: { country: 'test_country', disease: 'malaria', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
+    childhood_pneumonia: { country: 'test_country', disease: 'childhood_pneumonia', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
+    diarrhea: { country: 'test_country', disease: 'diarrhea', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
+    hiv_management_chronic: { country: 'test_country', disease: 'hiv_management_chronic', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
+    hiv_opportunistic: { country: 'test_country', disease: 'hiv_opportunistic', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
+    fever: { country: 'test_country', disease: 'fever', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
+    urti: { country: 'test_country', disease: 'urti', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
+    anemia: { country: 'test_country', disease: 'anemia', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
+    high_risk_pregnancy_low_anc: { country: 'test_country', disease: 'high_risk_pregnancy_low_anc', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
+    congestive_heart_failure: { country: 'test_country', disease: 'congestive_heart_failure', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' }
   }
 };
 
@@ -203,6 +256,8 @@ export function adjustParametersForCountry(
   disease: string
 ): CountrySpecificParameters {
   console.log(`Adjusting parameters for country: ${countryCode}, urban: ${isUrban}, disease: ${disease}`);
+  console.log(`Base params lambda: ${baseParams.lambda}, mu0: ${baseParams.mu0}, deltaU: ${baseParams.deltaU}`);
+  console.log(`Base params phi0: ${baseParams.phi0}`);
   
   const country = countryProfiles[countryCode];
   if (!country) {
@@ -211,6 +266,8 @@ export function adjustParametersForCountry(
 
   const burdenMultipliers = countryDiseaseBurdens[countryCode]?.[disease];
   const severity = diseaseSeverityData[disease];
+  
+  console.log(`Burden multipliers for ${countryCode}/${disease}:`, burdenMultipliers);
 
   // Calculate infrastructure multiplier based on country metrics
   const infrastructureMultiplier = calculateInfrastructureMultiplier(country);
@@ -221,6 +278,7 @@ export function adjustParametersForCountry(
 
   // Apply country-specific disease burden
   if (burdenMultipliers) {
+    console.log(`Applying burden multipliers - lambda before: ${adjustedParams.lambda}, incidenceMultiplier: ${burdenMultipliers.incidenceMultiplier}`);
     adjustedParams.lambda *= burdenMultipliers.incidenceMultiplier;
     adjustedParams.deltaU *= burdenMultipliers.mortalityMultiplier;
     adjustedParams.deltaI *= burdenMultipliers.mortalityMultiplier;
@@ -229,8 +287,44 @@ export function adjustParametersForCountry(
     adjustedParams.delta2 *= burdenMultipliers.mortalityMultiplier;
     adjustedParams.delta3 *= burdenMultipliers.mortalityMultiplier;
     adjustedParams.phi0 *= burdenMultipliers.careSeekingMultiplier;
+    console.log(`After burden multipliers - lambda: ${adjustedParams.lambda}, deltaU: ${adjustedParams.deltaU}`);
+    console.log(`After burden multipliers - phi0: ${adjustedParams.phi0} (base: ${baseParams.phi0}, multiplier: ${burdenMultipliers.careSeekingMultiplier})`);
+  } else {
+    console.log(`WARNING: No burden multipliers found for ${countryCode}/${disease}`);
   }
 
+  // Rwanda-specific adjustments for very high formal care utilization
+  if (countryCode === 'rwanda') {
+    // In Rwanda, almost everyone goes directly to CHWs or health centers
+    adjustedParams.phi0 = 0.92; // 92% go directly to formal care
+    adjustedParams.sigmaI = 0.65; // Those who try informal quickly transition
+    
+    // CRITICAL: informalCareRatio is the proportion who stay UNTREATED, not informal
+    // High value = more stay untreated (don't go to informal care)
+    // Low value = more go to informal care
+    // For Rwanda with minimal informal sector, we want HIGH informalCareRatio
+    adjustedParams.informalCareRatio = 0.98; // 98% of non-formal seekers stay untreated, only 2% use informal
+  }
+  
+  // TEST country - perfect formal care system
+  if (countryCode === 'test_country') {
+    // EVERYONE seeks formal care immediately
+    adjustedParams.phi0 = 1.0; // 100% go directly to formal care
+    adjustedParams.sigmaI = 1.0; // Instant transition (not needed with phi0=1)
+    adjustedParams.informalCareRatio = 0.0; // 0% stay untreated - everyone gets care!
+    
+    // Perfect system - no congestion, perfect efficiency
+    adjustedParams.systemCongestion = 0.0;
+    
+    // Override all multipliers to perfect values
+    adjustedParams.mu0 = baseParams.mu0; // Use base values without reduction
+    adjustedParams.mu1 = baseParams.mu1;
+    adjustedParams.mu2 = baseParams.mu2;
+    adjustedParams.mu3 = baseParams.mu3;
+    
+    // Note: self-care AI should have ZERO impact in this system
+  }
+  
   // Apply country-specific urban/rural adjustments
   if (!isUrban) {
     console.log(`  Applying rural adjustments for ${disease} in ${countryCode}`);
@@ -286,6 +380,9 @@ export function adjustParametersForCountry(
   // Apply vertical program overrides for specific disease-country combinations
   adjustedParams = applyVerticalProgramEffects(adjustedParams, countryCode, disease, isUrban);
   
+  console.log(`Final adjusted params for ${countryCode}/${disease} - lambda: ${adjustedParams.lambda}, mu0: ${adjustedParams.mu0}, deltaU: ${adjustedParams.deltaU}`);
+  console.log(`Final phi0 for ${countryCode}/${disease}: ${adjustedParams.phi0}`);
+  
   return adjustedParams;
 }
 
@@ -315,6 +412,14 @@ function getRuralMultipliers(countryCode: string, disease: string): any {
       mu0: 0.7, mu1: 0.6, mu2: 0.7, mu3: 0.75,
       deltaU: 1.3, deltaI: 1.4, delta0: 1.25, delta1: 1.3, delta2: 1.2, delta3: 1.15,
       rho0: 0.6, rho1: 0.5, rho2: 0.4
+    },
+    rwanda: {
+      phi0: 0.85,     // Only 15% reduction due to strong CHW network
+      sigmaI: 0.7,    // 30% reduction - people move to formal care quickly
+      informalRatio: 0.98, // Almost no informal care sector in rural Rwanda
+      mu0: 0.75, mu1: 0.65, mu2: 0.7, mu3: 0.8, // Better rural performance due to CHW network
+      deltaU: 1.2, deltaI: 1.2, delta0: 1.15, delta1: 1.15, delta2: 1.1, delta3: 1.05,
+      rho0: 0.8, rho1: 0.7, rho2: 0.6 // Strong referral system
     }
   };
   

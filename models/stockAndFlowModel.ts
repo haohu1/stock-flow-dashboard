@@ -82,7 +82,6 @@ export interface ModelParameters {
   
   // System capacity parameters
   systemCongestion?: number;   // 0-1, where 0 = no congestion, 1 = completely full
-  congestionMortalityMultiplier?: number; // How much mortality increases due to congestion (e.g., 1.5 = 50% increase)
   
   // Disease-specific capacity parameters
   capacityShare?: number;      // This disease's share of overall health system capacity
@@ -299,7 +298,6 @@ const runWeek = (
   const newF = directToFormal + informalToFormal + remainingFormal;
   
   // Apply capacity constraints if system congestion is specified
-  const congestionMortalityMult = params.congestionMortalityMultiplier || 1.5;
   
   // Get disease-specific capacity parameters
   const capacityShare = params.capacityShare || 0.1; // Default 10% share
@@ -806,6 +804,72 @@ export const healthSystemStrengthDefaults = {
     rho_multiplier_L0: 1.2, // Very efficient, standardized referrals
     rho_multiplier_L1: 1.2,
     rho_multiplier_L2: 1.2,
+  },
+  rwanda_health_system: { // High utilization but severe efficiency bottlenecks
+    // Direct System-Wide Parameters
+    phi0: 0.92, // Extremely high formal care seeking - almost everyone uses CHWs/clinics
+    sigmaI: 0.65, // Very fast transition from informal to formal due to CHW network
+    informalCareRatio: 0.02, // Almost no one stays untreated (2% only)
+    regionalLifeExpectancy: 68, // Rwanda's current life expectancy
+    perDiemCosts: { 
+      I: 8,     // Limited informal sector due to strong formal system
+      F: 15,    // Health center entry - subsidized by insurance
+      L0: 10,   // Community health cooperatives (lower cost but high volume)
+      L1: 20,   // Health centers - often overcrowded (reduced due to volume)
+      L2: 80,   // District hospitals - operating beyond capacity
+      L3: 160   // Referral hospitals - King Faisal, CHUK
+    }, // USD - based on Rwanda public sector data with Mutuelle subsidies
+    
+    // Multipliers (Severe efficiency challenges create huge AI opportunity)
+    mu_multiplier_I: 0.8,   // Informal care still works but people prefer formal care
+    mu_multiplier_L0: 0.35, // CHWs severely overwhelmed - MASSIVE AI opportunity
+    mu_multiplier_L1: 0.3,  // Health centers in crisis - CRITICAL diagnostic delays
+    mu_multiplier_L2: 0.35, // District hospitals gridlocked - bed management essential
+    mu_multiplier_L3: 0.6,  // Referral hospitals struggling but better equipped
+    
+    delta_multiplier_U: 1.1,  // Lower than weak systems due to coverage
+    delta_multiplier_I: 1.2,  
+    delta_multiplier_L0: 1.4, // Overwhelmed CHWs miss critical cases
+    delta_multiplier_L1: 1.6, // Long waits lead to deterioration
+    delta_multiplier_L2: 1.5, // Bed shortages increase mortality
+    delta_multiplier_L3: 1.2, 
+    
+    rho_multiplier_L0: 0.6,  // Many referrals lost due to facility congestion
+    rho_multiplier_L1: 0.5,  // Severe bottlenecks prevent referral completion
+    rho_multiplier_L2: 0.6,  // Bed unavailability blocks transfers
+  },
+  test_perfect_system: { // TEST SETTING: Perfect formal care system - self-care AI should have ZERO impact
+    // Direct System-Wide Parameters
+    phi0: 1.0, // 100% formal care seeking - EVERYONE goes to formal care
+    sigmaI: 1.0, // Instant transition (not that it matters with phi0=1)
+    informalCareRatio: 1.0, // 100% of non-formal seekers stay untreated (but there are none)
+    regionalLifeExpectancy: 80, // High life expectancy
+    perDiemCosts: { 
+      I: 5,      // Informal care (no one uses it)
+      F: 10,     // Formal care entry
+      L0: 15,    // CHW level
+      L1: 30,    // Primary care
+      L2: 100,   // District hospital
+      L3: 200    // Tertiary hospital
+    },
+    
+    // Perfect efficiency multipliers
+    mu_multiplier_I: 1.0,   // Perfect informal care (but unused)
+    mu_multiplier_L0: 1.0,  // Perfect CHW efficiency
+    mu_multiplier_L1: 1.0,  // Perfect primary care
+    mu_multiplier_L2: 1.0,  // Perfect district hospital
+    mu_multiplier_L3: 1.0,  // Perfect tertiary care
+    
+    delta_multiplier_U: 1.0,  // Normal mortality (but no untreated)
+    delta_multiplier_I: 1.0,  // Normal mortality (but no informal)
+    delta_multiplier_L0: 1.0, // Normal CHW mortality
+    delta_multiplier_L1: 1.0, // Normal primary mortality
+    delta_multiplier_L2: 1.0, // Normal district mortality
+    delta_multiplier_L3: 1.0, // Normal tertiary mortality
+    
+    rho_multiplier_L0: 1.0,  // Perfect referrals
+    rho_multiplier_L1: 1.0,  // Perfect referrals
+    rho_multiplier_L2: 1.0,  // Perfect referrals
   }
 };
 
@@ -838,7 +902,6 @@ export const diseaseProfiles = {
     queueAbandonmentRate: 0.02, // 2% - Patients feel very unwell, less likely to leave
     queueBypassRate: 0.03,    // 3% - Limited traditional options for heart failure
     queueClearanceRate: 0.20, // 20% - Complex management, multiple medications
-    congestionMortalityMultiplier: 2.0 // 100% increase - Acute decompensation is dangerous
   },
   tuberculosis: {
     lambda: 0.003,            // 0.3% annual incidence (300 per 100,000), SSA average
@@ -867,7 +930,6 @@ export const diseaseProfiles = {
     queueAbandonmentRate: 0.04, // 4% - Patients understand importance of treatment
     queueBypassRate: 0.05,    // 5% - Less traditional treatment, more education
     queueClearanceRate: 0.25, // 25% - Complex protocols, counseling needed
-    congestionMortalityMultiplier: 1.2 // 20% increase - Generally slower progression
   },
   childhood_pneumonia: { // Primarily non-severe childhood pneumonia
     lambda: 0.05,             // 50,000 cases per million population (affects mainly under-5s)
@@ -896,7 +958,6 @@ export const diseaseProfiles = {
     queueAbandonmentRate: 0.03, // 3% - Parents very concerned about child breathing
     queueBypassRate: 0.08,    // 8% - Some traditional treatments but parents more cautious
     queueClearanceRate: 0.25, // 25% - Careful assessment, oxygen needs
-    congestionMortalityMultiplier: 2.5 // 150% increase - Respiratory distress progresses rapidly
   },
   malaria: { // Uncomplicated and severe malaria in Nigeria (high-burden setting)
     lambda: 0.20,             // 20% annual incidence in endemic regions of Nigeria (higher than national avg of ~6%)
@@ -925,7 +986,6 @@ export const diseaseProfiles = {
     queueAbandonmentRate: 0.06, // 6% - Patients know it's serious but may seek traditional care
     queueBypassRate: 0.15,    // 15% - Traditional antimalarials sometimes used
     queueClearanceRate: 0.40, // 40% - RDT + ACT protocol is fast
-    congestionMortalityMultiplier: 1.8 // 80% increase - Can progress to severe malaria
   },
   fever: { // Fever of Unknown Origin (non-specific)
     lambda: 0.60,             // moderate-high incidence (episodes per person-year)
@@ -954,7 +1014,6 @@ export const diseaseProfiles = {
     queueAbandonmentRate: 0.12, // 12% - May feel better while waiting
     queueBypassRate: 0.25,    // 25% - Many traditional remedies available
     queueClearanceRate: 0.45, // 45% - Rapid assessment possible
-    congestionMortalityMultiplier: 1.3 // 30% increase - Variable depending on cause
   },
   diarrhea: { // Acute diarrheal disease, primarily in children
     lambda: 0.30,             // population-adjusted incidence (300,000 cases per million annually)
@@ -983,7 +1042,6 @@ export const diseaseProfiles = {
     queueAbandonmentRate: 0.08, // 8% - Parents concerned but may try home remedies
     queueBypassRate: 0.18,    // 18% - ORS available, traditional treatments common
     queueClearanceRate: 0.40, // 40% - Simple ORS/zinc protocols
-    congestionMortalityMultiplier: 1.6 // 60% increase - Dehydration progresses rapidly in children
   },
   anemia: { // Focus on Iron Deficiency Anemia in women/children
     lambda: 0.05,             // 5% annual incidence of symptomatic anemia needing treatment (50,000 per million)
@@ -1012,7 +1070,6 @@ export const diseaseProfiles = {
     queueAbandonmentRate: 0.10, // 10% - Chronic condition, less urgent feeling
     queueBypassRate: 0.12,    // 12% - Traditional iron-rich foods/herbs
     queueClearanceRate: 0.35, // 35% - Blood test + iron supplementation
-    congestionMortalityMultiplier: 1.0 // 0% increase - Rarely emergency, delays don't increase mortality
   },
   hiv_management_chronic: { // Chronic care for stable HIV on ART
     lambda: 0.01,             // 1% annual new diagnoses needing linkage to chronic ART care (South Africa context)
@@ -1041,7 +1098,6 @@ export const diseaseProfiles = {
     queueAbandonmentRate: 0.02, // 2% - Patients committed to chronic care
     queueBypassRate: 0.02,    // 2% - Patients understand need for formal care
     queueClearanceRate: 0.30, // 30% - Standard chronic care visits
-    congestionMortalityMultiplier: 1.1 // 10% increase - Stable patients less affected by delays
   },
   high_risk_pregnancy_low_anc: { // High-risk pregnancy with limited/no antenatal care
     lambda: 0.02,             // 2% of women of reproductive age annually experience this (very rough estimate)
@@ -1070,7 +1126,6 @@ export const diseaseProfiles = {
     queueAbandonmentRate: 0.01, // 1% - Life-threatening urgency, unlikely to abandon
     queueBypassRate: 0.02,    // 2% - Limited safe traditional options
     queueClearanceRate: 0.15, // 15% - Complex obstetric assessments
-    congestionMortalityMultiplier: 3.0 // 200% increase - Obstetric emergencies can't wait
   },
   urti: { // Upper Respiratory Tract Infection
     lambda: 0.80,              // high incidence (800,000 episodes per million population)
@@ -1099,7 +1154,6 @@ export const diseaseProfiles = {
     queueAbandonmentRate: 0.15, // 15% - Patients know it's minor, likely to leave
     queueBypassRate: 0.20,    // 20% - Many home remedies
     queueClearanceRate: 0.50, // 50% - Quick consultations
-    congestionMortalityMultiplier: 1.0 // 0% increase - Self-limiting, no mortality impact
   },
   hiv_opportunistic: { // HIV-related opportunistic infections (South African context)
     lambda: 0.005,            // Population-adjusted incidence (5,000 cases per million annually)
@@ -1128,7 +1182,6 @@ export const diseaseProfiles = {
     queueAbandonmentRate: 0.01, // 1% - Extremely sick patients, won't leave
     queueBypassRate: 0.01,    // 1% - Too sick, need urgent formal care
     queueClearanceRate: 0.15, // 15% - Complex diagnosis and treatment
-    congestionMortalityMultiplier: 2.5 // 150% increase - Immunocompromised patients deteriorate quickly
   }
 };
 
@@ -1276,51 +1329,51 @@ export const defaultAIUptakeParameters: AIUptakeParameters = {
 // Default AI base effects
 export const defaultAIBaseEffects: AIBaseEffects = {
   triageAI: {
-    phi0Effect: 0.08,      // 8% increase in formal care seeking
-    sigmaIEffect: 1.15,    // 15% increase in informal to formal transition (multiplier)
-    queuePreventionRate: 0.20,      // 20% prevention of inappropriate visits
-    smartRoutingRate: 0.30          // 30% direct routing to correct level
+    phi0Effect: 0.15,      // 15% increase in formal care seeking (transformative awareness)
+    sigmaIEffect: 1.25,    // 25% increase in informal to formal transition (transformative routing)
+    queuePreventionRate: 0.35,      // 35% prevention of inappropriate visits (highly transformative)
+    smartRoutingRate: 0.45          // 45% direct routing to correct level (near-optimal triage)
   },
   chwAI: {
-    mu0Effect: 0.05,       // 5% increase in resolution at CHW level
-    delta0Effect: 0.92,    // 8% reduction in mortality (multiplier)
-    rho0Effect: 0.92,      // 8% reduction in unnecessary referrals (multiplier)
-    resolutionBoost: 0.15,          // 15% additional resolution at L0
-    referralOptimization: 0.25      // 25% further reduction in unnecessary referrals
+    mu0Effect: 0.15,       // 15% increase in resolution at CHW level (protocol adherence)
+    delta0Effect: 0.97,    // 3% reduction in mortality (very conservative)
+    rho0Effect: 0.70,      // 30% reduction in unnecessary referrals (highly transformative)
+    resolutionBoost: 0.20,          // 20% additional resolution at L0 (better protocols)
+    referralOptimization: 0.40      // 40% further reduction in unnecessary referrals (optimal triage)
   },
   diagnosticAI: {
-    mu1Effect: 0.06,       // 6% increase in resolution at primary care
-    delta1Effect: 0.92,    // 8% reduction in mortality (multiplier)
-    rho1Effect: 0.92,      // 8% reduction in referrals (multiplier)
-    mu2Effect: 0.04,       // 4% increase in resolution at district hospitals
-    delta2Effect: 0.94,    // 6% reduction in mortality (multiplier)
-    rho2Effect: 0.94,      // 6% reduction in referrals (multiplier)
-    pointOfCareResolution: 0.20,    // 20% additional resolution at L1
-    referralPrecision: 0.25         // 25% further reduction in referrals
+    mu1Effect: 0.18,       // 18% increase in resolution at primary care (accurate diagnosis)
+    delta1Effect: 0.97,    // 3% reduction in mortality (very conservative)
+    rho1Effect: 0.65,      // 35% reduction in referrals (transformative diagnostic confidence)
+    mu2Effect: 0.12,       // 12% increase in resolution at district hospitals
+    delta2Effect: 0.98,    // 2% reduction in mortality (extremely conservative)
+    rho2Effect: 0.75,      // 25% reduction in referrals (better case management)
+    pointOfCareResolution: 0.35,    // 35% additional resolution at L1 (highly transformative)
+    referralPrecision: 0.45         // 45% further reduction in referrals (near-perfect triage)
   },
   bedManagementAI: {
-    mu2Effect: 0.03,       // 3% increase in resolution at district hospitals
-    mu3Effect: 0.03,       // 3% increase in resolution at tertiary hospitals
-    lengthOfStayReduction: 0.20,    // 20% reduction in length of stay
-    dischargeOptimization: 0.25     // 25% faster discharge processing
+    mu2Effect: 0.10,       // 10% increase in throughput at district hospitals (better flow)
+    mu3Effect: 0.10,       // 10% increase in throughput at tertiary hospitals
+    lengthOfStayReduction: 0.35,    // 35% reduction in length of stay (highly transformative)
+    dischargeOptimization: 0.40     // 40% faster discharge processing (near-optimal)
   },
   hospitalDecisionAI: {
-    delta2Effect: 0.90,    // 10% reduction in mortality (multiplier)
-    delta3Effect: 0.90,    // 10% reduction in mortality (multiplier)
-    treatmentEfficiency: 0.15,      // 15% faster recovery
-    resourceUtilization: 0.20       // 20% better bed utilization
+    delta2Effect: 0.97,    // 3% reduction in mortality (very conservative)
+    delta3Effect: 0.97,    // 3% reduction in mortality (very conservative)
+    treatmentEfficiency: 0.30,      // 30% faster recovery (protocol optimization)
+    resourceUtilization: 0.40       // 40% better bed utilization (highly transformative)
   },
   selfCareAI: {
     // Health advisor functionality (included in comprehensive platform)
-    phi0Effect: 0.07,      // 7% increase in formal care seeking (closer to pure advisor)
-    sigmaIEffect: 1.13,    // 13% increase in informal to formal transition (closer to pure advisor)
-    queuePreventionRate: 0.25,      // 25% prevention of inappropriate visits (higher due to self-management)
-    smartRoutingRate: 0.25,         // 25% direct routing to correct level
+    phi0Effect: 0.12,      // 12% increase in formal care seeking (was 0.05 - more transformative)
+    sigmaIEffect: 1.20,    // 20% increase in informal to formal transition (was 1.10 - transformative routing)
+    queuePreventionRate: 0.40,      // 40% prevention of inappropriate visits (was 0.30 - highly transformative)
+    smartRoutingRate: 0.45,         // 45% direct routing to correct level (was 0.35 - near-optimal)
     // Self-care specific functionality
-    muIEffect: 0.08,       // 8% increase in resolution in informal care
-    deltaIEffect: 0.85,    // 15% reduction in mortality (multiplier)
-    visitReductionEffect: 0.2,    // 20% reduction in unnecessary visits
-    routingImprovementEffect: 0.15 // 15% improvement in direct routing
+    muIEffect: 0.15,       // 15% increase in resolution in informal care (was 0.06 - protocol guidance)
+    deltaIEffect: 0.96,    // 4% reduction in mortality (was 0.92 - more conservative)
+    visitReductionEffect: 0.20,    // 20% reduction in unnecessary visits (more realistic)
+    routingImprovementEffect: 0.25 // 25% improvement in direct routing (realistic)
   }
 };
 
@@ -1369,7 +1422,7 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     },
     selfCareAI: {
       muIEffect: 0.02,      // 2% - limited self-care impact for pneumonia
-      deltaIEffect: 0.95    // 5% mortality reduction (early care seeking)
+      deltaIEffect: 0.98    // 2% mortality reduction (more conservative)
     }
   },
   
@@ -1390,15 +1443,15 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     },
     selfCareAI: {
       muIEffect: 0.05,      // 5% - moderate impact (prevention education)
-      deltaIEffect: 0.90    // 10% mortality reduction
+      deltaIEffect: 0.95    // 5% mortality reduction (more conservative)
     }
   },
   
   // Diarrhea - self-care AI very effective for ORS preparation
   diarrhea: {
     selfCareAI: {
-      muIEffect: 0.20,      // 20% increase (ORS preparation guidance)
-      deltaIEffect: 0.70    // 30% mortality reduction (prevent dehydration)
+      muIEffect: 0.25,      // 25% increase (ORS preparation guidance - highly effective)
+      deltaIEffect: 0.92    // 8% mortality reduction (more conservative)
     },
     chwAI: {
       mu0Effect: 0.20,      // 20% increase (dehydration assessment)
@@ -1439,8 +1492,8 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       delta3Effect: 0.85    // 15% mortality reduction
     },
     selfCareAI: {
-      muIEffect: 0.15,      // 15% increase (adherence support critical)
-      deltaIEffect: 0.80    // 20% mortality reduction
+      muIEffect: 0.20,      // 20% increase (adherence support highly effective)
+      deltaIEffect: 0.92    // 8% mortality reduction (more conservative)
     }
   },
   
@@ -1452,24 +1505,24 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       rho0Effect: 1.30      // 30% increase referrals (complications need specialist care)
     },
     diagnosticAI: {
-      mu1Effect: 0.20,      // 20% increase (ultrasound AI)
-      delta1Effect: 0.75,   // 25% mortality reduction
-      rho1Effect: 1.20,     // 20% increase in appropriate referrals (high-risk cases need specialist care)
-      mu2Effect: 0.15,      // 15% increase at L2 (fetal monitoring AI)
-      delta2Effect: 0.80,   // 20% mortality reduction at L2
-      rho2Effect: 1.10      // 10% increase in L2 referrals (complex obstetric cases)
+      mu1Effect: 0.15,      // 15% increase (ultrasound AI - more conservative)
+      delta1Effect: 0.90,   // 10% mortality reduction (conservative)
+      rho1Effect: 1.25,     // 25% increase in appropriate referrals (transformative for high-risk identification)
+      mu2Effect: 0.12,      // 12% increase at L2 (fetal monitoring AI)
+      delta2Effect: 0.92,   // 8% mortality reduction at L2 (conservative)
+      rho2Effect: 1.15      // 15% increase in L2 referrals (better triage)
     },
     triageAI: {
       phi0Effect: 0.20,     // 20% increase in facility delivery
       sigmaIEffect: 1.30    // 30% faster transition
     },
     hospitalDecisionAI: {
-      delta2Effect: 0.70,   // 30% mortality reduction (hemorrhage protocols)
-      delta3Effect: 0.70    // 30% mortality reduction
+      delta2Effect: 0.85,   // 15% mortality reduction (more realistic for hemorrhage protocols)
+      delta3Effect: 0.85    // 15% mortality reduction (still significant but more conservative)
     },
     selfCareAI: {
-      muIEffect: 0.10,      // 10% increase (pregnancy monitoring)
-      deltaIEffect: 0.75    // 25% mortality reduction (danger signs)
+      muIEffect: 0.15,      // 15% increase (pregnancy monitoring and education)
+      deltaIEffect: 0.90    // 10% mortality reduction (more conservative)
     }
   },
   
@@ -1505,8 +1558,8 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
   // HIV management - adherence focus
   hiv_management_chronic: {
     selfCareAI: {
-      muIEffect: 0.25,      // 25% increase (adherence is critical)
-      deltaIEffect: 0.75    // 25% mortality reduction
+      muIEffect: 0.30,      // 30% increase (adherence is critical - highly effective)
+      deltaIEffect: 0.92    // 8% mortality reduction (more conservative)
     },
     chwAI: {
       mu0Effect: 0.15,      // 15% increase (adherence counseling)
@@ -1540,8 +1593,8 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       rho2Effect: 0.75      // 25% reduction in L2 referrals
     },
     selfCareAI: {
-      muIEffect: 0.05,      // 5% - minor improvement
-      deltaIEffect: 0.95    // 5% mortality reduction
+      muIEffect: 0.08,      // 8% - minor improvement (increased process effect)
+      deltaIEffect: 0.97    // 3% mortality reduction (more conservative)
     }
   },
   
@@ -1565,8 +1618,8 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       sigmaIEffect: 1.20    // 20% faster transition
     },
     selfCareAI: {
-      muIEffect: 0.05,      // 5% increase (symptomatic care guidance)
-      deltaIEffect: 0.92    // 8% mortality reduction
+      muIEffect: 0.10,      // 10% increase (symptomatic care guidance - increased)
+      deltaIEffect: 0.96    // 4% mortality reduction (more conservative)
     }
   },
   
@@ -1586,8 +1639,8 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       rho2Effect: 0.82      // 18% reduction in L2 referrals
     },
     selfCareAI: {
-      muIEffect: 0.03,      // 3% increase (dietary guidance)
-      deltaIEffect: 0.98    // 2% mortality reduction
+      muIEffect: 0.08,      // 8% increase (dietary guidance - increased process effect)
+      deltaIEffect: 0.99    // 1% mortality reduction (even more conservative)
     }
   },
   
@@ -1812,9 +1865,15 @@ export const applyAIInterventions = (
     modifiedParams.aiVariableCost += costParams.hospitalDecisionAI.variable * uptake;
   }
   
+  // Store self-care AI effects that need to be applied after parameter capping
+  let selfCareVisitReductionEffect: number | undefined;
+  let selfCareRoutingImprovementEffect: number | undefined;
+  let selfCareUptake: number = 0;
+  
   if (interventions.selfCareAI) {
     const selfCareEffects = getDiseaseEffects('selfCareAI');
     const uptake = getEffectiveUptake('selfCareAI');
+    selfCareUptake = uptake;
     
     console.log('🔧 DEBUG selfCareAI effects:', selfCareEffects);
     console.log('🔧 DEBUG selfCareAI uptake:', uptake);
@@ -1847,13 +1906,9 @@ export const applyAIInterventions = (
     modifiedParams.muI += applyMagnitude('selfCareAI_μI', selfCareEffects.muIEffect, false, 'selfCareAI');
     modifiedParams.deltaI *= applyMagnitude('selfCareAI_δI', selfCareEffects.deltaIEffect, true, 'selfCareAI');
     
-    // Add routing improvements for congestion management
-    if (selfCareEffects.visitReductionEffect !== undefined) {
-      modifiedParams.visitReduction = applyMagnitude('selfCareAI_visitReduction', selfCareEffects.visitReductionEffect, false, 'selfCareAI');
-    }
-    if (selfCareEffects.routingImprovementEffect !== undefined) {
-      modifiedParams.directRoutingImprovement = applyMagnitude('selfCareAI_directRoutingImprovement', selfCareEffects.routingImprovementEffect, false, 'selfCareAI');
-    }
+    // Store visit reduction and routing effects to be applied after parameter capping
+    selfCareVisitReductionEffect = selfCareEffects.visitReductionEffect;
+    selfCareRoutingImprovementEffect = selfCareEffects.routingImprovementEffect;
     
     // Scale costs by uptake
     modifiedParams.aiFixedCost += costParams.selfCareAI.fixed;
@@ -1877,6 +1932,37 @@ export const applyAIInterventions = (
     if (modifiedParams[param] < 0) {
       console.warn(`AI intervention caused ${param} to go below 0 (${modifiedParams[param]}), setting to 0`);
       modifiedParams[param] = 0;
+    }
+  }
+  
+  // Apply self-care AI visit reduction and routing improvements AFTER parameter capping
+  if (interventions.selfCareAI) {
+    // Helper function to apply magnitude and uptake to an effect
+    const applyMagnitude = (key: string, baseEffect: number, isMultiplier: boolean = false, interventionType?: keyof AIInterventions): number => {
+      const magnitude = effectMagnitudes[key] !== undefined ? effectMagnitudes[key] : 1;
+      const uptake = interventionType ? selfCareUptake : 1.0;
+      
+      if (isMultiplier) {
+        const scaledEffect = 1 + (baseEffect - 1) * magnitude * uptake;
+        return scaledEffect;
+      } else {
+        const scaledEffect = baseEffect * magnitude * uptake;
+        return scaledEffect;
+      }
+    };
+    
+    // Add routing improvements for congestion management
+    // CRITICAL: Scale visit reduction by actual informal care usage
+    // Self-care apps only prevent visits from those who would use informal care
+    if (selfCareVisitReductionEffect !== undefined) {
+      const informalCareUsage = (1 - modifiedParams.phi0) * (1 - modifiedParams.informalCareRatio);
+      const scaledVisitReduction = selfCareVisitReductionEffect * informalCareUsage;
+      modifiedParams.visitReduction = applyMagnitude('selfCareAI_visitReduction', scaledVisitReduction, false, 'selfCareAI');
+      
+      console.log(`Self-care AI visit reduction scaled by informal usage: ${selfCareVisitReductionEffect} * ${informalCareUsage} = ${scaledVisitReduction}`);
+    }
+    if (selfCareRoutingImprovementEffect !== undefined) {
+      modifiedParams.directRoutingImprovement = applyMagnitude('selfCareAI_directRoutingImprovement', selfCareRoutingImprovementEffect, false, 'selfCareAI');
     }
   }
   
@@ -1938,7 +2024,6 @@ export const getDefaultParameters = (): ModelParameters => ({
   
   // System capacity parameters
   systemCongestion: 0,  // Default: no congestion
-  congestionMortalityMultiplier: 1.5,  // Default: 50% increase in mortality when congested
   
   // Queue dynamics parameters
   queueAbandonmentRate: 0.15,  // Default: 15% abandon per week (increased from 5%)

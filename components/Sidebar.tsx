@@ -30,9 +30,11 @@ import {
   userOverriddenCongestionAtom,
   calculatedCongestionAtom,
   effectiveCongestionAtom,
-  aiUptakeParametersAtom
+  aiUptakeParametersAtom,
+  effectMagnitudesAtom,
+  aiTimeToScaleParametersAtom
 } from '../lib/store';
-import { healthSystemStrengthDefaults } from '../models/stockAndFlowModel';
+import { healthSystemStrengthDefaults, AIInterventions } from '../models/stockAndFlowModel';
 import { countryProfiles } from '../models/countrySpecificModel';
 
 const Sidebar: React.FC = () => {
@@ -69,6 +71,8 @@ const Sidebar: React.FC = () => {
   const [resolutionReduction, setResolutionReduction] = useAtom(multiConditionResolutionReductionAtom);
   const [careSeekingBoost, setCareSeekingBoost] = useAtom(multiConditionCareSeekingBoostAtom);
   const [aiUptakeParams, setAIUptakeParams] = useAtom(aiUptakeParametersAtom);
+  const [effectMagnitudes] = useAtom(effectMagnitudesAtom);
+  const [timeToScaleParams] = useAtom(aiTimeToScaleParametersAtom);
   
   // Local state for disease checkboxes
   const [diseaseOptions, setDiseaseOptions] = useState<{
@@ -77,6 +81,7 @@ const Sidebar: React.FC = () => {
     group: string;
     checked: boolean;
   }[]>([]);
+  const [isGeneratingScenarios, setIsGeneratingScenarios] = useState(false);
   
   // State for expandable sections
   const [compareDiseaseExpanded, setCompareDiseaseExpanded] = useState(false);
@@ -313,6 +318,123 @@ const Sidebar: React.FC = () => {
     window.dispatchEvent(new Event('view-equations'));
   };
 
+  // Generate AI comparison scenarios
+  const generateAIComparisonScenarios = async () => {
+    if (!window.confirm('This will create 6 scenarios comparing baseline (no AI) vs each AI intervention for all diseases. Continue?')) {
+      return;
+    }
+    
+    setIsGeneratingScenarios(true);
+    
+    try {
+      // Get all disease options
+      const allDiseases = [
+        'tuberculosis',
+        'malaria', 
+        'hiv_opportunistic',
+        'childhood_pneumonia',
+        'diarrhea',
+        'fever',
+        'urti',
+        'hiv_management_chronic',
+        'congestive_heart_failure'
+      ];
+      
+      // Store original settings
+      const originalAIInterventions = { ...aiInterventions };
+      const originalSelectedDiseases = [...selectedDiseases];
+      const originalScenarioMode = scenarioMode;
+      
+      // Set to aggregated mode for bubble charts
+      setScenarioMode('aggregated');
+      
+      // Set all diseases as selected
+      setSelectedDiseases(allDiseases);
+      
+      // Define AI intervention types
+      const aiInterventionTypes: Array<{ key: keyof AIInterventions; name: string }> = [
+        { key: 'triageAI', name: 'AI Health Advisor' },
+        { key: 'chwAI', name: 'CHW Decision Support' },
+        { key: 'diagnosticAI', name: 'Diagnostic AI' },
+        { key: 'bedManagementAI', name: 'Bed Management AI' },
+        { key: 'hospitalDecisionAI', name: 'Hospital Decision Support' },
+        { key: 'selfCareAI', name: 'AI Self-Care Platform' }
+      ];
+      
+      // First, create baseline scenario with no AI interventions
+      const noAIInterventions: AIInterventions = {
+        triageAI: false,
+        chwAI: false,
+        diagnosticAI: false,
+        bedManagementAI: false,
+        hospitalDecisionAI: false,
+        selfCareAI: false
+      };
+      
+      setAIInterventions(noAIInterventions);
+      
+      // Wait a bit for state to update
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Run simulation for baseline
+      await runSimulation();
+      
+      // Wait for simulation to complete - longer wait for multi-disease
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Set this as the baseline for ICER calculations
+      await setBaseline();
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Save baseline scenario
+      setCustomScenarioName('Baseline (No AI) - All Diseases');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await addScenario();
+      
+      // Now create scenarios for each AI intervention
+      for (const intervention of aiInterventionTypes) {
+        // Set only this AI intervention to true
+        const singleAIIntervention: AIInterventions = {
+          triageAI: false,
+          chwAI: false,
+          diagnosticAI: false,
+          bedManagementAI: false,
+          hospitalDecisionAI: false,
+          selfCareAI: false,
+          [intervention.key]: true
+        };
+        
+        setAIInterventions(singleAIIntervention);
+        
+        // Wait for state update
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Run simulation
+        await runSimulation();
+        
+        // Wait for simulation to complete - longer wait for multi-disease
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Save scenario
+        setCustomScenarioName(`${intervention.name} Only - All Diseases`);
+        await new Promise(resolve => setTimeout(resolve, 200));
+        await addScenario();
+      }
+      
+      // Restore original settings
+      setAIInterventions(originalAIInterventions);
+      setSelectedDiseases(originalSelectedDiseases);
+      setScenarioMode(originalScenarioMode);
+      
+      alert('Successfully created 7 AI comparison scenarios (1 baseline + 6 AI interventions)!');
+    } catch (error) {
+      console.error('Error generating AI comparison scenarios:', error);
+      alert('Error generating scenarios. Please try again.');
+    } finally {
+      setIsGeneratingScenarios(false);
+    }
+  };
+
   // Format disease names for display
   const formatDiseaseName = (name: string): string => {
     return name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, ' ');
@@ -401,6 +523,12 @@ const Sidebar: React.FC = () => {
             )}
             {selectedCountry === 'south_africa' && (
               <p>South Africa: World's largest HIV epidemic (20.4% prevalence) with extremely high TB burden and extensive drug resistance. Strong public health system with good infrastructure but overwhelmed by disease burden. AI interventions may improve efficiency in managing complex co-infections.</p>
+            )}
+            {selectedCountry === 'rwanda' && (
+              <p>Rwanda: Universal health coverage (>90% Mutuelle de Santé) with strong CHW network (45,000+ cooperatives). High system utilization but efficiency challenges: long wait times, overcrowded facilities. AI can optimize patient flow, reduce bottlenecks, and support CHWs in managing high volumes.</p>
+            )}
+            {selectedCountry === 'test_country' && (
+              <p className="text-red-600 dark:text-red-400 font-semibold">TEST: Perfect health system with 100% formal care seeking. Self-care AI should show ZERO impact. Use this to verify calculations are working correctly.</p>
             )}
           </div>
         )}
@@ -938,6 +1066,33 @@ const Sidebar: React.FC = () => {
             </button>
           </>
         )}
+        
+        {/* AI Comparison Scenarios Button */}
+        <button
+          onClick={generateAIComparisonScenarios}
+          className="btn bg-green-50 hover:bg-green-100 text-green-600 text-sm flex items-center justify-center gap-2 mt-3 w-full py-2 px-3 rounded-lg border border-green-200"
+          disabled={isGeneratingScenarios}
+        >
+          {isGeneratingScenarios ? (
+            <>
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Generating...
+            </>
+          ) : (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Generate AI Comparison
+            </>
+          )}
+        </button>
+        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 text-center">
+          Creates 6 scenarios for all diseases
+        </p>
         </div>
       </div>
 

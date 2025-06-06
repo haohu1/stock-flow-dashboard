@@ -159,7 +159,8 @@ export const getDerivedParamsForDisease = (
   useCountrySpecific?: boolean,
   countryCode?: string,
   isUrban?: boolean,
-  aiUptakeParams?: AIUptakeParameters
+  aiUptakeParams?: AIUptakeParameters,
+  customDiseaseOverrides?: Record<string, Partial<ModelParameters>>
 ): ModelParameters => {
   // Start with base parameters
   let params = { ...baseParams };
@@ -170,7 +171,29 @@ export const getDerivedParamsForDisease = (
   // If using country-specific model, apply country adjustments first
   if (useCountrySpecific && countryCode && isUrban !== undefined) {
     try {
+      // IMPORTANT: Apply health system defaults FIRST
+      if (healthSystemScenario) {
+        // Apply only non-multiplier parameters directly from the scenario
+        const { 
+          // Exclude multipliers from direct assignment
+          /* eslint-disable @typescript-eslint/no-unused-vars */
+          mu_multiplier_I, mu_multiplier_L0, mu_multiplier_L1, mu_multiplier_L2, mu_multiplier_L3,
+          delta_multiplier_U, delta_multiplier_I, delta_multiplier_L0, delta_multiplier_L1, delta_multiplier_L2, delta_multiplier_L3,
+          rho_multiplier_L0, rho_multiplier_L1, rho_multiplier_L2,
+          /* eslint-enable @typescript-eslint/no-unused-vars */
+          ...directScenarioParams 
+        } = healthSystemScenario;
+        params = { ...params, ...directScenarioParams };
+      }
+      
+      // THEN apply disease profile before country adjustments
+      const diseaseProfile = disease && diseaseProfiles[disease as keyof typeof diseaseProfiles];
+      if (diseaseProfile) {
+        params = { ...params, ...diseaseProfile };
+      }
+      console.log(`Before country adjustment - phi0: ${params.phi0}`);
       params = adjustParametersForCountry(params, countryCode, isUrban, disease);
+      console.log(`After country adjustment - phi0: ${params.phi0}`);
     } catch (error) {
       console.warn(`Failed to apply country-specific parameters: ${error}`);
       // Fall back to regular model
@@ -199,6 +222,27 @@ export const getDerivedParamsForDisease = (
     if (diseaseProfile) {
       params = { ...params, ...diseaseProfile };
     }
+  }
+  
+  // Apply custom disease parameter overrides if provided
+  if (customDiseaseOverrides && customDiseaseOverrides[disease]) {
+    const overrides = customDiseaseOverrides[disease];
+    // Deep merge the overrides
+    Object.keys(overrides).forEach(key => {
+      const overrideValue = overrides[key as keyof ModelParameters];
+      if (overrideValue !== undefined) {
+        if (typeof overrideValue === 'object' && !Array.isArray(overrideValue)) {
+          // For nested objects like perDiemCosts
+          params[key as keyof ModelParameters] = {
+            ...(params[key as keyof ModelParameters] as any),
+            ...overrideValue
+          } as any;
+        } else {
+          // For simple values
+          (params as any)[key] = overrideValue;
+        }
+      }
+    });
   }
   
   // Apply health system strength multipliers to disease-specific rates
@@ -240,7 +284,20 @@ export const getDerivedParamsForDisease = (
   }
 
   // Apply AI interventions with disease-specific effects
-  return applyAIInterventions(params, aiInterventions, effectMagnitudes, aiCostParams, undefined, disease, aiUptakeParams, isUrban);
+  const finalParams = applyAIInterventions(params, aiInterventions, effectMagnitudes, aiCostParams, undefined, disease, aiUptakeParams, isUrban);
+  
+  // Debug logging for phi0
+  console.log(`Final parameters for ${disease}:`, {
+    phi0: finalParams.phi0,
+    sigmaI: finalParams.sigmaI,
+    informalCareRatio: finalParams.informalCareRatio,
+    healthSystem: healthSystemStrength,
+    useCountrySpecific,
+    countryCode,
+    isUrban
+  });
+  
+  return finalParams;
 };
 
 // Store individual disease parameters for multi-disease mode
@@ -258,6 +315,7 @@ export const individualDiseaseParametersAtom = atom<Record<string, ModelParamete
     const useCountrySpecific = get(useCountrySpecificModelAtom);
     const countryCode = get(selectedCountryAtom);
     const isUrban = get(isUrbanSettingAtom);
+    const customDiseaseOverrides = get(customDiseaseParametersAtom);
     
     // Calculate individual disease parameters
     const diseaseParamsMap: Record<string, ModelParameters> = {};
@@ -273,7 +331,8 @@ export const individualDiseaseParametersAtom = atom<Record<string, ModelParamete
         useCountrySpecific,
         countryCode,
         isUrban,
-        aiUptakeParams
+        aiUptakeParams,
+        customDiseaseOverrides
       );
     });
     
@@ -431,6 +490,9 @@ export const aiUptakeParametersAtom = atom<AIUptakeParameters>(defaultAIUptakePa
 // AI intervention effect magnitudes
 export const effectMagnitudesAtom = atom<{[key: string]: number}>({});
 
+// Custom disease parameter overrides for multi-disease mode
+export const customDiseaseParametersAtom = atom<Record<string, Partial<ModelParameters>>>({});
+
 // Track selected AI scenario preset
 export const selectedAIScenarioAtom = atom<string | null>(null);
 
@@ -472,6 +534,8 @@ export const runSimulationAtom = atom(
       const aggregatedParams = get(derivedParametersAtom);
       console.log('Using aggregated parameters with congestion:', aggregatedParams.systemCongestion);
       
+      const customDiseaseOverrides = get(customDiseaseParametersAtom);
+      
       selectedDiseases.forEach(disease => {
         // Get disease-specific parameters
         const diseaseParams = getDerivedParamsForDisease(
@@ -485,7 +549,8 @@ export const runSimulationAtom = atom(
           useCountrySpecific,
           countryCode,
           isUrban,
-          aiUptakeParams
+          aiUptakeParams,
+          customDiseaseOverrides
         );
         
         // Apply the system-wide congestion to each disease simulation

@@ -7,38 +7,207 @@
 
  ✓ Starting...
  ✓ Ready in 920ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1342ms (966 modules)
+ ✓ Compiled in 137ms (966 modules)
+🔧 DEBUG applyAIInterventions called with interventions: {
+  triageAI: false,
+  chwAI: false,
+  diagnosticAI: false,
+  bedManagementAI: false,
+  hospitalDecisionAI: false,
+  selfCareAI: false
+}
+🔧 DEBUG selfCareAI state: false
+ GET / 200 in 1720ms
+ ✓ Compiled in 161ms (966 modules)
+ ✓ Compiled in 71ms (966 modules)
+Congestion calculation: {
+  selectedDiseases: [ 'childhood_pneumonia' ],
+  totalIncidence: 0.9,
+  healthSystemStrength: 'moderate_urban_system',
+  numberOfDiseases: 1
+}
+calculateDefaultCongestion details: {
+  totalIncidence: 0.9,
+  numberOfDiseases: 1,
+  healthSystemStrength: 'moderate_urban_system',
+  capacityMultiplier: 1.2,
+  baseCongestion: 0.08362608028584867,
+  diseaseComplexityMultiplier: 1,
+  finalCongestion: 0.1003512963430184,
+  finalCongestionBeforeRounding: 0.1003512963430184
+}
+Final congestion after bounds and rounding: 0.1
+Calculated congestion: 0.1
+🔧 DEBUG applyAIInterventions called with interventions: {
+  triageAI: false,
+  chwAI: false,
+  diagnosticAI: false,
+  bedManagementAI: false,
+  hospitalDecisionAI: false,
+  selfCareAI: false
+}
+🔧 DEBUG selfCareAI state: false
+ GET / 200 in 83ms
+ GET / 200 in 11ms
+ ✓ Compiled /_error in 126ms (968 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 142ms
+ ✓ Compiled in 141ms (966 modules)
+ ✓ Compiled in 111ms (966 modules)
+ ✓ Compiled in 110ms (966 modules)
+ ✓ Compiled in 106ms (966 modules)
+ ✓ Compiled in 76ms (966 modules)
+ ✓ Compiled in 67ms (966 modules)
+ ✓ Compiled in 134ms (966 modules)
+ ✓ Compiled in 68ms (966 modules)
+ ✓ Compiled in 60ms (966 modules)
+ ✓ Compiled in 68ms (966 modules)
+ ✓ Compiled in 61ms (966 modules)
+ ✓ Compiled in 107ms (966 modules)
+ ✓ Compiled in 86ms (966 modules)
+ ✓ Compiled in 98ms (966 modules)
+ ✓ Compiled in 87ms (966 modules)
+ ✓ Compiled in 74ms (966 modules)
+ ✓ Compiled in 103ms (966 modules)
+ ✓ Compiled in 87ms (966 modules)
+ ✓ Compiled in 82ms (966 modules)
+ ⨯ ./models/stockAndFlowModel.ts
+Error: 
+  [31mx[0m the name `congestion` is defined multiple times
+     ,-[[36;1;4m/Users/haohu/Documents/GitHub/stock-flow-dashboard/models/stockAndFlowModel.ts[0m:206:1]
+ [2m206[0m |   const avoidedVisits = weeklyIncidence * visitReduction; // These resolve at home
+ [2m207[0m |   
+ [2m208[0m |   // Get congestion level early for feedback effects
+ [2m209[0m |   const congestion = params.systemCongestion || 0;
+     : [31;1m        ^^^^^|^^^^[0m
+     :              [31;1m`-- [31;1mprevious definition of `congestion` here[0m[0m
+ [2m210[0m |   
+ [2m211[0m |   // Congestion feedback - reduce new arrivals when system is overwhelmed
+ [2m212[0m |   let arrivalMultiplier = 1.0;
+ [2m213[0m |   if (congestion > 0.5) {
+ [2m214[0m |     // People hear hospitals are full and some stay home
+ [2m215[0m |     // At 50% congestion: no reduction, at 100% congestion: 25% reduction
+ [2m216[0m |     arrivalMultiplier = 1 - ((congestion - 0.5) * 0.5);
+ [2m217[0m |   }
+ [2m218[0m |   
+ [2m219[0m |   // Calculate flow from new cases (using effective incidence after visit reduction)
+ [2m220[0m |   const directToFormal = params.phi0 * effectiveIncidence * arrivalMultiplier;
+ [2m221[0m |   const stayUntreated = (1 - params.phi0) * effectiveIncidence * arrivalMultiplier;
+ [2m222[0m |   
+ [2m223[0m |   // Use the configurable parameter to determine how many untreated patients move to informal care
+ [2m224[0m |   const toInformalCare = (1 - params.informalCareRatio) * stayUntreated;
+ [2m225[0m |   const trulyUntreated = params.informalCareRatio * stayUntreated;
+ [2m226[0m |   
+ [2m227[0m |   // Calculate transitions from U (untreated)
+ [2m228[0m |   const untreatedDeaths = params.deltaU * state.U;
+ [2m229[0m |   const untreatedResolved = params.muU * state.U; // New: spontaneous resolution for untreated patients
+ [2m230[0m |   const remainingUntreated = state.U - untreatedDeaths - untreatedResolved; // Updated to include resolved
+ [2m231[0m |   
+ [2m232[0m |   // Calculate transitions from I (informal care)
+ [2m233[0m |   const informalToFormal = params.sigmaI * state.I;
+ [2m234[0m |   const informalResolved = params.muI * state.I;
+ [2m235[0m |   const informalDeaths = params.deltaI * state.I;
+ [2m236[0m |   const remainingInformal = state.I - informalToFormal - informalResolved - informalDeaths;
+ [2m237[0m |   
+ [2m238[0m |   // Calculate distribution from F (formal care) with smart routing
+ [2m239[0m |   const directRoutingImprovement = params.directRoutingImprovement || 0;
+ [2m240[0m |   const congestion = params.systemCongestion || 0;
+     : [33;1m        ^^^^^|^^^^[0m
+     :              [33;1m`-- [33;1m`congestion` redefined here[0m[0m
+ [2m241[0m |   
+ [2m242[0m |   // With smart routing, some patients can bypass congested lower levels
+ [2m243[0m |   let formalToL0 = state.F;
+     `----
 
+Import trace for requested module:
+./models/stockAndFlowModel.ts
+./components/ParametersPanel.tsx
+ ✓ Compiled in 89ms (966 modules)
+ ✓ Compiled in 79ms (966 modules)
+ ✓ Compiled in 202ms (966 modules)
+ ✓ Compiled in 153ms (966 modules)
+ ✓ Compiled in 107ms (884 modules)
+ ✓ Compiled in 177ms (966 modules)
+ ✓ Compiled in 94ms (884 modules)
+ ✓ Compiled in 202ms (966 modules)
+ ✓ Compiled in 181ms (966 modules)
+ ✓ Compiled in 103ms (884 modules)
+ ✓ Compiled in 200ms (966 modules)
+ ✓ Compiled in 194ms (966 modules)
+ ✓ Compiled in 173ms (966 modules)
+ ✓ Compiled in 280ms (966 modules)
+ ✓ Compiled in 173ms (966 modules)
+ ✓ Compiled in 227ms (966 modules)
+ ✓ Compiled in 182ms (966 modules)
+ ✓ Compiled in 127ms (966 modules)
+ ✓ Compiled /_error in 105ms (968 modules)
+ GET / 404 in 3ms
+ GET / 404 in 3ms
+ GET / 404 in 3ms
+ GET / 404 in 4ms
+ GET / 404 in 5ms
+ GET / 404 in 1ms
+ GET / 404 in 2ms
+Congestion calculation: {
+  selectedDiseases: [ 'childhood_pneumonia' ],
+  totalIncidence: 0.9,
+  healthSystemStrength: 'moderate_urban_system',
+  numberOfDiseases: 1
+}
+calculateDefaultCongestion details: {
+  totalIncidence: 0.9,
+  numberOfDiseases: 1,
+  healthSystemStrength: 'moderate_urban_system',
+  capacityMultiplier: 1.2,
+  baseCongestion: 0.041813040142924335,
+  baseCongestionCalculation: 'log10(0.9 + 1) * 0.3 = log10(1.9) * 0.3 = 0.2787536009528289 * 0.3 = 0.041813040142924335',
+  diseaseComplexityMultiplier: 1,
+  finalCongestion: 0.0501756481715092,
+  finalCongestionBeforeRounding: 0.0501756481715092
+}
+Final congestion after bounds and rounding: 0.05
+Calculated congestion: 0.05
+🔧 DEBUG applyAIInterventions called with interventions: {
+  triageAI: false,
+  chwAI: false,
+  diagnosticAI: false,
+  bedManagementAI: false,
+  hospitalDecisionAI: false,
+  selfCareAI: false
+}
+🔧 DEBUG selfCareAI state: false
+Single disease mode - applying congestion: 0.05
+ GET / 200 in 52ms
+ ✓ Compiled in 121ms (968 modules)
+ ✓ Compiled in 130ms (968 modules)
+ ✓ Compiled in 213ms (966 modules)
+ ✓ Compiled in 162ms (966 modules)
+ ✓ Compiled in 167ms (966 modules)
+ ✓ Compiled in 161ms (966 modules)
+ ✓ Compiled in 85ms (884 modules)
+ ✓ Compiled in 245ms (966 modules)
+ ✓ Compiled in 195ms (966 modules)
+ ✓ Compiled in 168ms (966 modules)
+ ✓ Compiled in 269ms (966 modules)
+ ✓ Compiled in 269ms (966 modules)
+ ✓ Compiled in 251ms (966 modules)
+ ✓ Compiled in 187ms (966 modules)
+ ✓ Compiled in 89ms (884 modules)
+ ✓ Compiled in 155ms (966 modules)
+ ✓ Compiled in 82ms (966 modules)
+ ✓ Compiled in 91ms (966 modules)
+ ✓ Compiled in 118ms (966 modules)
+ ✓ Compiled in 85ms (966 modules)
+ ✓ Compiled in 97ms (966 modules)
+ ✓ Compiled in 223ms (966 modules)
+ ✓ Compiled in 171ms (966 modules)
+ ✓ Compiled in 98ms (966 modules)
+ ✓ Compiled in 71ms (966 modules)
+ ✓ Compiled in 108ms (966 modules)
+ ✓ Compiled in 211ms (966 modules)
+ ✓ Compiled in 90ms (884 modules)
+ ✓ Compiled in 135ms (966 modules)
+[?25h
 
-## EquationExplainer Multi-Disease Review - 2025-06-04
-
-### Changes Made:
-1. **Removed orphaned variables** - Cleaned up leftover variables without associated equation blocks (lines 154-163)
-
-2. **Reorganized component structure** for better readability:
-   - Added clear multi-disease overview section at the top
-   - Separated core system equations (with expandable details) from detailed system equations
-   - Better visual hierarchy with proper section headers
-
-3. **Improved multi-disease flow**:
-   - Clear explanation of how diseases are calculated independently
-   - Individual disease parameter buttons show incidence rates and burden categories
-   - Disease-specific equations are shown when clicking on a disease
-   - Clear aggregation section showing how results are summed
-
-4. **Type safety improvements**:
-   - Added proper TypeScript types for equations and variables
-   - Removed 'any' types where possible
-   - Better type definitions for function parameters
-
-5. **Visual improvements**:
-   - Better use of color coding (purple for multi-disease, orange for individual diseases)
-   - Clear separation between different equation sections
-   - Expandable core equations for less clutter
-
-### Result:
-The equation tab is now much more readable and informative for multi-disease scenarios. Users can:
-- Understand the overall calculation approach
-- View core system equations that apply to all diseases
-- Click individual diseases to see their specific parameters and equations
-- Understand how results are aggregated across diseases
-
+# Disease Incidence Rate Analysis for 1 Million Population

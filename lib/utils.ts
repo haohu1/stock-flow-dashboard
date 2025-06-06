@@ -145,21 +145,17 @@ export const calculateDefaultCongestion = (
   // Base congestion calculation
   // Higher incidence = more congestion
   // More diseases = more congestion (competing for same resources)
-  // Weaker health systems = more congestion
   // Note: Formula adjusted to prevent unrealistic congestion when many diseases selected
   
-  // Health system capacity multipliers
-  const systemCapacityMultipliers: Record<string, number> = {
-    'weak_rural_system': 2.0,           // Double congestion in weak systems
-    'fragile_conflict_system': 2.5,     // Highest congestion in conflict areas
-    'moderate_urban_system': 1.2,       // Moderate increase
-    'strong_urban_system': 0.8,         // Better capacity
-    'well_functioning_system': 0.6,     // Best capacity, lowest congestion
-    'rwanda_health_system': 1.8,        // High congestion due to very high utilization (reduced from 3.0)
-    'test_perfect_system': 0.0          // ZERO congestion - perfect system
-  };
+  // REMOVED: Health system capacity multipliers - experts found it hard to interpret
+  // Now congestion is calculated purely from disease burden for transparency
   
-  const capacityMultiplier = systemCapacityMultipliers[healthSystemStrength] || 1.0;
+  // Special case: test perfect system has zero congestion
+  if (healthSystemStrength === 'test_perfect_system') {
+    return 0.0;
+  }
+  
+  const capacityMultiplier = 1.0;
   
   // Base congestion from total incidence
   // Using logarithmic scale to prevent extreme values

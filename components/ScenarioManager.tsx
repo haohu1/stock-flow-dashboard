@@ -333,7 +333,7 @@ const ScenarioManager: React.FC = () => {
                                 {scenario.name}
                               </h5>
                               <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {scenario.parameters.healthSystemStrength || 'Custom'} · 
+                                {scenario.countryName || 'Generic'} {scenario.isUrban !== undefined ? (scenario.isUrban ? '(Urban)' : '(Rural)') : ''} · 
                                 {getActiveInterventions(scenario).length 
                                   ? ` ${getActiveInterventions(scenario).length} interventions` 
                                   : ' No interventions'}
@@ -383,7 +383,7 @@ const ScenarioManager: React.FC = () => {
                       <div className="p-3 bg-gray-50 dark:bg-gray-700 text-sm border-t border-gray-200 dark:border-gray-600">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           <div>
-                            <p><strong>Health System:</strong> {scenario.parameters.healthSystemStrength || 'Custom'}</p>
+                            <p><strong>Country:</strong> {scenario.countryName || 'Generic'} {scenario.isUrban !== undefined ? (scenario.isUrban ? '(Urban)' : '(Rural)') : ''}</p>
                             <p><strong>Disease:</strong> {scenario.parameters.disease || 'Custom'}</p>
                             <p><strong>Population:</strong> {formatNumber(scenario.parameters.population || 0)}</p>
                             

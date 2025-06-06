@@ -286,7 +286,8 @@ export function adjustParametersForCountry(
     adjustedParams.delta1 *= burdenMultipliers.mortalityMultiplier;
     adjustedParams.delta2 *= burdenMultipliers.mortalityMultiplier;
     adjustedParams.delta3 *= burdenMultipliers.mortalityMultiplier;
-    adjustedParams.phi0 *= burdenMultipliers.careSeekingMultiplier;
+    // DISABLED: Burden careseeking multiplier
+    // adjustedParams.phi0 *= burdenMultipliers.careSeekingMultiplier;
     console.log(`After burden multipliers - lambda: ${adjustedParams.lambda}, deltaU: ${adjustedParams.deltaU}`);
     console.log(`After burden multipliers - phi0: ${adjustedParams.phi0} (base: ${baseParams.phi0}, multiplier: ${burdenMultipliers.careSeekingMultiplier})`);
   } else {
@@ -303,7 +304,7 @@ export function adjustParametersForCountry(
     // High value = more stay untreated (don't go to informal care)
     // Low value = more go to informal care
     // For Rwanda with minimal informal sector, we want HIGH informalCareRatio
-    adjustedParams.informalCareRatio = 0.98; // 98% of non-formal seekers stay untreated, only 2% use informal
+    adjustedParams.informalCareRatio = 0.10; // 10% of non-formal seekers stay untreated, 90% use informal
   }
   
   // TEST country - perfect formal care system
@@ -416,7 +417,7 @@ function getRuralMultipliers(countryCode: string, disease: string): any {
     rwanda: {
       phi0: 0.85,     // Only 15% reduction due to strong CHW network
       sigmaI: 0.7,    // 30% reduction - people move to formal care quickly
-      informalRatio: 0.98, // Almost no informal care sector in rural Rwanda
+      informalRatio: 0.10, // 10% stay untreated, 90% use informal care
       mu0: 0.75, mu1: 0.65, mu2: 0.7, mu3: 0.8, // Better rural performance due to CHW network
       deltaU: 1.2, deltaI: 1.2, delta0: 1.15, delta1: 1.15, delta2: 1.1, delta3: 1.05,
       rho0: 0.8, rho1: 0.7, rho2: 0.6 // Strong referral system

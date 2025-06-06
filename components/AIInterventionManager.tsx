@@ -8,6 +8,7 @@ import {
   aiCostParametersAtom,
   aiTimeToScaleParametersAtom,
   selectedDiseaseAtom,
+  selectedDiseasesAtom,
   AICostParameters,
   AITimeToScaleParameters
 } from '../lib/store';
@@ -306,11 +307,15 @@ const AIInterventionManager: React.FC = () => {
   const [aiCostParams, setAiCostParams] = useAtom(aiCostParametersAtom);
   const [timeToScaleParams, setTimeToScaleParams] = useAtom(aiTimeToScaleParametersAtom);
   const [selectedDisease] = useAtom(selectedDiseaseAtom);
+  const [selectedDiseases] = useAtom(selectedDiseasesAtom);
   const [showCostSettings, setShowCostSettings] = useState(false);
   const [showTimeToScaleSettings, setShowTimeToScaleSettings] = useState(false);
   const [showEffectMagnitudes, setShowEffectMagnitudes] = useState(false);
   const [expandedInterventions, setExpandedInterventions] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // State for disease selection in multi-disease mode
+  const [viewingDisease, setViewingDisease] = useState<string>(selectedDisease);
   
   // State for saved configurations
   const [savedConfigs, setSavedConfigs] = useState<AIInterventionConfig[]>([]);
@@ -326,6 +331,11 @@ const AIInterventionManager: React.FC = () => {
   useEffect(() => {
     setLocalSelectedScenario(selectedPreset);
   }, [selectedPreset]);
+  
+  // Keep viewing disease in sync with selected disease
+  useEffect(() => {
+    setViewingDisease(selectedDisease);
+  }, [selectedDisease]);
   
   // Helper function to explain why a disease has different AI effects
   const getDiseaseDifferenceExplanation = (interventionKey: string, param: string, disease: string | null, defaultValue: string, customValue: string): string => {
@@ -414,7 +424,7 @@ const AIInterventionManager: React.FC = () => {
     
     const effectName = paramToEffectMap[effectParam];
     
-    const diseaseEffects = selectedDisease && diseaseSpecificAIEffects[selectedDisease];
+    const diseaseEffects = viewingDisease && diseaseSpecificAIEffects[viewingDisease];
     const interventionEffects = diseaseEffects && diseaseEffects[interventionKey as keyof typeof defaultAIBaseEffects];
     
     if (interventionEffects && effectName && interventionEffects[effectName as keyof typeof interventionEffects]) {
@@ -442,8 +452,8 @@ const AIInterventionManager: React.FC = () => {
       // Compare the formatted value with the default to determine if it's custom
       const isCustom = formattedValue !== defaultEffect;
       
-      const customDescription = selectedDisease && isCustom ? 
-        `Disease-specific effect for ${selectedDisease.replace(/_/g, ' ')}. Default: ${defaultEffect}` : undefined;
+      const customDescription = viewingDisease && isCustom ? 
+        `Disease-specific effect for ${viewingDisease.replace(/_/g, ' ')}. Default: ${defaultEffect}` : undefined;
       
       return { value: formattedValue, isCustom, description: customDescription };
     }
@@ -1053,7 +1063,44 @@ const AIInterventionManager: React.FC = () => {
           />
         </div>
         
-        {selectedDisease && diseaseSpecificAIEffects[selectedDisease] && (
+        {/* Multi-disease mode: Disease selection dropdown */}
+        {selectedDiseases.length > 1 && (
+          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                    Multi-disease mode: Select disease to view AI effects
+                  </p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    Viewing disease-specific AI intervention effects for comparison
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  Viewing:
+                </label>
+                <select
+                  value={viewingDisease}
+                  onChange={(e) => setViewingDisease(e.target.value)}
+                  className="form-select text-sm bg-white dark:bg-gray-700 border-blue-300 dark:border-blue-600 text-blue-900 dark:text-blue-100"
+                >
+                  {selectedDiseases.map(disease => (
+                    <option key={disease} value={disease}>
+                      {disease.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {viewingDisease && diseaseSpecificAIEffects[viewingDisease] && (
           <div className="mb-4 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
             <div className="flex items-start gap-3">
               <svg className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -1061,11 +1108,11 @@ const AIInterventionManager: React.FC = () => {
               </svg>
               <div className="flex-1">
                 <p className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">
-                  Disease-specific AI effects are active for <strong>{selectedDisease.replace(/_/g, ' ')}</strong>
+                  Disease-specific AI effects are active for <strong>{viewingDisease.replace(/_/g, ' ')}</strong>
                 </p>
-                {diseaseAIRationales[selectedDisease] && (
+                {diseaseAIRationales[viewingDisease] && (
                   <p className="text-xs text-purple-700 dark:text-purple-300 leading-relaxed">
-                    <strong>Why effects differ:</strong> {diseaseAIRationales[selectedDisease]}
+                    <strong>Why effects differ:</strong> {diseaseAIRationales[viewingDisease]}
                   </p>
                 )}
                 <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
@@ -1142,10 +1189,10 @@ const AIInterventionManager: React.FC = () => {
                               {isDiseaseSpecific && (
                                 <span className="inline-flex items-center gap-1">
                                   <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100">
-                                    {selectedDisease?.replace(/_/g, ' ')}
+                                    {viewingDisease?.replace(/_/g, ' ')}
                                   </span>
                                   <InfoTooltip 
-                                    content={getDiseaseDifferenceExplanation(intervention.key, effect.param, selectedDisease, effect.effect, diseaseEffect.value)}
+                                    content={getDiseaseDifferenceExplanation(intervention.key, effect.param, viewingDisease, effect.effect, diseaseEffect.value)}
                                   />
                                 </span>
                               )}

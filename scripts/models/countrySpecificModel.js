@@ -177,7 +177,8 @@ function adjustParametersForCountry(baseParams, countryCode, isUrban, disease) {
         adjustedParams.delta1 *= burdenMultipliers.mortalityMultiplier;
         adjustedParams.delta2 *= burdenMultipliers.mortalityMultiplier;
         adjustedParams.delta3 *= burdenMultipliers.mortalityMultiplier;
-        adjustedParams.phi0 *= burdenMultipliers.careSeekingMultiplier;
+        // DISABLED: Burden careseeking multiplier
+        // adjustedParams.phi0 *= burdenMultipliers.careSeekingMultiplier;
     }
     // Apply country-specific urban/rural adjustments
     if (!isUrban) {

@@ -209,8 +209,22 @@ const ParametersPanel: React.FC = () => {
   useEffect(() => {
     // Update base parameters with derived parameters whenever they change
     // This ensures sidebar changes (disease/health system selection) are reflected
-    setBaseParams({ ...derivedParams });
-  }, [derivedParams, setBaseParams]);
+    // In single disease mode, we want to preserve any manual edits
+    if (!isMultiDiseaseMode) {
+      // Only update if the selected disease or health system has actually changed
+      // by comparing key properties that would indicate a profile change
+      const profileChanged = 
+        baseParams.lambda !== derivedParams.lambda ||
+        baseParams.phi0 !== derivedParams.phi0;
+      
+      if (profileChanged) {
+        setBaseParams({ ...derivedParams });
+      }
+    } else {
+      // In multi-disease mode, always sync
+      setBaseParams({ ...derivedParams });
+    }
+  }, [derivedParams, baseParams.lambda, baseParams.phi0, isMultiDiseaseMode, setBaseParams]);
   
   const handleParamChange = (path: string, value: string) => {
     try {

@@ -404,17 +404,30 @@ const Dashboard: React.FC = () => {
     };
   };
 
-  const weeklyData = results.weeklyStates.map((state, index) => ({
-    week: index,
-    U: state.U,
-    I: state.I,
-    L0: state.L0,
-    L1: state.L1,
-    L2: state.L2,
-    L3: state.L3,
-    R: state.R,
-    D: state.D,
-  }));
+  const weeklyData = results.weeklyStates.map((state, index) => {
+    // Debug logging to check for U = L0 issue
+    if (index === 0 || index === results.weeklyStates.length - 1) {
+      console.log(`Week ${index} state values:`, {
+        U: state.U,
+        I: state.I,
+        L0: state.L0,
+        L1: state.L1,
+        areEqual: Math.abs(state.U - state.L0) < 0.01
+      });
+    }
+    
+    return {
+      week: index,
+      U: state.U,
+      I: state.I,
+      L0: state.L0,
+      L1: state.L1,
+      L2: state.L2,
+      L3: state.L3,
+      R: state.R,
+      D: state.D,
+    };
+  });
 
   return (
     <div className="space-y-8">

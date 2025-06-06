@@ -63,7 +63,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
   const [selectedDiseases, setSelectedDiseases] = useState<Set<string>>(new Set());
   const [availableDiseases, setAvailableDiseases] = useState<string[]>([]);
   const [showLabels, setShowLabels] = useState(true);
-  const [colorBy, setColorBy] = useState<'quadrant' | 'country'>('quadrant');
+  const [colorBy, setColorBy] = useState<'quadrant' | 'country' | 'disease'>('quadrant');
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
   const [availableCountries, setAvailableCountries] = useState<string[]>([]);
   const chartRef = useRef<HTMLDivElement>(null);
@@ -313,10 +313,19 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .domain([0, 1])
       .range([0, innerWidth]);
     
+    // For y-axis scaling, consider ALL scenarios (not just filtered ones)
+    // This ensures new scenarios don't go out of bounds
+    const allScenariosImpactData = scenarios
+      .filter(s => s.results) // Only scenarios with results
+      .map(calculateImpactData)
+      .filter((d): d is ImpactFeasibilityData => d !== null);
+    
+    const allImpactValues = allScenariosImpactData.map(d => d.impact);
     const impactValues = impactData.map(d => d.impact);
     
-    // Calculate a smart max value based on actual data
-    const dataMax = Math.max(...impactValues);
+    // Calculate a smart max value based on ALL data (not just filtered)
+    const dataMax = allImpactValues.length > 0 ? Math.max(...allImpactValues) : 
+                    (impactValues.length > 0 ? Math.max(...impactValues) : 10);
     const impactThreshold = yAxisMetric === 'dalys' ? 100 : 10; // Thresholds for quadrants
     
     // Determine the y-axis max:
@@ -370,11 +379,19 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .domain(allAvailableCountries)
       .range(d3.schemeSet3);
     
+    // Create a stable disease color scale
+    const allAvailableDiseases = Array.from(new Set(scenarios.map(s => s.parameters.disease || 'Unknown'))).sort();
+    const diseaseColorScale = d3.scaleOrdinal<string>()
+      .domain(allAvailableDiseases)
+      .range(d3.schemeCategory10);
+    
     const getColor = (data: ImpactFeasibilityData) => {
       if (colorBy === 'quadrant') {
         return quadrantColorScale(data.quadrant);
-      } else {
+      } else if (colorBy === 'country') {
         return countryColorScale(data.scenario.countryName || 'Generic');
+      } else {
+        return diseaseColorScale(data.scenario.parameters.disease || 'Unknown');
       }
     };
     
@@ -783,11 +800,12 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
             <label className="text-sm text-gray-600 dark:text-gray-400">Color by:</label>
             <select
               value={colorBy}
-              onChange={(e) => setColorBy(e.target.value as 'quadrant' | 'country')}
+              onChange={(e) => setColorBy(e.target.value as 'quadrant' | 'country' | 'disease')}
               className="form-select text-sm"
             >
               <option value="quadrant">Quadrant</option>
               <option value="country">Country</option>
+              <option value="disease">Disease</option>
             </select>
           </div>
           <label className="flex items-center space-x-2">

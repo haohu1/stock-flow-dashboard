@@ -228,9 +228,7 @@ const interventionInfo: InterventionInfo[] = [
     description: 'LLM-powered conversational AI that provides personalized health guidance, symptom assessment, and care navigation through natural language interaction',
     effects: [
       { param: 'φ₀', effect: '+0.08', description: 'Increases initial formal care seeking. LLMs provide 24/7 multilingual support, understand complex symptoms in context, and build trust through empathetic conversation. This removes barriers of health literacy, language, and access that currently prevent care-seeking.' },
-      { param: 'σI', effect: '×1.15', description: 'Accelerates transition from informal to formal care. AI can detect urgency through conversation patterns, track symptom progression, send timely reminders, and directly connect patients to appropriate facilities, reducing dangerous delays in care-seeking.' },
-      { param: 'queuePreventionRate', effect: '0.15', description: 'Queue reduction: AI triage prevents inappropriate visits that would create queues. Helps patients understand when conditions can be managed at home or in less intensive settings, preventing unnecessary healthcare system congestion.' },
-      { param: 'smartRoutingRate', effect: '0.20', description: 'Queue reduction: Enables direct routing to appropriate care levels during high congestion. AI identifies patients who need immediate higher-level care and routes them efficiently, bypassing overwhelmed lower-level facilities.' }
+      { param: 'σI', effect: '×1.15', description: 'Accelerates transition from informal to formal care. AI can detect urgency through conversation patterns, track symptom progression, send timely reminders, and directly connect patients to appropriate facilities, reducing dangerous delays in care-seeking.' }
     ]
   },
   { 

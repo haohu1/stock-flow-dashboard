@@ -1309,17 +1309,19 @@ export const defaultAICostParameters: AICostParameters = {
   }
 };
 
-// Default AI uptake parameters - realistic adoption rates for new technology
+// Default AI uptake parameters - differentiated by user type
 export const defaultAIUptakeParameters: AIUptakeParameters = {
   globalUptake: 1.0,          // Global multiplier (default 100% - use individual rates)
   
-  // Individual intervention uptake rates (all set to same default)
-  triageAI: 0.30,             // 30% - Default uptake rate for all interventions
-  chwAI: 0.30,               // 30% - Default uptake rate for all interventions
-  diagnosticAI: 0.30,         // 30% - Default uptake rate for all interventions
-  bedManagementAI: 0.30,      // 30% - Default uptake rate for all interventions
-  hospitalDecisionAI: 0.30,   // 30% - Default uptake rate for all interventions
-  selfCareAI: 0.30,           // 30% - Default uptake rate for all interventions
+  // Patient-facing AI interventions (lower uptake due to digital literacy barriers)
+  triageAI: 0.33,             // 33% - AI Health Advisor (patient-facing)
+  selfCareAI: 0.33,           // 33% - AI Self-Care Platform (patient-facing)
+  
+  // Provider-facing AI interventions (higher uptake due to professional training)
+  chwAI: 0.66,               // 66% - CHW Decision Support (provider-facing)
+  diagnosticAI: 0.66,         // 66% - Diagnostic AI (provider-facing)
+  bedManagementAI: 0.66,      // 66% - Bed Management AI (provider-facing)
+  hospitalDecisionAI: 0.66,   // 66% - Hospital Decision Support (provider-facing)
   
   // Setting-specific multipliers
   urbanMultiplier: 1.2,       // 20% higher uptake in urban areas

@@ -26,6 +26,19 @@ const getCountryBaselineKey = (countryCode: string, isUrban: boolean): string =>
   return `${countryCode}_${isUrban ? 'urban' : 'rural'}`;
 };
 
+// Enhanced baseline key that includes all relevant parameters
+const getEnhancedBaselineKey = (
+  countryCode: string, 
+  isUrban: boolean, 
+  selectedDiseases: string[], 
+  congestion: number,
+  scenarioMode: string
+): string => {
+  const diseaseKey = selectedDiseases.sort().join('-');
+  const congestionKey = `cong${Math.round(congestion * 100)}`;
+  return `${countryCode}_${isUrban ? 'urban' : 'rural'}_${diseaseKey}_${congestionKey}_${scenarioMode}`;
+};
+
 // Selected health system strength and disease
 export const selectedHealthSystemStrengthAtom = atom<string>('moderate_urban_system');
 export const selectedDiseaseAtom = atom<string>('childhood_pneumonia');

@@ -320,9 +320,18 @@ const Sidebar: React.FC = () => {
     window.dispatchEvent(new Event('view-equations'));
   };
 
-  // Generate AI comparison scenarios
-  const generateAIComparisonScenarios = async () => {
-    if (!window.confirm('This will create 6 scenarios comparing baseline (no AI) vs each AI intervention for all diseases. Continue?')) {
+  // Test each AI tool individually
+  const testEachAITool = async () => {
+    // Create a parameter summary string for the confirmation dialog
+    const parameterSummary = [
+      `Country: ${useCountrySpecific && selectedCountry ? countryProfiles[selectedCountry]?.name || selectedCountry : 'Generic'}`,
+      `Setting: ${isUrban ? 'Urban' : 'Rural'}`,
+      `Diseases: ${selectedDiseases.length} selected`,
+      `Congestion: ${(effectiveCongestion * 100).toFixed(0)}%`,
+      `Scenario Mode: ${scenarioMode}`
+    ].join(', ');
+    
+    if (!window.confirm(`This will test each AI tool individually against a baseline (no AI) scenario using current sidebar selections:\n\n${parameterSummary}\n\nThis creates 7 total scenarios for comparison. Continue?`)) {
       return;
     }
     
@@ -331,43 +340,33 @@ const Sidebar: React.FC = () => {
     
     try {
       // Debug: Log current scenario count before generation
-      console.log(`🔄 Starting AI comparison generation. Current scenarios: ${scenarios.length}`);
+      console.log(`🔄 Starting AI tool testing. Current scenarios: ${scenarios.length}`);
+      console.log(`📋 Using current sidebar selections:`, {
+        country: selectedCountry,
+        isUrban,
+        diseases: selectedDiseases,
+        congestion: effectiveCongestion,
+        scenarioMode
+      });
       scenarios.forEach((s, i) => console.log(`  ${i + 1}. ${s.name} (${s.countryName || 'Generic'})`));
       
-      // Get all disease options
-      const allDiseases = [
-        'tuberculosis',
-        'malaria', 
-        'hiv_opportunistic',
-        'childhood_pneumonia',
-        'diarrhea',
-        'fever',
-        'urti',
-        'hiv_management_chronic',
-        'congestive_heart_failure'
-      ];
-      
-      // Store original settings
+      // Store original settings (only AI interventions need to be restored)
       const originalAIInterventions = { ...aiInterventions };
-      const originalSelectedDiseases = [...selectedDiseases];
-      const originalScenarioMode = scenarioMode;
       
       // Get current country and setting for scenario naming
       const countryName = useCountrySpecific && selectedCountry ? 
         countryProfiles[selectedCountry]?.name || selectedCountry : 
         'Generic';
       const settingLabel = isUrban ? 'Urban' : 'Rural';
-      const scenarioPrefix = `${countryName} ${settingLabel}`;
+      const diseaseLabel = selectedDiseases.length === 1 
+        ? selectedDiseases[0].replace(/_/g, ' ')
+        : `${selectedDiseases.length} diseases`;
+      const congestionLabel = userOverriddenCongestion !== null 
+        ? `${(effectiveCongestion * 100).toFixed(0)}% congestion (manual)`
+        : `${(effectiveCongestion * 100).toFixed(0)}% congestion`;
       
-      // Set to aggregated mode for bubble charts
-      setScenarioMode('aggregated');
-      
-      // Wait a moment to let any pending renders complete
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Set all diseases as selected for comprehensive comparison
-      setSelectedDiseases(allDiseases);
-      console.log(`🔧 Changed disease selection from ${originalSelectedDiseases} to all diseases for AI comparison`);
+      // Build scenario name prefix that captures all current parameters
+      const scenarioPrefix = `${countryName} ${settingLabel} - ${diseaseLabel} - ${congestionLabel}`;
       
       // Define AI intervention types
       const aiInterventionTypes: Array<{ key: keyof AIInterventions; name: string }> = [
@@ -380,7 +379,7 @@ const Sidebar: React.FC = () => {
       ];
       
       // Store original baseline data to help debug any issues
-      console.log('🔍 Starting AI comparison with baseline preservation');
+      console.log('🔍 Starting AI tool testing with baseline preservation');
       
       // First, create baseline scenario with no AI interventions
       const noAIInterventions: AIInterventions = {
@@ -403,13 +402,13 @@ const Sidebar: React.FC = () => {
       // Wait for simulation to complete - longer wait for multi-disease
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Set the baseline for AI comparison scenarios (now preserves existing baseline data)
-      console.log('🏗️ Setting baseline for AI comparison scenarios');
+      // Set the baseline for AI tool testing (now preserves existing baseline data)
+      console.log('🏗️ Setting baseline for AI tool testing');
       await setBaseline();
       await new Promise(resolve => setTimeout(resolve, 200));
       
-      // Save baseline scenario
-      setCustomScenarioName(`Baseline (No AI)`);
+      // Save baseline scenario with parameter context
+      setCustomScenarioName(`Baseline (No AI) - ${scenarioPrefix}`);
       await new Promise(resolve => setTimeout(resolve, 200));
       await addScenario();
       
@@ -437,22 +436,21 @@ const Sidebar: React.FC = () => {
         // Wait for simulation to complete - longer wait for multi-disease
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Save scenario
-        setCustomScenarioName(intervention.name);
+        // Save scenario with parameter context
+        setCustomScenarioName(`${intervention.name} - ${scenarioPrefix}`);
         await new Promise(resolve => setTimeout(resolve, 200));
         await addScenario();
       }
       
-      // Restore original settings
+      // Restore original AI interventions only
       setAIInterventions(originalAIInterventions);
-      setSelectedDiseases(originalSelectedDiseases);
-      setScenarioMode(originalScenarioMode);
       
       // Debug: Log scenario count after generation
-      console.log(`✅ AI comparison generation complete. Total scenarios now: ${scenarios.length}`);
+      console.log(`✅ AI tool testing complete. Total scenarios now: ${scenarios.length}`);
       scenarios.forEach((s, i) => console.log(`  ${i + 1}. ${s.name} (${s.countryName || 'Generic'})`));
       
-      alert('Successfully created 7 AI comparison scenarios (1 baseline + 6 AI interventions)!');
+      const successMessage = `Successfully created 7 scenarios for AI testing:\n- 1 baseline (no AI)\n- 6 individual AI tools\n\nUsing: ${selectedDiseases.length} disease(s), ${countryName} ${settingLabel}, ${congestionLabel}`;
+      alert(successMessage);
     } catch (error) {
       console.error('Error generating AI comparison scenarios:', error);
       alert('Error generating scenarios. Please try again.');
@@ -1096,7 +1094,7 @@ const Sidebar: React.FC = () => {
         
         {/* AI Comparison Scenarios Button */}
         <button
-          onClick={generateAIComparisonScenarios}
+          onClick={testEachAITool}
           className="btn bg-green-50 hover:bg-green-100 text-green-600 text-sm flex items-center justify-center gap-2 mt-3 w-full py-2 px-3 rounded-lg border border-green-200"
           disabled={isGeneratingScenarios}
         >
@@ -1113,12 +1111,12 @@ const Sidebar: React.FC = () => {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              Generate AI Comparison
+              Test Each AI
             </>
           )}
         </button>
         <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 text-center">
-          Creates 6 scenarios for all diseases
+          Tests baseline vs each AI tool individually (7 scenarios)
         </p>
         </div>
       </div>

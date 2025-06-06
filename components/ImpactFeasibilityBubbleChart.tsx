@@ -96,8 +96,17 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       console.log('Impact vs Feasibility Chart: Initialized disease selection with:', diseaseList);
     }
     
-    // Initialize country selection only when empty, like IPM chart does
-    if (selectedCountries.size === 0 && countryList.length > 0) {
+    // Update country selection to include any new countries
+    if (countryList.length > selectedCountries.size) {
+      // Check if there are new countries not in the current selection
+      const newCountries = countryList.filter(country => !selectedCountries.has(country));
+      if (newCountries.length > 0) {
+        // Add new countries to the selection
+        setSelectedCountries(new Set([...selectedCountries, ...countryList]));
+        console.log('Impact vs Feasibility Chart: Added new countries to selection:', newCountries);
+      }
+    } else if (selectedCountries.size === 0 && countryList.length > 0) {
+      // Initialize if empty
       setSelectedCountries(new Set(countryList));
       console.log('Impact vs Feasibility Chart: Initialized country selection with:', countryList);
     }

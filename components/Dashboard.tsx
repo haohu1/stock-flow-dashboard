@@ -221,7 +221,10 @@ const Dashboard: React.FC = () => {
                     </div>
                     
                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                      <p><strong>Health System:</strong> {formatHealthSystemName(currentScenario.parameters.healthSystemStrength) || 'Custom'}</p>
+                      <p className="text-base font-medium text-gray-800 dark:text-white mb-1">
+                        {currentScenario.countryName || 'Generic'} {currentScenario.isUrban !== undefined ? (currentScenario.isUrban ? '(Urban)' : '(Rural)') : ''}
+                      </p>
+                      <p className="text-sm"><strong>Health System:</strong> {formatHealthSystemName(currentScenario.parameters.healthSystemStrength) || 'Custom'}</p>
                       
                       {/* Display multiple diseases if available */}
                       {currentScenario.selectedDiseases && currentScenario.selectedDiseases.length > 1 ? (
@@ -440,7 +443,10 @@ const Dashboard: React.FC = () => {
                   </div>
                   
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    <p><strong>Health System:</strong> {formatHealthSystemName(currentScenario.parameters.healthSystemStrength) || 'Custom'}</p>
+                    <p className="text-base font-medium text-gray-800 dark:text-white mb-1">
+                      {currentScenario.countryName || 'Generic'} {currentScenario.isUrban !== undefined ? (currentScenario.isUrban ? '(Urban)' : '(Rural)') : ''}
+                    </p>
+                    <p className="text-sm"><strong>Health System:</strong> {formatHealthSystemName(currentScenario.parameters.healthSystemStrength) || 'Custom'}</p>
                     
                     {/* Display multiple diseases if available */}
                     {currentScenario.selectedDiseases && currentScenario.selectedDiseases.length > 1 ? (

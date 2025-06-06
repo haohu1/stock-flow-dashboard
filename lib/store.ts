@@ -30,7 +30,7 @@ export const selectedDiseasesAtom = atom<string[]>(['childhood_pneumonia']);
 // Country-specific settings
 export const selectedCountryAtom = atom<string>('nigeria');
 export const isUrbanSettingAtom = atom<boolean>(true);
-export const useCountrySpecificModelAtom = atom<boolean>(false);
+export const useCountrySpecificModelAtom = atom<boolean>(true);
 
 // Multi-condition scenario settings
 export const multiConditionModeAtom = atom<boolean>(false);
@@ -735,6 +735,10 @@ export interface Scenario {
   diseaseResultsMap?: Record<string, SimulationResults | null>;
   // Add bubble chart type tracking
   bubbleChartType?: 'ipm' | 'impact-feasibility';
+  // Add country information
+  countryCode?: string;
+  countryName?: string;
+  isUrban?: boolean;
 }
 
 export const scenariosAtom = atom<Scenario[]>([]);
@@ -767,6 +771,9 @@ export const addScenarioAtom = atom(
     const timeToScaleParams = get(aiTimeToScaleParametersAtom);
     const customScenarioName = get(customScenarioNameAtom);
     const scenarioMode = get(multiDiseaseScenarioModeAtom);
+    const countryCode = get(selectedCountryAtom);
+    const isUrban = get(isUrbanSettingAtom);
+    const useCountrySpecific = get(useCountrySpecificModelAtom);
     
     // Enhanced debug logs with full data inspection
     console.log('DETAILED DEBUG - Adding scenario(s) for diseases:', selectedDiseases);
@@ -883,7 +890,11 @@ export const addScenarioAtom = atom(
             });
             return deepCopy;
           })(),
-          timeToScaleParams: timeToScaleParams
+          timeToScaleParams: timeToScaleParams,
+          // Add country information
+          countryCode: useCountrySpecific ? countryCode : undefined,
+          countryName: useCountrySpecific && countryCode ? countryProfiles[countryCode]?.name || countryCode : 'Generic',
+          isUrban: isUrban
         };
         
         console.log(`Created aggregated scenario:`, {
@@ -961,7 +972,11 @@ export const addScenarioAtom = atom(
             // Store just this disease
             selectedDiseases: [diseaseName],
             diseaseResultsMap: diseaseResultsCopy,
-            timeToScaleParams: timeToScaleParams
+            timeToScaleParams: timeToScaleParams,
+            // Add country information
+            countryCode: useCountrySpecific ? countryCode : undefined,
+            countryName: useCountrySpecific && countryCode ? countryProfiles[countryCode]?.name || countryCode : 'Generic',
+            isUrban: isUrban
           };
           
           console.log(`Created individual scenario for ${diseaseName}:`, {
@@ -1084,7 +1099,11 @@ export const addScenarioAtom = atom(
         // Store the multi-disease data
         selectedDiseases: [...selectedDiseases],
         diseaseResultsMap: diseaseResultsMapCopy,
-        timeToScaleParams: timeToScaleParams
+        timeToScaleParams: timeToScaleParams,
+        // Add country information
+        countryCode: useCountrySpecific ? countryCode : undefined,
+        countryName: useCountrySpecific && countryCode ? countryProfiles[countryCode]?.name || countryCode : 'Generic',
+        isUrban: isUrban
       };
       
       // Check the created scenario

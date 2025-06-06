@@ -345,6 +345,13 @@ const Sidebar: React.FC = () => {
       const originalSelectedDiseases = [...selectedDiseases];
       const originalScenarioMode = scenarioMode;
       
+      // Get current country and setting for scenario naming
+      const countryName = useCountrySpecific && selectedCountry ? 
+        countryProfiles[selectedCountry]?.name || selectedCountry : 
+        'Generic';
+      const settingLabel = isUrban ? 'Urban' : 'Rural';
+      const scenarioPrefix = `${countryName} ${settingLabel}`;
+      
       // Set to aggregated mode for bubble charts
       setScenarioMode('aggregated');
       
@@ -387,7 +394,7 @@ const Sidebar: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 200));
       
       // Save baseline scenario
-      setCustomScenarioName('Baseline (No AI) - All Diseases');
+      setCustomScenarioName(`${scenarioPrefix} - Baseline (No AI)`);
       await new Promise(resolve => setTimeout(resolve, 200));
       await addScenario();
       
@@ -416,7 +423,7 @@ const Sidebar: React.FC = () => {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Save scenario
-        setCustomScenarioName(`${intervention.name} Only - All Diseases`);
+        setCustomScenarioName(`${scenarioPrefix} - ${intervention.name}`);
         await new Promise(resolve => setTimeout(resolve, 200));
         await addScenario();
       }

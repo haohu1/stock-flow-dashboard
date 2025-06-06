@@ -13,25 +13,39 @@ const BubbleChartView: React.FC = () => {
   const [sizeMetric, setSizeMetric] = useState<'dalys' | 'deaths'>('dalys');
   const [selectedDiseases, setSelectedDiseases] = useState<Set<string>>(new Set());
   const [availableDiseases, setAvailableDiseases] = useState<string[]>([]);
+  const [colorBy, setColorBy] = useState<'disease' | 'country'>('disease');
+  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
+  const [availableCountries, setAvailableCountries] = useState<string[]>([]);
   const chartRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // Initialize available diseases when scenarios change
+  // Initialize available diseases and countries when scenarios change
   useEffect(() => {
     const diseaseSet = new Set<string>();
+    const countrySet = new Set<string>();
 
     scenarios.forEach(scenario => {
       const disease = scenario.parameters.disease || 'Unknown';
       diseaseSet.add(disease);
+      
+      const country = scenario.countryName || 'Generic';
+      countrySet.add(country);
     });
     
     const diseaseList = Array.from(diseaseSet).sort();
     setAvailableDiseases(diseaseList);
     
+    const countryList = Array.from(countrySet).sort();
+    setAvailableCountries(countryList);
+    
     if (selectedDiseases.size === 0 && diseaseList.length > 0) {
       setSelectedDiseases(new Set(diseaseList));
     }
-  }, [scenarios, selectedDiseases]);
+    
+    if (selectedCountries.size === 0 && countryList.length > 0) {
+      setSelectedCountries(new Set(countryList));
+    }
+  }, [scenarios]);
   
   // Handle disease filter toggle
   const toggleDiseaseFilter = (disease: string) => {
@@ -56,6 +70,32 @@ const BubbleChartView: React.FC = () => {
     } else {
       // Keep at least one disease selected
       setSelectedDiseases(new Set([availableDiseases[0]].filter(Boolean)));
+    }
+  };
+  
+  // Handle country filter toggle
+  const toggleCountryFilter = (country: string) => {
+    const newSelectedCountries = new Set(selectedCountries);
+    
+    if (newSelectedCountries.has(country)) {
+      // If all countries would be deselected, don't allow it
+      if (newSelectedCountries.size > 1) {
+        newSelectedCountries.delete(country);
+      }
+    } else {
+      newSelectedCountries.add(country);
+    }
+    
+    setSelectedCountries(newSelectedCountries);
+  };
+  
+  // Toggle all country filters
+  const toggleAllCountries = (selectAll: boolean) => {
+    if (selectAll) {
+      setSelectedCountries(new Set(availableCountries));
+    } else {
+      // Keep at least one country selected
+      setSelectedCountries(new Set([availableCountries[0]].filter(Boolean)));
     }
   };
 
@@ -110,14 +150,18 @@ const BubbleChartView: React.FC = () => {
         console.log(`No aggregated scenarios found, falling back to individual disease scenarios`);
         return scenarios.filter(s => {
           if (!s.results) return false;
-          return selectedDiseases.has(s.parameters.disease || 'Unknown');
+          const diseaseMatch = selectedDiseases.has(s.parameters.disease || 'Unknown');
+          const countryMatch = selectedCountries.has(s.countryName || 'Generic');
+          return diseaseMatch && countryMatch;
         });
       } else {
         // Single disease mode - show scenarios for that disease
         console.log(`BubbleChart: Single disease mode`);
         return scenarios.filter(s => {
           if (!s.results) return false;
-          return selectedDiseases.has(s.parameters.disease || 'Unknown');
+          const diseaseMatch = selectedDiseases.has(s.parameters.disease || 'Unknown');
+          const countryMatch = selectedCountries.has(s.countryName || 'Generic');
+          return diseaseMatch && countryMatch;
         });
       }
     })();
@@ -288,11 +332,20 @@ const BubbleChartView: React.FC = () => {
       .range([0, 5, 25, 50])
       .clamp(true);
     
-    // Create color scale based on disease - using a more accessible color scheme
-    const diseaseTypes = Array.from(new Set(validScenarios.map(s => s.parameters.disease || 'Other')));
+    // Create color scale based on colorBy option
+    const colorDomain = colorBy === 'disease' 
+      ? Array.from(new Set(validScenarios.map(s => s.parameters.disease || 'Other')))
+      : Array.from(new Set(validScenarios.map(s => s.countryName || 'Generic')));
+    
     const colorScale = d3.scaleOrdinal<string>()
-      .domain(diseaseTypes)
+      .domain(colorDomain)
       .range(["#2a9d8f", "#e9c46a", "#f4a261", "#e76f51", "#264653", "#023047", "#ffb703", "#fb8500", "#8ecae6"]);
+    
+    const getColor = (scenario: Scenario) => {
+      return colorBy === 'disease' 
+        ? colorScale(scenario.parameters.disease || 'Other')
+        : colorScale(scenario.countryName || 'Generic');
+    };
     
     // Add background grid
     svg.append("g")
@@ -452,7 +505,7 @@ const BubbleChartView: React.FC = () => {
       .attr("cx", (d: any) => d.x)
       .attr("cy", (d: any) => d.y)
       .attr("r", (d: any) => d.r)
-      .style("fill", (d: Scenario) => colorScale(d.parameters.disease || 'Other'))
+      .style("fill", (d: Scenario) => getColor(d))
       .style("fill-opacity", 0.8)
       .style("stroke", "white")
       .style("stroke-width", 1)
@@ -677,7 +730,7 @@ const BubbleChartView: React.FC = () => {
         return `Large: ${formatNumber(d)}`;
       });
     
-    // Add color legend for disease types
+    // Add color legend
     const colorLegend = svg.append("g")
       .attr("transform", `translate(20, ${innerHeight - 180})`);
     
@@ -688,11 +741,11 @@ const BubbleChartView: React.FC = () => {
       .attr("font-size", "12px")
       .attr("font-weight", "bold")
       .attr("fill", "currentColor")
-      .text("Diseases:");
+      .text(colorBy === 'disease' ? "Diseases:" : "Countries:");
     
     // Add color legend entries
     const colorLegendEntries = colorLegend.selectAll(".color-legend-entry")
-      .data(diseaseTypes)
+      .data(colorDomain)
       .enter()
       .append("g")
       .attr("class", "color-legend-entry")
@@ -722,7 +775,7 @@ const BubbleChartView: React.FC = () => {
         document.body.removeChild(tooltip);
       }
     };
-  }, [scenarios, sizeMetric, selectedDiseases]);
+  }, [scenarios, sizeMetric, selectedDiseases, colorBy, selectedCountries]);
 
   // If no scenarios or only one scenario, show a message
   if (scenarios.length <= 1) {
@@ -749,6 +802,17 @@ const BubbleChartView: React.FC = () => {
             >
               <option value="dalys">DALYs Averted</option>
               <option value="deaths">Deaths Averted</option>
+            </select>
+          </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-gray-600 dark:text-gray-400">Color by:</label>
+            <select
+              value={colorBy}
+              onChange={(e) => setColorBy(e.target.value as 'disease' | 'country')}
+              className="form-select text-sm"
+            >
+              <option value="disease">Disease</option>
+              <option value="country">Country</option>
             </select>
           </div>
         </div>
@@ -787,6 +851,42 @@ const BubbleChartView: React.FC = () => {
           ))}
         </div>
       </div>
+      
+      {/* Country filter controls */}
+      {availableCountries.length > 1 && (
+        <div className="mb-4 bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Country:</h4>
+            <div className="space-x-2">
+              <button 
+                onClick={() => toggleAllCountries(true)}
+                className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Select All
+              </button>
+              <button 
+                onClick={() => toggleAllCountries(false)}
+                className="px-2 py-1 text-xs bg-gray-300 dark:bg-gray-600 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {availableCountries.map(country => (
+              <label key={country} className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  checked={selectedCountries.has(country)}
+                  onChange={() => toggleCountryFilter(country)}
+                  className="form-checkbox h-4 w-4 text-blue-600"
+                />
+                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{country}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
       
       <div className="mb-6 relative">
         <div ref={chartRef} className="w-full h-[500px]"></div>

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sanitizeModelParameters = exports.getDefaultParameters = exports.applyAIInterventions = exports.diseaseSpecificAIEffects = exports.diseaseAIRationales = exports.defaultAIBaseEffects = exports.defaultAICostParameters = exports.diseaseProfiles = exports.healthSystemStrengthDefaults = exports.calculateICER = exports.runSimulation = void 0;
+exports.sanitizeModelParameters = exports.getDefaultParameters = exports.applyAIInterventions = exports.diseaseSpecificAIEffects = exports.diseaseAIRationales = exports.defaultAIBaseEffects = exports.defaultAIUptakeParameters = exports.defaultAICostParameters = exports.diseaseProfiles = exports.healthSystemStrengthDefaults = exports.calculateICER = exports.runSimulation = void 0;
 // Initialize model with default state
 const initializeState = (population, lambda, initialState) => {
     // Calculate initial weekly incidence
@@ -538,6 +538,66 @@ exports.healthSystemStrengthDefaults = {
         rho_multiplier_L0: 1.2, // Very efficient, standardized referrals
         rho_multiplier_L1: 1.2,
         rho_multiplier_L2: 1.2,
+    },
+    rwanda_health_system: {
+        // Direct System-Wide Parameters
+        phi0: 0.92, // Extremely high formal care seeking - almost everyone uses CHWs/clinics
+        sigmaI: 0.65, // Very fast transition from informal to formal due to CHW network
+        informalCareRatio: 0.02, // Almost no one stays untreated (2% only)
+        regionalLifeExpectancy: 68, // Rwanda's current life expectancy
+        perDiemCosts: {
+            I: 8, // Limited informal sector due to strong formal system
+            F: 15, // Health center entry - subsidized by insurance
+            L0: 10, // Community health cooperatives (lower cost but high volume)
+            L1: 20, // Health centers - often overcrowded (reduced due to volume)
+            L2: 80, // District hospitals - operating beyond capacity
+            L3: 160 // Referral hospitals - King Faisal, CHUK
+        }, // USD - based on Rwanda public sector data with Mutuelle subsidies
+        // Multipliers (Severe efficiency challenges create huge AI opportunity)
+        mu_multiplier_I: 0.8, // Informal care still works but people prefer formal care
+        mu_multiplier_L0: 0.35, // CHWs severely overwhelmed - MASSIVE AI opportunity
+        mu_multiplier_L1: 0.3, // Health centers in crisis - CRITICAL diagnostic delays
+        mu_multiplier_L2: 0.35, // District hospitals gridlocked - bed management essential
+        mu_multiplier_L3: 0.6, // Referral hospitals struggling but better equipped
+        delta_multiplier_U: 1.1, // Lower than weak systems due to coverage
+        delta_multiplier_I: 1.2,
+        delta_multiplier_L0: 1.4, // Overwhelmed CHWs miss critical cases
+        delta_multiplier_L1: 1.6, // Long waits lead to deterioration
+        delta_multiplier_L2: 1.5, // Bed shortages increase mortality
+        delta_multiplier_L3: 1.2,
+        rho_multiplier_L0: 0.6, // Many referrals lost due to facility congestion
+        rho_multiplier_L1: 0.5, // Severe bottlenecks prevent referral completion
+        rho_multiplier_L2: 0.6, // Bed unavailability blocks transfers
+    },
+    test_perfect_system: {
+        // Direct System-Wide Parameters
+        phi0: 1.0, // 100% formal care seeking - EVERYONE goes to formal care
+        sigmaI: 1.0, // Instant transition (not that it matters with phi0=1)
+        informalCareRatio: 1.0, // 100% of non-formal seekers stay untreated (but there are none)
+        regionalLifeExpectancy: 80, // High life expectancy
+        perDiemCosts: {
+            I: 5, // Informal care (no one uses it)
+            F: 10, // Formal care entry
+            L0: 15, // CHW level
+            L1: 30, // Primary care
+            L2: 100, // District hospital
+            L3: 200 // Tertiary hospital
+        },
+        // Perfect efficiency multipliers
+        mu_multiplier_I: 1.0, // Perfect informal care (but unused)
+        mu_multiplier_L0: 1.0, // Perfect CHW efficiency
+        mu_multiplier_L1: 1.0, // Perfect primary care
+        mu_multiplier_L2: 1.0, // Perfect district hospital
+        mu_multiplier_L3: 1.0, // Perfect tertiary care
+        delta_multiplier_U: 1.0, // Normal mortality (but no untreated)
+        delta_multiplier_I: 1.0, // Normal mortality (but no informal)
+        delta_multiplier_L0: 1.0, // Normal CHW mortality
+        delta_multiplier_L1: 1.0, // Normal primary mortality
+        delta_multiplier_L2: 1.0, // Normal district mortality
+        delta_multiplier_L3: 1.0, // Normal tertiary mortality
+        rho_multiplier_L0: 1.0, // Perfect referrals
+        rho_multiplier_L1: 1.0, // Perfect referrals
+        rho_multiplier_L2: 1.0, // Perfect referrals
     }
 };
 // Predefined disease profiles
@@ -880,54 +940,69 @@ exports.defaultAICostParameters = {
         variable: 0.5 // Per-user per-year at scale (based on Rwanda Babylon experience)
     }
 };
+// Default AI uptake parameters - differentiated by user type
+exports.defaultAIUptakeParameters = {
+    globalUptake: 1.0, // Global multiplier (default 100% - use individual rates)
+    // Patient-facing AI interventions (lower uptake due to digital literacy barriers)
+    triageAI: 0.33, // 33% - AI Health Advisor (patient-facing)
+    selfCareAI: 0.33, // 33% - AI Self-Care Platform (patient-facing)
+    // Provider-facing AI interventions (higher uptake due to professional training)
+    chwAI: 0.66, // 66% - CHW Decision Support (provider-facing)
+    diagnosticAI: 0.66, // 66% - Diagnostic AI (provider-facing)
+    bedManagementAI: 0.66, // 66% - Bed Management AI (provider-facing)
+    hospitalDecisionAI: 0.66, // 66% - Hospital Decision Support (provider-facing)
+    // Setting-specific multipliers
+    urbanMultiplier: 1.2, // 20% higher uptake in urban areas
+    ruralMultiplier: 0.7 // 30% lower uptake in rural areas
+};
 // Default AI base effects
 exports.defaultAIBaseEffects = {
     triageAI: {
-        phi0Effect: 0.08, // 8% increase in formal care seeking
-        sigmaIEffect: 1.15, // 15% increase in informal to formal transition (multiplier)
-        queuePreventionRate: 0.20, // 20% prevention of inappropriate visits
-        smartRoutingRate: 0.30 // 30% direct routing to correct level
+        phi0Effect: 0.15, // 15% increase in formal care seeking (transformative awareness)
+        sigmaIEffect: 1.25, // 25% increase in informal to formal transition (transformative routing)
+        queuePreventionRate: 0.35, // 35% prevention of inappropriate visits (highly transformative)
+        smartRoutingRate: 0.45 // 45% direct routing to correct level (near-optimal triage)
     },
     chwAI: {
-        mu0Effect: 0.05, // 5% increase in resolution at CHW level
-        delta0Effect: 0.92, // 8% reduction in mortality (multiplier)
-        rho0Effect: 0.92, // 8% reduction in unnecessary referrals (multiplier)
-        resolutionBoost: 0.15, // 15% additional resolution at L0
-        referralOptimization: 0.25 // 25% further reduction in unnecessary referrals
+        mu0Effect: 0.15, // 15% increase in resolution at CHW level (protocol adherence)
+        delta0Effect: 0.97, // 3% reduction in mortality (very conservative)
+        rho0Effect: 0.70, // 30% reduction in unnecessary referrals (highly transformative)
+        resolutionBoost: 0.20, // 20% additional resolution at L0 (better protocols)
+        referralOptimization: 0.40 // 40% further reduction in unnecessary referrals (optimal triage)
     },
     diagnosticAI: {
-        mu1Effect: 0.06, // 6% increase in resolution at primary care
-        delta1Effect: 0.92, // 8% reduction in mortality (multiplier)
-        rho1Effect: 0.92, // 8% reduction in referrals (multiplier)
-        mu2Effect: 0.04, // 4% increase in resolution at district hospitals
-        delta2Effect: 0.94, // 6% reduction in mortality (multiplier)
-        rho2Effect: 0.94, // 6% reduction in referrals (multiplier)
-        pointOfCareResolution: 0.20, // 20% additional resolution at L1
-        referralPrecision: 0.25 // 25% further reduction in referrals
+        mu1Effect: 0.18, // 18% increase in resolution at primary care (accurate diagnosis)
+        delta1Effect: 0.97, // 3% reduction in mortality (very conservative)
+        rho1Effect: 0.65, // 35% reduction in referrals (transformative diagnostic confidence)
+        mu2Effect: 0.12, // 12% increase in resolution at district hospitals
+        delta2Effect: 0.98, // 2% reduction in mortality (extremely conservative)
+        rho2Effect: 0.75, // 25% reduction in referrals (better case management)
+        pointOfCareResolution: 0.35, // 35% additional resolution at L1 (highly transformative)
+        referralPrecision: 0.45 // 45% further reduction in referrals (near-perfect triage)
     },
     bedManagementAI: {
-        mu2Effect: 0.03, // 3% increase in resolution at district hospitals
-        mu3Effect: 0.03, // 3% increase in resolution at tertiary hospitals
-        lengthOfStayReduction: 0.20, // 20% reduction in length of stay
-        dischargeOptimization: 0.25 // 25% faster discharge processing
+        mu2Effect: 0.10, // 10% increase in throughput at district hospitals (better flow)
+        mu3Effect: 0.10, // 10% increase in throughput at tertiary hospitals
+        lengthOfStayReduction: 0.35, // 35% reduction in length of stay (highly transformative)
+        dischargeOptimization: 0.40 // 40% faster discharge processing (near-optimal)
     },
     hospitalDecisionAI: {
-        delta2Effect: 0.90, // 10% reduction in mortality (multiplier)
-        delta3Effect: 0.90, // 10% reduction in mortality (multiplier)
-        treatmentEfficiency: 0.15, // 15% faster recovery
-        resourceUtilization: 0.20 // 20% better bed utilization
+        delta2Effect: 0.97, // 3% reduction in mortality (very conservative)
+        delta3Effect: 0.97, // 3% reduction in mortality (very conservative)
+        treatmentEfficiency: 0.30, // 30% faster recovery (protocol optimization)
+        resourceUtilization: 0.40 // 40% better bed utilization (highly transformative)
     },
     selfCareAI: {
         // Health advisor functionality (included in comprehensive platform)
-        phi0Effect: 0.07, // 7% increase in formal care seeking (closer to pure advisor)
-        sigmaIEffect: 1.13, // 13% increase in informal to formal transition (closer to pure advisor)
-        queuePreventionRate: 0.25, // 25% prevention of inappropriate visits (higher due to self-management)
-        smartRoutingRate: 0.25, // 25% direct routing to correct level
+        phi0Effect: 0.12, // 12% increase in formal care seeking (was 0.05 - more transformative)
+        sigmaIEffect: 1.20, // 20% increase in informal to formal transition (was 1.10 - transformative routing)
+        queuePreventionRate: 0.40, // 40% prevention of inappropriate visits (was 0.30 - highly transformative)
+        smartRoutingRate: 0.45, // 45% direct routing to correct level (was 0.35 - near-optimal)
         // Self-care specific functionality
-        muIEffect: 0.08, // 8% increase in resolution in informal care
-        deltaIEffect: 0.85, // 15% reduction in mortality (multiplier)
-        visitReductionEffect: 0.2, // 20% reduction in unnecessary visits
-        routingImprovementEffect: 0.15 // 15% improvement in direct routing
+        muIEffect: 0.15, // 15% increase in resolution in informal care (was 0.06 - protocol guidance)
+        deltaIEffect: 0.96, // 4% reduction in mortality (was 0.92 - more conservative)
+        visitReductionEffect: 0.20, // 20% reduction in unnecessary visits (more realistic)
+        routingImprovementEffect: 0.25 // 25% improvement in direct routing (realistic)
     }
 };
 // Disease-specific AI effect rationales
@@ -963,7 +1038,7 @@ exports.diseaseSpecificAIEffects = {
         },
         selfCareAI: {
             muIEffect: 0.02, // 2% - limited self-care impact for pneumonia
-            deltaIEffect: 0.95 // 5% mortality reduction (early care seeking)
+            deltaIEffect: 0.98 // 2% mortality reduction (more conservative)
         }
     },
     // Malaria - excellent for RDT interpretation and treatment guidance
@@ -983,14 +1058,14 @@ exports.diseaseSpecificAIEffects = {
         },
         selfCareAI: {
             muIEffect: 0.05, // 5% - moderate impact (prevention education)
-            deltaIEffect: 0.90 // 10% mortality reduction
+            deltaIEffect: 0.95 // 5% mortality reduction (more conservative)
         }
     },
     // Diarrhea - self-care AI very effective for ORS preparation
     diarrhea: {
         selfCareAI: {
-            muIEffect: 0.20, // 20% increase (ORS preparation guidance)
-            deltaIEffect: 0.70 // 30% mortality reduction (prevent dehydration)
+            muIEffect: 0.25, // 25% increase (ORS preparation guidance - highly effective)
+            deltaIEffect: 0.92 // 8% mortality reduction (more conservative)
         },
         chwAI: {
             mu0Effect: 0.20, // 20% increase (dehydration assessment)
@@ -1030,8 +1105,8 @@ exports.diseaseSpecificAIEffects = {
             delta3Effect: 0.85 // 15% mortality reduction
         },
         selfCareAI: {
-            muIEffect: 0.15, // 15% increase (adherence support critical)
-            deltaIEffect: 0.80 // 20% mortality reduction
+            muIEffect: 0.20, // 20% increase (adherence support highly effective)
+            deltaIEffect: 0.92 // 8% mortality reduction (more conservative)
         }
     },
     // Maternal health - comprehensive AI support
@@ -1042,24 +1117,24 @@ exports.diseaseSpecificAIEffects = {
             rho0Effect: 1.30 // 30% increase referrals (complications need specialist care)
         },
         diagnosticAI: {
-            mu1Effect: 0.20, // 20% increase (ultrasound AI)
-            delta1Effect: 0.75, // 25% mortality reduction
-            rho1Effect: 1.20, // 20% increase in appropriate referrals (high-risk cases need specialist care)
-            mu2Effect: 0.15, // 15% increase at L2 (fetal monitoring AI)
-            delta2Effect: 0.80, // 20% mortality reduction at L2
-            rho2Effect: 1.10 // 10% increase in L2 referrals (complex obstetric cases)
+            mu1Effect: 0.15, // 15% increase (ultrasound AI - more conservative)
+            delta1Effect: 0.90, // 10% mortality reduction (conservative)
+            rho1Effect: 1.25, // 25% increase in appropriate referrals (transformative for high-risk identification)
+            mu2Effect: 0.12, // 12% increase at L2 (fetal monitoring AI)
+            delta2Effect: 0.92, // 8% mortality reduction at L2 (conservative)
+            rho2Effect: 1.15 // 15% increase in L2 referrals (better triage)
         },
         triageAI: {
             phi0Effect: 0.20, // 20% increase in facility delivery
             sigmaIEffect: 1.30 // 30% faster transition
         },
         hospitalDecisionAI: {
-            delta2Effect: 0.70, // 30% mortality reduction (hemorrhage protocols)
-            delta3Effect: 0.70 // 30% mortality reduction
+            delta2Effect: 0.85, // 15% mortality reduction (more realistic for hemorrhage protocols)
+            delta3Effect: 0.85 // 15% mortality reduction (still significant but more conservative)
         },
         selfCareAI: {
-            muIEffect: 0.10, // 10% increase (pregnancy monitoring)
-            deltaIEffect: 0.75 // 25% mortality reduction (danger signs)
+            muIEffect: 0.15, // 15% increase (pregnancy monitoring and education)
+            deltaIEffect: 0.90 // 10% mortality reduction (more conservative)
         }
     },
     // Congestive heart failure - limited AI impact
@@ -1093,8 +1168,8 @@ exports.diseaseSpecificAIEffects = {
     // HIV management - adherence focus
     hiv_management_chronic: {
         selfCareAI: {
-            muIEffect: 0.25, // 25% increase (adherence is critical)
-            deltaIEffect: 0.75 // 25% mortality reduction
+            muIEffect: 0.30, // 30% increase (adherence is critical - highly effective)
+            deltaIEffect: 0.92 // 8% mortality reduction (more conservative)
         },
         chwAI: {
             mu0Effect: 0.15, // 15% increase (adherence counseling)
@@ -1126,8 +1201,8 @@ exports.diseaseSpecificAIEffects = {
             rho2Effect: 0.75 // 25% reduction in L2 referrals
         },
         selfCareAI: {
-            muIEffect: 0.05, // 5% - minor improvement
-            deltaIEffect: 0.95 // 5% mortality reduction
+            muIEffect: 0.08, // 8% - minor improvement (increased process effect)
+            deltaIEffect: 0.97 // 3% mortality reduction (more conservative)
         }
     },
     // Fever - moderate AI benefit
@@ -1150,8 +1225,8 @@ exports.diseaseSpecificAIEffects = {
             sigmaIEffect: 1.20 // 20% faster transition
         },
         selfCareAI: {
-            muIEffect: 0.05, // 5% increase (symptomatic care guidance)
-            deltaIEffect: 0.92 // 8% mortality reduction
+            muIEffect: 0.10, // 10% increase (symptomatic care guidance - increased)
+            deltaIEffect: 0.96 // 4% mortality reduction (more conservative)
         }
     },
     // Anemia - targeted AI benefits
@@ -1170,8 +1245,8 @@ exports.diseaseSpecificAIEffects = {
             rho2Effect: 0.82 // 18% reduction in L2 referrals
         },
         selfCareAI: {
-            muIEffect: 0.03, // 3% increase (dietary guidance)
-            deltaIEffect: 0.98 // 2% mortality reduction
+            muIEffect: 0.08, // 8% increase (dietary guidance - increased process effect)
+            deltaIEffect: 0.99 // 1% mortality reduction (even more conservative)
         }
     },
     // HIV opportunistic infections - weighted average for mixed complexity
@@ -1198,13 +1273,59 @@ exports.diseaseSpecificAIEffects = {
             delta3Effect: 0.80 // 20% mortality reduction
         }
     },
+    // Congestive Heart Failure - very low self-care amenability, high hospital AI impact
+    congestive_heart_failure: {
+        selfCareAI: {
+            // Multiply base effects by 0.1 (Very Low amenability)
+            muIEffect: 0.015, // 1.5% - minimal self-care impact (only medication tracking)
+            deltaIEffect: 0.996, // 0.4% mortality reduction (very limited)
+            visitReductionEffect: 0.02, // 2% visit reduction (minimal)
+            routingImprovementEffect: 0.025 // 2.5% routing improvement
+        },
+        triageAI: {
+            // High effectiveness (0.9 multiplier)
+            queuePreventionRate: 0.36, // 36% prevention (0.4 * 0.9)
+            smartRoutingRate: 0.405, // 40.5% routing (0.45 * 0.9)
+            phi0Effect: 0.108, // 10.8% increase in care seeking
+            sigmaIEffect: 1.18 // 18% increase in transition
+        },
+        chwAI: {
+            // Low effectiveness (0.3 multiplier) - CHF needs specialist care
+            mu0Effect: 0.045, // 4.5% increase (0.15 * 0.3)
+            delta0Effect: 0.97, // 3% mortality reduction (limited CHW capability)
+            rho0Effect: 1.06 // Actually increase referrals by 6% (complexity recognition)
+        },
+        diagnosticAI: {
+            // Moderate effectiveness (0.7 multiplier)
+            mu1Effect: 0.14, // 14% increase (0.20 * 0.7)
+            delta1Effect: 0.91, // 9% mortality reduction
+            rho1Effect: 0.86, // 14% referral reduction
+            mu2Effect: 0.105, // 10.5% increase at L2
+            delta2Effect: 0.895, // 10.5% mortality reduction at L2
+            rho2Effect: 0.93 // 7% reduction in L2 referrals
+        },
+        bedManagementAI: {
+            // High effectiveness (0.9 multiplier) - critical for CHF
+            lengthOfStayReduction: 0.18, // 18% reduction (0.20 * 0.9)
+            dischargeOptimization: 0.135 // 13.5% improvement (0.15 * 0.9)
+        },
+        hospitalDecisionAI: {
+            // High effectiveness (0.9 multiplier) - complex decisions
+            treatmentEfficiency: 0.225, // 22.5% improvement (0.25 * 0.9)
+            resourceUtilization: 0.27, // 27% improvement (0.30 * 0.9)
+            delta2Effect: 0.82, // 18% mortality reduction (high impact)
+            delta3Effect: 0.77 // 23% mortality reduction
+        }
+    },
     // Default for any disease not specifically configured
     default: exports.defaultAIBaseEffects
 };
 // Apply AI intervention effects to parameters
-const applyAIInterventions = (baseParams, interventions, effectMagnitudes = {}, costParams = exports.defaultAICostParameters, baseEffects = exports.defaultAIBaseEffects, disease) => {
+const applyAIInterventions = (baseParams, interventions, effectMagnitudes = {}, costParams = exports.defaultAICostParameters, baseEffects = exports.defaultAIBaseEffects, disease, uptakeParams = exports.defaultAIUptakeParameters, isUrban = true) => {
     console.log('🔧 DEBUG applyAIInterventions called with interventions:', interventions);
     console.log('🔧 DEBUG selfCareAI state:', interventions.selfCareAI);
+    console.log('🔧 DEBUG uptake parameters:', uptakeParams);
+    console.log('🔧 DEBUG isUrban:', isUrban);
     const modifiedParams = { ...baseParams };
     // Reset aiFixedCost and aiVariableCost to 0 before applying interventions
     modifiedParams.aiFixedCost = 0;
@@ -1222,123 +1343,153 @@ const applyAIInterventions = (baseParams, interventions, effectMagnitudes = {}, 
         }
         return baseEffects[interventionType];
     };
-    // Helper function to apply magnitude to an effect
-    const applyMagnitude = (key, baseEffect, isMultiplier = false) => {
+    // Calculate setting-specific multiplier
+    const settingMultiplier = isUrban ? uptakeParams.urbanMultiplier : uptakeParams.ruralMultiplier;
+    // Helper function to get effective uptake for an intervention
+    const getEffectiveUptake = (interventionType) => {
+        const baseUptake = uptakeParams[interventionType] || 0;
+        const effectiveUptake = baseUptake * uptakeParams.globalUptake * settingMultiplier;
+        // Ensure uptake stays within bounds [0, 1]
+        return Math.max(0, Math.min(1, effectiveUptake));
+    };
+    // Helper function to apply magnitude and uptake to an effect
+    const applyMagnitude = (key, baseEffect, isMultiplier = false, interventionType) => {
         const magnitude = effectMagnitudes[key] !== undefined ? effectMagnitudes[key] : 1;
-        // If magnitude is 0, return a value that results in no effect
-        if (magnitude === 0) {
+        // Get uptake for this intervention if specified
+        const uptake = interventionType ? getEffectiveUptake(interventionType) : 1.0;
+        // If magnitude is 0 or uptake is 0, return a value that results in no effect
+        if (magnitude === 0 || uptake === 0) {
             return isMultiplier ? 1.0 : 0.0;
         }
         if (isMultiplier) {
             // For multipliers (like 0.85 for reduction), we need to adjust differently
-            // If magnitude is 0, effect should be 1.0 (no effect)
-            // If magnitude is 1, effect should be the base effect (e.g., 0.85)
-            // If magnitude is 2, effect should be even stronger (e.g., 0.70)
+            // Scale the effect by uptake
             if (baseEffect < 1) {
-                return 1 - ((1 - baseEffect) * magnitude);
+                // For reduction multipliers (e.g., 0.85 means 15% reduction)
+                const reduction = (1 - baseEffect) * magnitude * uptake;
+                return 1 - reduction;
             }
             else {
-                return 1 + ((baseEffect - 1) * magnitude);
+                // For increase multipliers (e.g., 1.15 means 15% increase)
+                const increase = (baseEffect - 1) * magnitude * uptake;
+                return 1 + increase;
             }
         }
         else {
-            // For additive effects, simply multiply the effect by the magnitude
-            return baseEffect * magnitude;
+            // For additive effects, multiply by magnitude and uptake
+            return baseEffect * magnitude * uptake;
         }
     };
     if (interventions.triageAI) {
         // Triage AI improves formal care seeking and transitions from informal care
         const triageEffects = getDiseaseEffects('triageAI');
-        modifiedParams.phi0 += applyMagnitude('triageAI_φ₀', triageEffects.phi0Effect);
-        modifiedParams.sigmaI *= applyMagnitude('triageAI_σI', triageEffects.sigmaIEffect, true);
+        const uptake = getEffectiveUptake('triageAI');
+        modifiedParams.phi0 += applyMagnitude('triageAI_φ₀', triageEffects.phi0Effect, false, 'triageAI');
+        modifiedParams.sigmaI *= applyMagnitude('triageAI_σI', triageEffects.sigmaIEffect, true, 'triageAI');
         // Add queue-reduction effects
         if (triageEffects.queuePreventionRate !== undefined) {
-            modifiedParams.queuePreventionRate = applyMagnitude('triageAI_queuePrevention', triageEffects.queuePreventionRate);
+            modifiedParams.queuePreventionRate = applyMagnitude('triageAI_queuePrevention', triageEffects.queuePreventionRate, false, 'triageAI');
         }
         if (triageEffects.smartRoutingRate !== undefined) {
-            modifiedParams.smartRoutingRate = applyMagnitude('triageAI_smartRouting', triageEffects.smartRoutingRate);
+            modifiedParams.smartRoutingRate = applyMagnitude('triageAI_smartRouting', triageEffects.smartRoutingRate, false, 'triageAI');
         }
+        // Scale costs by uptake
         modifiedParams.aiFixedCost += costParams.triageAI.fixed;
-        modifiedParams.aiVariableCost += costParams.triageAI.variable;
+        modifiedParams.aiVariableCost += costParams.triageAI.variable * uptake;
     }
     if (interventions.chwAI) {
         const chwEffects = getDiseaseEffects('chwAI');
-        modifiedParams.mu0 += applyMagnitude('chwAI_μ₀', chwEffects.mu0Effect);
-        modifiedParams.delta0 *= applyMagnitude('chwAI_δ₀', chwEffects.delta0Effect, true);
-        modifiedParams.rho0 *= applyMagnitude('chwAI_ρ₀', chwEffects.rho0Effect, true);
+        const uptake = getEffectiveUptake('chwAI');
+        modifiedParams.mu0 += applyMagnitude('chwAI_μ₀', chwEffects.mu0Effect, false, 'chwAI');
+        modifiedParams.delta0 *= applyMagnitude('chwAI_δ₀', chwEffects.delta0Effect, true, 'chwAI');
+        modifiedParams.rho0 *= applyMagnitude('chwAI_ρ₀', chwEffects.rho0Effect, true, 'chwAI');
         // Add queue-reduction effects
         if (chwEffects.resolutionBoost !== undefined) {
-            modifiedParams.resolutionBoost = applyMagnitude('chwAI_resolutionBoost', chwEffects.resolutionBoost);
+            modifiedParams.resolutionBoost = applyMagnitude('chwAI_resolutionBoost', chwEffects.resolutionBoost, false, 'chwAI');
         }
         if (chwEffects.referralOptimization !== undefined) {
-            modifiedParams.referralOptimization = applyMagnitude('chwAI_referralOptimization', chwEffects.referralOptimization);
+            modifiedParams.referralOptimization = applyMagnitude('chwAI_referralOptimization', chwEffects.referralOptimization, false, 'chwAI');
         }
+        // Scale costs by uptake
         modifiedParams.aiFixedCost += costParams.chwAI.fixed;
-        modifiedParams.aiVariableCost += costParams.chwAI.variable;
+        modifiedParams.aiVariableCost += costParams.chwAI.variable * uptake;
     }
     if (interventions.diagnosticAI) {
         const diagnosticEffects = getDiseaseEffects('diagnosticAI');
+        const uptake = getEffectiveUptake('diagnosticAI');
         // L1 (Primary Care) effects
-        modifiedParams.mu1 += applyMagnitude('diagnosticAI_μ₁', diagnosticEffects.mu1Effect);
-        modifiedParams.delta1 *= applyMagnitude('diagnosticAI_δ₁', diagnosticEffects.delta1Effect, true);
-        modifiedParams.rho1 *= applyMagnitude('diagnosticAI_ρ₁', diagnosticEffects.rho1Effect, true);
+        modifiedParams.mu1 += applyMagnitude('diagnosticAI_μ₁', diagnosticEffects.mu1Effect, false, 'diagnosticAI');
+        modifiedParams.delta1 *= applyMagnitude('diagnosticAI_δ₁', diagnosticEffects.delta1Effect, true, 'diagnosticAI');
+        modifiedParams.rho1 *= applyMagnitude('diagnosticAI_ρ₁', diagnosticEffects.rho1Effect, true, 'diagnosticAI');
         // L2 (District Hospital) effects
         if (diagnosticEffects.mu2Effect !== undefined) {
-            modifiedParams.mu2 += applyMagnitude('diagnosticAI_μ₂', diagnosticEffects.mu2Effect);
+            modifiedParams.mu2 += applyMagnitude('diagnosticAI_μ₂', diagnosticEffects.mu2Effect, false, 'diagnosticAI');
         }
         if (diagnosticEffects.delta2Effect !== undefined) {
-            modifiedParams.delta2 *= applyMagnitude('diagnosticAI_δ₂', diagnosticEffects.delta2Effect, true);
+            modifiedParams.delta2 *= applyMagnitude('diagnosticAI_δ₂', diagnosticEffects.delta2Effect, true, 'diagnosticAI');
         }
         if (diagnosticEffects.rho2Effect !== undefined) {
-            modifiedParams.rho2 *= applyMagnitude('diagnosticAI_ρ₂', diagnosticEffects.rho2Effect, true);
+            modifiedParams.rho2 *= applyMagnitude('diagnosticAI_ρ₂', diagnosticEffects.rho2Effect, true, 'diagnosticAI');
         }
         // Add queue-reduction effects
         if (diagnosticEffects.pointOfCareResolution !== undefined) {
-            modifiedParams.pointOfCareResolution = applyMagnitude('diagnosticAI_pointOfCareResolution', diagnosticEffects.pointOfCareResolution);
+            modifiedParams.pointOfCareResolution = applyMagnitude('diagnosticAI_pointOfCareResolution', diagnosticEffects.pointOfCareResolution, false, 'diagnosticAI');
         }
         if (diagnosticEffects.referralPrecision !== undefined) {
-            modifiedParams.referralPrecision = applyMagnitude('diagnosticAI_referralPrecision', diagnosticEffects.referralPrecision);
+            modifiedParams.referralPrecision = applyMagnitude('diagnosticAI_referralPrecision', diagnosticEffects.referralPrecision, false, 'diagnosticAI');
         }
+        // Scale costs by uptake
         modifiedParams.aiFixedCost += costParams.diagnosticAI.fixed;
-        modifiedParams.aiVariableCost += costParams.diagnosticAI.variable;
+        modifiedParams.aiVariableCost += costParams.diagnosticAI.variable * uptake;
     }
     if (interventions.bedManagementAI) {
         const bedMgmtEffects = getDiseaseEffects('bedManagementAI');
-        modifiedParams.mu2 += applyMagnitude('bedManagementAI_μ₂', bedMgmtEffects.mu2Effect);
-        modifiedParams.mu3 += applyMagnitude('bedManagementAI_μ₃', bedMgmtEffects.mu3Effect);
+        const uptake = getEffectiveUptake('bedManagementAI');
+        modifiedParams.mu2 += applyMagnitude('bedManagementAI_μ₂', bedMgmtEffects.mu2Effect, false, 'bedManagementAI');
+        modifiedParams.mu3 += applyMagnitude('bedManagementAI_μ₃', bedMgmtEffects.mu3Effect, false, 'bedManagementAI');
         // Add queue-reduction effects
         if (bedMgmtEffects.lengthOfStayReduction !== undefined) {
-            modifiedParams.lengthOfStayReduction = applyMagnitude('bedManagementAI_lengthOfStay', bedMgmtEffects.lengthOfStayReduction);
+            modifiedParams.lengthOfStayReduction = applyMagnitude('bedManagementAI_lengthOfStay', bedMgmtEffects.lengthOfStayReduction, false, 'bedManagementAI');
         }
         if (bedMgmtEffects.dischargeOptimization !== undefined) {
-            modifiedParams.dischargeOptimization = applyMagnitude('bedManagementAI_discharge', bedMgmtEffects.dischargeOptimization);
+            modifiedParams.dischargeOptimization = applyMagnitude('bedManagementAI_discharge', bedMgmtEffects.dischargeOptimization, false, 'bedManagementAI');
         }
+        // Scale costs by uptake
         modifiedParams.aiFixedCost += costParams.bedManagementAI.fixed;
-        modifiedParams.aiVariableCost += costParams.bedManagementAI.variable;
+        modifiedParams.aiVariableCost += costParams.bedManagementAI.variable * uptake;
     }
     if (interventions.hospitalDecisionAI) {
         const hospitalEffects = getDiseaseEffects('hospitalDecisionAI');
-        modifiedParams.delta2 *= applyMagnitude('hospitalDecisionAI_δ₂', hospitalEffects.delta2Effect, true);
-        modifiedParams.delta3 *= applyMagnitude('hospitalDecisionAI_δ₃', hospitalEffects.delta3Effect, true);
+        const uptake = getEffectiveUptake('hospitalDecisionAI');
+        modifiedParams.delta2 *= applyMagnitude('hospitalDecisionAI_δ₂', hospitalEffects.delta2Effect, true, 'hospitalDecisionAI');
+        modifiedParams.delta3 *= applyMagnitude('hospitalDecisionAI_δ₃', hospitalEffects.delta3Effect, true, 'hospitalDecisionAI');
         // Add queue-reduction effects
         if (hospitalEffects.treatmentEfficiency !== undefined) {
-            modifiedParams.treatmentEfficiency = applyMagnitude('hospitalDecisionAI_treatment', hospitalEffects.treatmentEfficiency);
+            modifiedParams.treatmentEfficiency = applyMagnitude('hospitalDecisionAI_treatment', hospitalEffects.treatmentEfficiency, false, 'hospitalDecisionAI');
         }
         if (hospitalEffects.resourceUtilization !== undefined) {
-            modifiedParams.resourceUtilization = applyMagnitude('hospitalDecisionAI_resource', hospitalEffects.resourceUtilization);
+            modifiedParams.resourceUtilization = applyMagnitude('hospitalDecisionAI_resource', hospitalEffects.resourceUtilization, false, 'hospitalDecisionAI');
         }
+        // Scale costs by uptake
         modifiedParams.aiFixedCost += costParams.hospitalDecisionAI.fixed;
-        modifiedParams.aiVariableCost += costParams.hospitalDecisionAI.variable;
+        modifiedParams.aiVariableCost += costParams.hospitalDecisionAI.variable * uptake;
     }
+    // Store self-care AI effects that need to be applied after parameter capping
+    let selfCareVisitReductionEffect;
+    let selfCareRoutingImprovementEffect;
+    let selfCareUptake = 0;
     if (interventions.selfCareAI) {
         const selfCareEffects = getDiseaseEffects('selfCareAI');
+        const uptake = getEffectiveUptake('selfCareAI');
+        selfCareUptake = uptake;
         console.log('🔧 DEBUG selfCareAI effects:', selfCareEffects);
+        console.log('🔧 DEBUG selfCareAI uptake:', uptake);
         console.log('🔧 DEBUG phi0Effect:', selfCareEffects.phi0Effect);
         console.log('🔧 DEBUG sigmaIEffect:', selfCareEffects.sigmaIEffect);
         // Health advisor functionality (included in comprehensive platform)
         if (selfCareEffects.phi0Effect !== undefined) {
             const oldPhi0 = modifiedParams.phi0;
-            modifiedParams.phi0 += applyMagnitude('selfCareAI_φ₀', selfCareEffects.phi0Effect);
+            modifiedParams.phi0 += applyMagnitude('selfCareAI_φ₀', selfCareEffects.phi0Effect, false, 'selfCareAI');
             console.log('🔧 DEBUG phi0 changed from', oldPhi0, 'to', modifiedParams.phi0);
         }
         else {
@@ -1346,30 +1497,27 @@ const applyAIInterventions = (baseParams, interventions, effectMagnitudes = {}, 
         }
         if (selfCareEffects.sigmaIEffect !== undefined) {
             const oldSigmaI = modifiedParams.sigmaI;
-            modifiedParams.sigmaI *= applyMagnitude('selfCareAI_σI', selfCareEffects.sigmaIEffect, true);
+            modifiedParams.sigmaI *= applyMagnitude('selfCareAI_σI', selfCareEffects.sigmaIEffect, true, 'selfCareAI');
             console.log('🔧 DEBUG sigmaI changed from', oldSigmaI, 'to', modifiedParams.sigmaI);
         }
         else {
             console.log('🔧 DEBUG sigmaIEffect is undefined!');
         }
         if (selfCareEffects.queuePreventionRate !== undefined) {
-            modifiedParams.queuePreventionRate = applyMagnitude('selfCareAI_queuePrevention', selfCareEffects.queuePreventionRate);
+            modifiedParams.queuePreventionRate = applyMagnitude('selfCareAI_queuePrevention', selfCareEffects.queuePreventionRate, false, 'selfCareAI');
         }
         if (selfCareEffects.smartRoutingRate !== undefined) {
-            modifiedParams.smartRoutingRate = applyMagnitude('selfCareAI_smartRouting', selfCareEffects.smartRoutingRate);
+            modifiedParams.smartRoutingRate = applyMagnitude('selfCareAI_smartRouting', selfCareEffects.smartRoutingRate, false, 'selfCareAI');
         }
         // Self-care specific functionality
-        modifiedParams.muI += applyMagnitude('selfCareAI_μI', selfCareEffects.muIEffect);
-        modifiedParams.deltaI *= applyMagnitude('selfCareAI_δI', selfCareEffects.deltaIEffect, true);
-        // Add routing improvements for congestion management
-        if (selfCareEffects.visitReductionEffect !== undefined) {
-            modifiedParams.visitReduction = applyMagnitude('selfCareAI_visitReduction', selfCareEffects.visitReductionEffect);
-        }
-        if (selfCareEffects.routingImprovementEffect !== undefined) {
-            modifiedParams.directRoutingImprovement = applyMagnitude('selfCareAI_directRoutingImprovement', selfCareEffects.routingImprovementEffect);
-        }
+        modifiedParams.muI += applyMagnitude('selfCareAI_μI', selfCareEffects.muIEffect, false, 'selfCareAI');
+        modifiedParams.deltaI *= applyMagnitude('selfCareAI_δI', selfCareEffects.deltaIEffect, true, 'selfCareAI');
+        // Store visit reduction and routing effects to be applied after parameter capping
+        selfCareVisitReductionEffect = selfCareEffects.visitReductionEffect;
+        selfCareRoutingImprovementEffect = selfCareEffects.routingImprovementEffect;
+        // Scale costs by uptake
         modifiedParams.aiFixedCost += costParams.selfCareAI.fixed;
-        modifiedParams.aiVariableCost += costParams.selfCareAI.variable;
+        modifiedParams.aiVariableCost += costParams.selfCareAI.variable * uptake;
         modifiedParams.selfCareAIActive = true; // Set the flag indicating self-care AI is active
     }
     // Ensure all probability parameters stay within valid bounds (0 to 1) after AI effects are applied
@@ -1387,6 +1535,34 @@ const applyAIInterventions = (baseParams, interventions, effectMagnitudes = {}, 
         if (modifiedParams[param] < 0) {
             console.warn(`AI intervention caused ${param} to go below 0 (${modifiedParams[param]}), setting to 0`);
             modifiedParams[param] = 0;
+        }
+    }
+    // Apply self-care AI visit reduction and routing improvements AFTER parameter capping
+    if (interventions.selfCareAI) {
+        // Helper function to apply magnitude and uptake to an effect
+        const applyMagnitude = (key, baseEffect, isMultiplier = false, interventionType) => {
+            const magnitude = effectMagnitudes[key] !== undefined ? effectMagnitudes[key] : 1;
+            const uptake = interventionType ? selfCareUptake : 1.0;
+            if (isMultiplier) {
+                const scaledEffect = 1 + (baseEffect - 1) * magnitude * uptake;
+                return scaledEffect;
+            }
+            else {
+                const scaledEffect = baseEffect * magnitude * uptake;
+                return scaledEffect;
+            }
+        };
+        // Add routing improvements for congestion management
+        // CRITICAL: Scale visit reduction by actual informal care usage
+        // Self-care apps only prevent visits from those who would use informal care
+        if (selfCareVisitReductionEffect !== undefined) {
+            const informalCareUsage = (1 - modifiedParams.phi0) * (1 - modifiedParams.informalCareRatio);
+            const scaledVisitReduction = selfCareVisitReductionEffect * informalCareUsage;
+            modifiedParams.visitReduction = applyMagnitude('selfCareAI_visitReduction', scaledVisitReduction, false, 'selfCareAI');
+            console.log(`Self-care AI visit reduction scaled by informal usage: ${selfCareVisitReductionEffect} * ${informalCareUsage} = ${scaledVisitReduction}`);
+        }
+        if (selfCareRoutingImprovementEffect !== undefined) {
+            modifiedParams.directRoutingImprovement = applyMagnitude('selfCareAI_directRoutingImprovement', selfCareRoutingImprovementEffect, false, 'selfCareAI');
         }
     }
     return modifiedParams;

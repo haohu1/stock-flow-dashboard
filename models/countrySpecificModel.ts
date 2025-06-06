@@ -122,8 +122,6 @@ export const countryDiseaseBurdens: Record<string, Record<string, DiseaseBurdenM
     hiv_opportunistic: { country: 'Nigeria', disease: 'hiv_opportunistic', incidenceMultiplier: 0.6, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.7, notes: 'Lower HIV burden but weaker health system' },
     fever: { country: 'Nigeria', disease: 'fever', incidenceMultiplier: 1.4, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.6, notes: 'High burden of febrile illnesses' },
     urti: { country: 'Nigeria', disease: 'urti', incidenceMultiplier: 1.3, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.7, notes: 'Common but often self-treated' },
-    anemia: { country: 'Nigeria', disease: 'anemia', incidenceMultiplier: 1.4, mortalityMultiplier: 1.2, careSeekingMultiplier: 0.7, notes: 'High burden, nutritional deficiencies' },
-    high_risk_pregnancy_low_anc: { country: 'Nigeria', disease: 'high_risk_pregnancy_low_anc', incidenceMultiplier: 1.6, mortalityMultiplier: 1.5, careSeekingMultiplier: 0.5, notes: 'High maternal mortality, low facility delivery' },
     congestive_heart_failure: { country: 'Nigeria', disease: 'congestive_heart_failure', incidenceMultiplier: 1.2, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.6, notes: 'Growing NCD burden, limited cardiac care' }
   },
   kenya: {
@@ -135,8 +133,6 @@ export const countryDiseaseBurdens: Record<string, Record<string, DiseaseBurdenM
     hiv_opportunistic: { country: 'Kenya', disease: 'hiv_opportunistic', incidenceMultiplier: 2.0, mortalityMultiplier: 1.6, careSeekingMultiplier: 0.85, notes: 'High HIV-TB co-infection' },
     fever: { country: 'Kenya', disease: 'fever', incidenceMultiplier: 1.2, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.8, notes: 'Better health seeking behavior' },
     urti: { country: 'Kenya', disease: 'urti', incidenceMultiplier: 1.1, mortalityMultiplier: 1.0, careSeekingMultiplier: 0.85, notes: 'Good primary care access' },
-    anemia: { country: 'Kenya', disease: 'anemia', incidenceMultiplier: 1.2, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.8, notes: 'Moderate burden' },
-    high_risk_pregnancy_low_anc: { country: 'Kenya', disease: 'high_risk_pregnancy_low_anc', incidenceMultiplier: 1.3, mortalityMultiplier: 1.2, careSeekingMultiplier: 0.7, notes: 'Improving maternal health' },
     congestive_heart_failure: { country: 'Kenya', disease: 'congestive_heart_failure', incidenceMultiplier: 1.3, mortalityMultiplier: 1.2, careSeekingMultiplier: 0.7, notes: 'Limited cardiac services' }
   },
   south_africa: {
@@ -147,8 +143,6 @@ export const countryDiseaseBurdens: Record<string, Record<string, DiseaseBurdenM
     diarrhea: { country: 'South Africa', disease: 'diarrhea', incidenceMultiplier: 1.0, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.9, notes: 'Lower burden due to better water/sanitation in urban areas' },
     malaria: { country: 'South Africa', disease: 'malaria', incidenceMultiplier: 0.3, mortalityMultiplier: 0.8, careSeekingMultiplier: 0.95, notes: 'Low malaria burden, mainly in northern provinces (Limpopo, Mpumalanga, KwaZulu-Natal)' },
     congestive_heart_failure: { country: 'South Africa', disease: 'congestive_heart_failure', incidenceMultiplier: 1.8, mortalityMultiplier: 1.4, careSeekingMultiplier: 0.8, notes: 'High NCDs burden due to epidemiological transition and urbanization' },
-    anemia: { country: 'South Africa', disease: 'anemia', incidenceMultiplier: 1.5, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.8, notes: 'Higher burden due to HIV, TB, malnutrition, and chronic disease' },
-    high_risk_pregnancy_low_anc: { country: 'South Africa', disease: 'high_risk_pregnancy_low_anc', incidenceMultiplier: 1.4, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.85, notes: 'Higher maternal risk due to HIV, TB co-infection and socioeconomic factors' },
     urti: { country: 'South Africa', disease: 'urti', incidenceMultiplier: 1.1, mortalityMultiplier: 1.0, careSeekingMultiplier: 0.9, notes: 'Moderate burden, good healthcare access in urban areas' },
     fever: { country: 'South Africa', disease: 'fever', incidenceMultiplier: 1.2, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.85, notes: 'Higher complexity due to HIV/TB co-infections requiring careful evaluation' }
   },
@@ -162,8 +156,6 @@ export const countryDiseaseBurdens: Record<string, Record<string, DiseaseBurdenM
     fever: { country: 'Rwanda', disease: 'fever', incidenceMultiplier: 1.1, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.9, notes: 'High health facility use for febrile illness' },
     urti: { country: 'Rwanda', disease: 'urti', incidenceMultiplier: 1.0, mortalityMultiplier: 0.8, careSeekingMultiplier: 0.85, notes: 'Common but CHWs manage most cases' },
     congestive_heart_failure: { country: 'Rwanda', disease: 'congestive_heart_failure', incidenceMultiplier: 0.9, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.8, notes: 'Growing NCD burden but limited specialized care' },
-    anemia: { country: 'Rwanda', disease: 'anemia', incidenceMultiplier: 1.1, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.8, notes: 'Common but well-managed through CHW network' },
-    high_risk_pregnancy_low_anc: { country: 'Rwanda', disease: 'high_risk_pregnancy_low_anc', incidenceMultiplier: 0.8, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.9, notes: 'Strong maternal health program with CHW support' }
   },
   test_country: {
     // All diseases have perfect care seeking (1.0) and normal burden
@@ -175,8 +167,6 @@ export const countryDiseaseBurdens: Record<string, Record<string, DiseaseBurdenM
     hiv_opportunistic: { country: 'test_country', disease: 'hiv_opportunistic', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
     fever: { country: 'test_country', disease: 'fever', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
     urti: { country: 'test_country', disease: 'urti', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
-    anemia: { country: 'test_country', disease: 'anemia', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
-    high_risk_pregnancy_low_anc: { country: 'test_country', disease: 'high_risk_pregnancy_low_anc', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
     congestive_heart_failure: { country: 'test_country', disease: 'congestive_heart_failure', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' }
   }
 };
@@ -245,6 +235,15 @@ export const diseaseSeverityData: Record<string, DiseaseSeverity> = {
     aiTriageImpact: 'Low',
     aiSelfCareImpact: 'Low',
     clinicalCharacteristics: 'Lifelong ART required, regular monitoring essential.'
+  },
+  congestive_heart_failure: {
+    disease: 'congestive_heart_failure',
+    severityCategory: 'Very High',
+    acuityLevel: 'Chronic',
+    selfCareAmenable: 'Very Low',
+    aiTriageImpact: 'High',
+    aiSelfCareImpact: 'Very Low',
+    clinicalCharacteristics: 'Complex cardiac condition requiring specialized care, regular monitoring, and medication management. Self-care limited to symptom monitoring and medication adherence.'
   }
 };
 
@@ -366,10 +365,7 @@ export function adjustParametersForCountry(
   adjustedParams.mu2 *= infrastructureMultiplier * workforceMultiplier;
   adjustedParams.mu3 *= infrastructureMultiplier * workforceMultiplier;
 
-  // Adjust AI effectiveness based on severity
-  if (severity) {
-    adjustedParams = adjustAIEffectivenessForSeverity(adjustedParams, severity);
-  }
+  // Note: AI effectiveness is now handled in applyAIInterventions through diseaseSpecificAIEffects
 
   // Add country-specific metadata
   adjustedParams.countryProfile = country;
@@ -517,39 +513,7 @@ function calculateWorkforceMultiplier(country: CountryProfile): number {
   return Math.min(1.1, 0.8 + (0.3 * Math.min(physicianRatio, 1)) + chwBonus);
 }
 
-function adjustAIEffectivenessForSeverity(
-  params: CountrySpecificParameters,
-  severity: DiseaseSeverity
-): CountrySpecificParameters {
-  // Map severity categories to multipliers
-  const selfCareMultipliers: Record<string, number> = {
-    'Very Low': 0.1,
-    'Low': 0.3,
-    'Moderate': 0.5,
-    'High': 0.8,
-    'Very High': 1.0
-  };
-
-  const triageMultipliers: Record<string, number> = {
-    'Low': 0.5,
-    'Moderate': 0.7,
-    'High': 0.9,
-    'Very High': 1.0
-  };
-
-  // Adjust self-care AI effectiveness
-  const selfCareMultiplier = selfCareMultipliers[severity.selfCareAmenable] || 0.5;
-  params.selfCareAIEffectMuI *= selfCareMultiplier;
-  params.selfCareAIEffectDeltaI *= selfCareMultiplier;
-  params.visitReduction = (params.visitReduction || 0) * selfCareMultiplier;
-
-  // Adjust triage AI effectiveness
-  const triageMultiplier = triageMultipliers[severity.aiTriageImpact] || 0.7;
-  params.queuePreventionRate = (params.queuePreventionRate || 0) * triageMultiplier;
-  params.smartRoutingRate = (params.smartRoutingRate || 0) * triageMultiplier;
-
-  return params;
-}
+// AI effectiveness is now handled directly in stockAndFlowModel through diseaseSpecificAIEffects
 
 // Multi-condition modeling support
 export interface MultiConditionScenario {

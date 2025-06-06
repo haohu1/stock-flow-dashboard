@@ -1043,34 +1043,6 @@ export const diseaseProfiles = {
     queueBypassRate: 0.18,    // 18% - ORS available, traditional treatments common
     queueClearanceRate: 0.40, // 40% - Simple ORS/zinc protocols
   },
-  anemia: { // Focus on Iron Deficiency Anemia in women/children
-    lambda: 0.05,             // 5% annual incidence of symptomatic anemia needing treatment (50,000 per million)
-    disabilityWeight: 0.06,   // moderate for symptomatic anemia
-    meanAgeOfInfection: 15,   // bimodal (young children, women of reproductive age)
-    muI: 0.05,                // some response to dietary changes or informal iron (5% weekly improvement)
-    muU: 0.01,                // minimal spontaneous improvement without any iron intake (1% per week)
-    mu0: 0.15,                // CHW providing iron supplements (15% weekly improvement to target Hb)
-    mu1: 0.20,                // primary care diagnosis, iron supplementation, basic investigation (20% weekly improvement)
-    mu2: 0.25,                // district hospital for severe anemia/non-response, investigation, transfusion (25% weekly improvement/stabilization)
-    mu3: 0.30,                // tertiary for complex cases, severe underlying causes (30% weekly improvement/stabilization)
-    deltaI: 0.0005,           // low mortality for mild/moderate IDA (0.05% weekly)
-    deltaU: 0.001,            // slightly higher if completely unmanaged (0.1% weekly)
-    delta0: 0.0003,           // very low mortality with CHW iron (0.03% weekly)
-    delta1: 0.0002,           // very low mortality with primary care (0.02% weekly)
-    delta2: 0.001,            // low, relates to complications of severe anemia or underlying cause (0.1% weekly)
-    delta3: 0.0008,           // low, similar to L2 (0.08% weekly)
-    rho0: 0.40,               // moderate CHW referral for symptomatic/severe cases or non-response (40%)
-    rho1: 0.30,               // moderate primary referral for investigation or severe cases (30%)
-    rho2: 0.15,               // lower district referral for highly specialized investigation (15%)
-    // Capacity and competition parameters
-    capacityShare: 0.04,      // Anemia uses ~4% of health system capacity
-    competitionSensitivity: 0.8, // Less affected by congestion (chronic condition)
-    clinicalPriority: 0.5,    // Lower priority (rarely acute)
-    // Queue-specific parameters
-    queueAbandonmentRate: 0.10, // 10% - Chronic condition, less urgent feeling
-    queueBypassRate: 0.12,    // 12% - Traditional iron-rich foods/herbs
-    queueClearanceRate: 0.35, // 35% - Blood test + iron supplementation
-  },
   hiv_management_chronic: { // Chronic care for stable HIV on ART
     lambda: 0.01,             // 1% annual new diagnoses needing linkage to chronic ART care (South Africa context)
     disabilityWeight: 0.078,  // low for stable HIV on ART
@@ -1098,34 +1070,6 @@ export const diseaseProfiles = {
     queueAbandonmentRate: 0.02, // 2% - Patients committed to chronic care
     queueBypassRate: 0.02,    // 2% - Patients understand need for formal care
     queueClearanceRate: 0.30, // 30% - Standard chronic care visits
-  },
-  high_risk_pregnancy_low_anc: { // High-risk pregnancy with limited/no antenatal care
-    lambda: 0.02,             // 2% of women of reproductive age annually experience this (very rough estimate)
-    disabilityWeight: 0.30,   // high average disability during complicated HRP
-    meanAgeOfInfection: 28,   // typical reproductive age
-    muI: 0.01,                // spontaneous favorable outcome despite HRP & low ANC (very low, 1% weekly)
-    muU: 0.005,               // extremely low favorable spontaneous outcome with no care (0.5% per week)
-    mu0: 0.02,                // CHW identifies risk, encourages facility visits (2% weekly improved outcome by CHW alone)
-    mu1: 0.10,                // primary care (if accessed) basic ANC, identifies major issues (10% weekly successful management of some risks)
-    mu2: 0.50,                // district hospital managing complications, C-sections (50% weekly resolution of acute complication/delivery)
-    mu3: 0.60,                // tertiary for severe maternal/fetal complications (60% weekly resolution/delivery)
-    deltaI: 0.015,            // high mortality/morbidity if HRP managed informally/no ANC (1.5% weekly risk of severe adverse outcome/death)
-    deltaU: 0.02,             // very high mortality/morbidity if completely unmanaged (2% weekly)
-    delta0: 0.01,             // high mortality at CHW level (limited intervention for true HRP) (1% weekly)
-    delta1: 0.005,            // moderate mortality at primary care (can manage some HRP issues) (0.5% weekly)
-    delta2: 0.002,            // lower mortality at district with C-section, blood (0.2% weekly)
-    delta3: 0.001,            // lowest mortality at tertiary (0.1% weekly)
-    rho0: 0.90,               // very high CHW referral for any HRP sign (90%)
-    rho1: 0.70,               // high primary referral for actual complications (70%)
-    rho2: 0.40,               // moderate district to tertiary for most severe (40%)
-    // Capacity and competition parameters
-    capacityShare: 0.03,      // High-risk pregnancy uses ~3% of health system capacity
-    competitionSensitivity: 2.0, // Extremely affected by congestion (obstetric emergencies)
-    clinicalPriority: 0.95,   // Very high priority (maternal/fetal emergencies)
-    // Queue-specific parameters
-    queueAbandonmentRate: 0.01, // 1% - Life-threatening urgency, unlikely to abandon
-    queueBypassRate: 0.02,    // 2% - Limited safe traditional options
-    queueClearanceRate: 0.15, // 15% - Complex obstetric assessments
   },
   urti: { // Upper Respiratory Tract Infection
     lambda: 0.80,              // high incidence (800,000 episodes per million population)
@@ -1389,8 +1333,6 @@ export const diseaseAIRationales: {[disease: string]: string} = {
   
   tuberculosis: "CAD4TB X-ray AI enables 35% higher resolution at primary care through confident diagnosis. CHW AI focuses on identifying suspects for X-ray screening (25% increase in appropriate referrals). Largest AI diagnostic improvement reflects exceptional technology-disease match.",
   
-  high_risk_pregnancy_low_anc: "CHW AI has limited resolution role (8% improvement) but increases referrals 30% for complications. Ultrasound AI at primary care achieves 20% higher resolution while increasing referrals 20% for specialist care. Conservative CHW approach reflects scope limitations for pregnancy complications.",
-  
   congestive_heart_failure: "Conservative AI effects reflect need for medical management - only 3-5% resolution improvements. However, AI increases referrals 15-25% by identifying decompensation requiring escalation. Self-care AI provides no resolution benefit (0%) as CHF cannot be managed at home.",
   
   hiv_management_chronic: "Adherence-focused AI achieves 20% higher CHW resolution and 15% higher primary care resolution through personalized medication reminders and side effect management. CHW AI increases referrals 10% for appropriate escalation while diagnostic AI reduces referrals 15% through confident management.",
@@ -1399,8 +1341,6 @@ export const diseaseAIRationales: {[disease: string]: string} = {
   urti: "AI provides high confidence for 'do not refer' decisions - 30% referral reduction at both CHW and primary levels. Modest resolution improvements (5-8%) reflect self-limiting nature. AI excels at distinguishing viral URTIs from serious bacterial infections.",
   
   fever: "AI differential diagnosis achieves 12-15% resolution improvements through better identification of underlying causes. Moderate referral reduction (15%) reflects variable complexity. CHW AI helps with initial assessment while diagnostic AI improves syndrome classification.",
-  
-  anemia: "Point-of-care hemoglobin testing AI enables 15-20% resolution improvements through accurate diagnosis and iron supplementation guidance. Baseline 20% referral reduction reflects diagnostic confidence. CHW AI particularly effective for iron deficiency management protocols.",
   
   hiv_opportunistic: "Uses weighted average approach for mixed simple/complex OI cases. CHW AI helps with cotrimoxazole adherence and simple OIs but increases referrals 35% for complex cases. Diagnostic AI achieves 30% higher resolution through better OI differentiation while increasing referrals 20% for specialist care needs."
 };
@@ -1423,8 +1363,22 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       rho0Effect: 0.80      // 20% referral reduction
     },
     selfCareAI: {
-      muIEffect: 0.02,      // 2% - limited self-care impact for pneumonia
-      deltaIEffect: 0.98    // 2% mortality reduction (more conservative)
+      muIEffect: 0.05,      // 5% - danger sign recognition only, needs antibiotics
+      deltaIEffect: 0.98,   // 2% mortality reduction (early recognition)
+      phi0Effect: 0.15,     // 15% increase in care seeking (danger sign education)
+      sigmaIEffect: 1.25,   // 25% faster transition (urgency recognition)
+      visitReductionEffect: 0.10,  // 10% visit reduction (less panic visits)
+      smartRoutingRate: 0.20       // 20% better routing (when to skip CHW)
+    },
+    triageAI: {
+      phi0Effect: 0.15,     // 15% increase in care seeking (respiratory distress recognition)
+      sigmaIEffect: 1.25,   // 25% faster transition to formal care
+      queuePreventionRate: 0.30,  // 30% prevention of inappropriate visits
+      smartRoutingRate: 0.35      // 35% direct routing to appropriate level
+    },
+    hospitalDecisionAI: {
+      delta2Effect: 0.85,   // 15% mortality reduction (ventilation protocols)
+      delta3Effect: 0.80    // 20% mortality reduction (pediatric ICU protocols)
     }
   },
   
@@ -1444,8 +1398,20 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       rho0Effect: 0.75      // 25% referral reduction
     },
     selfCareAI: {
-      muIEffect: 0.05,      // 5% - moderate impact (prevention education)
-      deltaIEffect: 0.95    // 5% mortality reduction (more conservative)
+      muIEffect: 0.08,      // 8% - prevention and recognition, ACTs usually prescription-only
+      deltaIEffect: 0.96,   // 4% mortality reduction (early recognition)
+      phi0Effect: 0.12,     // 12% increase in care seeking (fever pattern recognition)
+      sigmaIEffect: 1.20,   // 20% faster transition (severity recognition)
+      visitReductionEffect: 0.15,  // 15% visit reduction (home monitoring guidance)
+      smartRoutingRate: 0.25       // 25% better routing
+    },
+    triageAI: {
+      phi0Effect: 0.12,     // 12% increase in care seeking (fever pattern recognition)
+      sigmaIEffect: 1.20    // 20% faster transition to formal care
+    },
+    hospitalDecisionAI: {
+      delta2Effect: 0.85,   // 15% mortality reduction (severe malaria protocols)
+      delta3Effect: 0.80    // 20% mortality reduction
     }
   },
   
@@ -1494,74 +1460,28 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       delta3Effect: 0.85    // 15% mortality reduction
     },
     selfCareAI: {
-      muIEffect: 0.20,      // 20% increase (adherence support highly effective)
-      deltaIEffect: 0.92    // 8% mortality reduction (more conservative)
-    }
-  },
-  
-  // Maternal health - comprehensive AI support
-  high_risk_pregnancy_low_anc: {
-    chwAI: {
-      mu0Effect: 0.08,      // 8% increase (limited CHW role for complications)
-      delta0Effect: 0.90,   // 10% mortality reduction
-      rho0Effect: 1.30      // 30% increase referrals (complications need specialist care)
-    },
-    diagnosticAI: {
-      mu1Effect: 0.15,      // 15% increase (ultrasound AI - more conservative)
-      delta1Effect: 0.90,   // 10% mortality reduction (conservative)
-      rho1Effect: 1.25,     // 25% increase in appropriate referrals (transformative for high-risk identification)
-      mu2Effect: 0.12,      // 12% increase at L2 (fetal monitoring AI)
-      delta2Effect: 0.92,   // 8% mortality reduction at L2 (conservative)
-      rho2Effect: 1.15      // 15% increase in L2 referrals (better triage)
+      muIEffect: 0.05,      // 5% increase (adherence support only, not treatment)
+      deltaIEffect: 0.98,   // 2% mortality reduction (limited impact)
+      phi0Effect: 0.10,     // 10% increase in care seeking (symptom monitoring)
+      sigmaIEffect: 1.15,   // 15% faster transition (persistence of symptoms)
+      visitReductionEffect: 0.05,  // 5% visit reduction (very limited)
+      smartRoutingRate: 0.15       // 15% better routing to TB services
     },
     triageAI: {
-      phi0Effect: 0.20,     // 20% increase in facility delivery
-      sigmaIEffect: 1.30    // 30% faster transition
-    },
-    hospitalDecisionAI: {
-      delta2Effect: 0.85,   // 15% mortality reduction (more realistic for hemorrhage protocols)
-      delta3Effect: 0.85    // 15% mortality reduction (still significant but more conservative)
-    },
-    selfCareAI: {
-      muIEffect: 0.15,      // 15% increase (pregnancy monitoring and education)
-      deltaIEffect: 0.90    // 10% mortality reduction (more conservative)
-    }
-  },
-  
-  // Congestive heart failure - limited AI impact
-  congestive_heart_failure: {
-    selfCareAI: {
-      muIEffect: 0.00,      // 0% - no resolution in informal care
-      deltaIEffect: 1.0     // No mortality reduction (needs medical care)
-    },
-    triageAI: {
-      phi0Effect: 0.15,     // 15% increase in care seeking
-      sigmaIEffect: 1.20    // 20% faster transition (referral guidance)
-    },
-    chwAI: {
-      mu0Effect: 0.02,      // 2% increase (limited CHW role)
-      delta0Effect: 0.95,   // 5% mortality reduction
-      rho0Effect: 1.15      // 15% increase in referrals (AI identifies decompensation)
-    },
-    diagnosticAI: {
-      mu1Effect: 0.03,      // 3% increase (basic assessment)
-      delta1Effect: 0.90,   // 10% mortality reduction
-      rho1Effect: 1.10,     // 10% increase in referrals (complex cases need specialist care)
-      mu2Effect: 0.08,      // 8% increase at L2 (echocardiogram AI, fluid management)
-      delta2Effect: 0.85,   // 15% mortality reduction at L2
-      rho2Effect: 1.05      // 5% increase in L2 referrals
-    },
-    bedManagementAI: {
-      mu2Effect: 0.05,      // 5% increase (optimal fluid management)
-      mu3Effect: 0.05       // 5% increase
+      phi0Effect: 0.18,     // 18% increase in care seeking (symptom screening algorithms)
+      sigmaIEffect: 1.15    // 15% faster transition to formal care
     }
   },
   
   // HIV management - adherence focus
   hiv_management_chronic: {
     selfCareAI: {
-      muIEffect: 0.30,      // 30% increase (adherence is critical - highly effective)
-      deltaIEffect: 0.92    // 8% mortality reduction (more conservative)
+      muIEffect: 0.08,      // 8% increase (adherence support only, not treatment)
+      deltaIEffect: 0.97,   // 3% mortality reduction (adherence impact)
+      phi0Effect: 0.08,     // 8% increase in care seeking (side effect recognition)
+      sigmaIEffect: 1.10,   // 10% faster transition (limited urgency)
+      visitReductionEffect: 0.12,  // 12% visit reduction (appointment scheduling)
+      smartRoutingRate: 0.20       // 20% better routing to HIV clinics
     },
     chwAI: {
       mu0Effect: 0.15,      // 15% increase (adherence counseling)
@@ -1569,10 +1489,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       rho0Effect: 1.05      // 5% increase in referrals (appropriate escalation)
     },
     diagnosticAI: {
-      mu1Effect: 0.10,      // 10% increase (viral load prediction)
+      mu1Effect: 0.18,      // 18% increase (viral load prediction)
       delta1Effect: 0.85,   // 15% mortality reduction
       rho1Effect: 0.90,     // 10% referral reduction
-      mu2Effect: 0.12,      // 12% increase at L2 (resistance testing AI)
+      mu2Effect: 0.18,      // 18% increase at L2 (resistance testing AI)
       delta2Effect: 0.82,   // 18% mortality reduction at L2
       rho2Effect: 0.88      // 12% reduction in L2 referrals
     }
@@ -1595,8 +1515,8 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       rho2Effect: 0.75      // 25% reduction in L2 referrals
     },
     selfCareAI: {
-      muIEffect: 0.08,      // 8% - minor improvement (increased process effect)
-      deltaIEffect: 0.97    // 3% mortality reduction (more conservative)
+      muIEffect: 0.18,      // 18% - can guide complete symptomatic treatment
+      deltaIEffect: 0.96    // 4% mortality reduction
     }
   },
   
@@ -1608,10 +1528,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       rho0Effect: 0.85      // 15% referral reduction
     },
     diagnosticAI: {
-      mu1Effect: 0.15,      // 15% increase (better differential diagnosis)
+      mu1Effect: 0.25,      // 25% increase (better differential diagnosis AI)
       delta1Effect: 0.88,   // 12% mortality reduction
       rho1Effect: 0.85,     // 15% referral reduction
-      mu2Effect: 0.10,      // 10% increase at L2 (advanced diagnostic workup)
+      mu2Effect: 0.15,      // 15% increase at L2 (advanced diagnostic workup)
       delta2Effect: 0.90,   // 10% mortality reduction at L2
       rho2Effect: 0.87      // 13% reduction in L2 referrals
     },
@@ -1620,29 +1540,8 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       sigmaIEffect: 1.20    // 20% faster transition
     },
     selfCareAI: {
-      muIEffect: 0.10,      // 10% increase (symptomatic care guidance - increased)
-      deltaIEffect: 0.96    // 4% mortality reduction (more conservative)
-    }
-  },
-  
-  // Anemia - targeted AI benefits
-  anemia: {
-    chwAI: {
-      mu0Effect: 0.15,      // 15% increase (iron supplementation guidance)
-      delta0Effect: 0.95,   // 5% mortality reduction
-      rho0Effect: 0.80      // 20% referral reduction
-    },
-    diagnosticAI: {
-      mu1Effect: 0.20,      // 20% increase (point-of-care hemoglobin testing)
-      delta1Effect: 0.90,   // 10% mortality reduction
-      rho1Effect: 0.80,     // 20% referral reduction
-      mu2Effect: 0.15,      // 15% increase at L2 (comprehensive workup for severe anemia)
-      delta2Effect: 0.85,   // 15% mortality reduction at L2
-      rho2Effect: 0.82      // 18% reduction in L2 referrals
-    },
-    selfCareAI: {
-      muIEffect: 0.08,      // 8% increase (dietary guidance - increased process effect)
-      deltaIEffect: 0.99    // 1% mortality reduction (even more conservative)
+      muIEffect: 0.15,      // 15% increase (can guide antipyretic dosing, cooling)
+      deltaIEffect: 0.95    // 5% mortality reduction
     }
   },
   
@@ -1668,6 +1567,61 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     hospitalDecisionAI: {
       delta2Effect: 0.85,   // 15% mortality reduction (complex OI management)
       delta3Effect: 0.80    // 20% mortality reduction
+    },
+    selfCareAI: {
+      muIEffect: 0.05,      // 5% - mixed: some OIs treatable (thrush), most need medical care
+      deltaIEffect: 0.98,   // 2% mortality reduction (early recognition)
+      phi0Effect: 0.15,     // 15% increase in care seeking (OI symptom recognition)
+      sigmaIEffect: 1.25,   // 25% faster transition (urgency for serious OIs)
+      visitReductionEffect: 0.08,  // 8% visit reduction (limited)
+      smartRoutingRate: 0.25       // 25% better routing to HIV specialists
+    }
+  },
+  
+  // Congestive Heart Failure - very low self-care amenability, high hospital AI impact
+  congestive_heart_failure: {
+    selfCareAI: {
+      // CHF requires medical management - no informal care resolution possible
+      muIEffect: 0.00,      // 0% - no resolution without medical care
+      deltaIEffect: 1.0,    // No mortality reduction without medical intervention
+      visitReductionEffect: 0.02,  // 2% visit reduction (weight monitoring alerts)
+      routingImprovementEffect: 0.025  // 2.5% routing improvement
+    },
+    triageAI: {
+      // High effectiveness (0.9 multiplier)
+      queuePreventionRate: 0.36,   // 36% prevention (0.4 * 0.9)
+      smartRoutingRate: 0.405,     // 40.5% routing (0.45 * 0.9)
+      phi0Effect: 0.108,           // 10.8% increase in care seeking
+      sigmaIEffect: 1.18           // 18% increase in transition
+    },
+    chwAI: {
+      // Low effectiveness (0.3 multiplier) - CHF needs specialist care
+      mu0Effect: 0.045,     // 4.5% increase (0.15 * 0.3)
+      delta0Effect: 0.97,   // 3% mortality reduction (limited CHW capability)
+      rho0Effect: 1.06      // Actually increase referrals by 6% (complexity recognition)
+    },
+    diagnosticAI: {
+      // Moderate effectiveness (0.7 multiplier)
+      mu1Effect: 0.28,      // 28% increase (echocardiography AI is highly effective)
+      delta1Effect: 0.88,   // 12% mortality reduction
+      rho1Effect: 0.86,     // 14% referral reduction
+      mu2Effect: 0.20,      // 20% increase at L2
+      delta2Effect: 0.895,  // 10.5% mortality reduction at L2
+      rho2Effect: 0.93      // 7% reduction in L2 referrals
+    },
+    bedManagementAI: {
+      // High effectiveness (0.9 multiplier) - critical for CHF
+      mu2Effect: 0.135,              // 13.5% increase (0.15 * 0.9)
+      mu3Effect: 0.135,              // 13.5% increase
+      lengthOfStayReduction: 0.18,   // 18% reduction (0.20 * 0.9)
+      dischargeOptimization: 0.135   // 13.5% improvement (0.15 * 0.9)
+    },
+    hospitalDecisionAI: {
+      // High effectiveness (0.9 multiplier) - complex decisions
+      treatmentEfficiency: 0.225,    // 22.5% improvement (0.25 * 0.9)
+      resourceUtilization: 0.27,     // 27% improvement (0.30 * 0.9)
+      delta2Effect: 0.82,            // 18% mortality reduction (high impact)
+      delta3Effect: 0.77             // 23% mortality reduction
     }
   },
   

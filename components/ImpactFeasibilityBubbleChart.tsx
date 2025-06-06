@@ -67,6 +67,15 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
   const [availableCountries, setAvailableCountries] = useState<string[]>([]);
   const chartRef = useRef<HTMLDivElement>(null);
+  
+  // Create stable color scales outside of the effect
+  const countryColorScale = d3.scaleOrdinal<string>()
+    .domain(availableCountries.sort())
+    .range(d3.schemeSet3);
+  
+  const diseaseColorScale = d3.scaleOrdinal<string>()
+    .domain(availableDiseases.sort())
+    .range(d3.schemeCategory10);
 
   // Initialize disease and country filters
   useEffect(() => {
@@ -372,26 +381,22 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .domain(['big-bets', 'moonshots', 'quick-wins', 'incremental'])
       .range(['#2a9d8f', '#e9c46a', '#8ecae6', '#e76f51']);
     
-    // Create a stable country color scale that doesn't depend on data order
-    // Use all available countries, not just those in current data, for consistency
-    const allAvailableCountries = Array.from(new Set(scenarios.map(s => s.countryName || 'Generic'))).sort();
-    const countryColorScale = d3.scaleOrdinal<string>()
-      .domain(allAvailableCountries)
+    // Use the stable color scales defined at component level
+    const chartCountryColorScale = d3.scaleOrdinal<string>()
+      .domain(availableCountries.sort())
       .range(d3.schemeSet3);
     
-    // Create a stable disease color scale
-    const allAvailableDiseases = Array.from(new Set(scenarios.map(s => s.parameters.disease || 'Unknown'))).sort();
-    const diseaseColorScale = d3.scaleOrdinal<string>()
-      .domain(allAvailableDiseases)
+    const chartDiseaseColorScale = d3.scaleOrdinal<string>()
+      .domain(availableDiseases.sort())
       .range(d3.schemeCategory10);
     
     const getColor = (data: ImpactFeasibilityData) => {
       if (colorBy === 'quadrant') {
         return quadrantColorScale(data.quadrant);
       } else if (colorBy === 'country') {
-        return countryColorScale(data.scenario.countryName || 'Generic');
+        return chartCountryColorScale(data.scenario.countryName || 'Generic');
       } else {
-        return diseaseColorScale(data.scenario.parameters.disease || 'Unknown');
+        return chartDiseaseColorScale(data.scenario.parameters.disease || 'Unknown');
       }
     };
     
@@ -766,7 +771,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
         tooltip.remove();
       }
     };
-  }, [scenarios, selectedDiseases, selectedCountries, showLabels, baselineMap, yAxisMetric, colorBy]);
+  }, [scenarios, selectedDiseases, selectedCountries, showLabels, baselineMap, yAxisMetric, colorBy, availableCountries, availableDiseases]);
 
   if (scenarios.length <= 1) {
     return (
@@ -848,6 +853,12 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
                 onChange={() => toggleDiseaseFilter(disease)}
                 className="form-checkbox h-4 w-4 text-blue-600"
               />
+              {colorBy === 'disease' && (
+                <span 
+                  className="ml-1 inline-block w-3 h-3 rounded-full"
+                  style={{ backgroundColor: diseaseColorScale(disease) }}
+                />
+              )}
               <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
                 {disease === 'health_system_total' 
                   ? 'Health System Total' 
@@ -888,6 +899,12 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
                   onChange={() => toggleCountryFilter(country)}
                   className="form-checkbox h-4 w-4 text-blue-600"
                 />
+                {colorBy === 'country' && (
+                  <span 
+                    className="ml-1 inline-block w-3 h-3 rounded-full"
+                    style={{ backgroundColor: countryColorScale(country) }}
+                  />
+                )}
                 <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{country}</span>
               </label>
             ))}

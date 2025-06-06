@@ -155,7 +155,7 @@ export const calculateDefaultCongestion = (
     'moderate_urban_system': 1.2,       // Moderate increase
     'strong_urban_system': 0.8,         // Better capacity
     'well_functioning_system': 0.6,     // Best capacity, lowest congestion
-    'rwanda_health_system': 3.0,        // Highest congestion due to very high utilization
+    'rwanda_health_system': 1.8,        // High congestion due to very high utilization (reduced from 3.0)
     'test_perfect_system': 0.0          // ZERO congestion - perfect system
   };
   
@@ -165,7 +165,7 @@ export const calculateDefaultCongestion = (
   // Using logarithmic scale to prevent extreme values
   // Normal single disease incidence: 0.2-2.0, multi-disease could be 3-6+
   // Adjusted formula to be more reasonable for high disease counts
-  let baseCongestion = Math.min(0.3, Math.log10(totalIncidence + 1) * 0.15);
+  let baseCongestion = Math.min(0.5, Math.log10(totalIncidence + 1) * 0.15);
   
   // Multi-disease complexity multiplier
   // Each additional disease adds coordination complexity

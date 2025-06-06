@@ -1,24 +1,27 @@
 # Self-Care AI Minimal Effects Update
 
 ## Principle Applied
-For diseases where self-care can only provide advice/monitoring (not actual treatment), the difference between a self-care platform and basic advisory should be minimal. All effects should be proportionally low, not just the resolution rate.
+For diseases where self-care can only provide advice/monitoring (not actual treatment), the difference between a self-care platform and basic AI health advisor should be minimal. All effects should be proportionally low, not just the resolution rate.
+
+## Additional Effects Added
+Previously, the default self-care AI effects included high values that would apply unless explicitly overridden:
+- queuePreventionRate: 40% (default)
+- routingImprovementEffect: 25% (default)
+
+These have now been explicitly set to minimal values (2-3%) for all advice-only diseases.
 
 ## Changes Made
 
 ### 1. Childhood Pneumonia (danger signs only, needs antibiotics)
-**Previous values:**
-- muIEffect: 5% 
-- phi0Effect: 15% (too high for just danger signs)
-- sigmaIEffect: 1.25 (25% faster - too high)
-- visitReductionEffect: 10% (too high)
-- smartRoutingRate: 20% (too high)
-
-**Updated to minimal values:**
-- muIEffect: 5% (unchanged - correctly low)
-- phi0Effect: 3% (minimal - just danger sign education)
-- sigmaIEffect: 1.05 (5% faster - minimal impact)
-- visitReductionEffect: 2% (minimal)
-- smartRoutingRate: 5% (minimal)
+**All effects now minimal:**
+- muIEffect: 5% (resolution in informal care)
+- deltaIEffect: 0.98 (2% mortality reduction)
+- phi0Effect: 3% (care seeking increase)
+- sigmaIEffect: 1.05 (5% faster transition)
+- visitReductionEffect: 2%
+- smartRoutingRate: 5%
+- queuePreventionRate: 2%
+- routingImprovementEffect: 3%
 
 ### 2. Tuberculosis (adherence support only, needs DOTS)
 **Previous values:**

@@ -1368,10 +1368,12 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       phi0Effect: 0.03,     // 3% increase in care seeking (minimal - just danger signs)
       sigmaIEffect: 1.05,   // 5% faster transition (minimal impact)
       visitReductionEffect: 0.02,  // 2% visit reduction (minimal)
-      smartRoutingRate: 0.05       // 5% better routing (minimal)
+      smartRoutingRate: 0.05,      // 5% better routing (minimal)
+      queuePreventionRate: 0.02,   // 2% queue prevention (minimal - advice only)
+      routingImprovementEffect: 0.03 // 3% routing improvement (minimal - advice only)
     },
     triageAI: {
-      phi0Effect: 0.15,     // 15% increase in care seeking (respiratory distress recognition)
+      phi0Effect: 0.03,     // 3% increase in care seeking (minimal - same as selfCareAI for advice-only)
       sigmaIEffect: 1.25,   // 25% faster transition to formal care
       queuePreventionRate: 0.30,  // 30% prevention of inappropriate visits
       smartRoutingRate: 0.35      // 35% direct routing to appropriate level
@@ -1465,10 +1467,12 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       phi0Effect: 0.03,     // 3% increase in care seeking (minimal - just adherence reminders)
       sigmaIEffect: 1.05,   // 5% faster transition (minimal impact)
       visitReductionEffect: 0.02,  // 2% visit reduction (minimal)
-      smartRoutingRate: 0.05       // 5% better routing (minimal)
+      smartRoutingRate: 0.05,      // 5% better routing (minimal)
+      queuePreventionRate: 0.02,   // 2% queue prevention (minimal - advice only)
+      routingImprovementEffect: 0.03 // 3% routing improvement (minimal - advice only)
     },
     triageAI: {
-      phi0Effect: 0.18,     // 18% increase in care seeking (symptom screening algorithms)
+      phi0Effect: 0.03,     // 3% increase in care seeking (minimal - same as selfCareAI for advice-only)
       sigmaIEffect: 1.15    // 15% faster transition to formal care
     }
   },
@@ -1481,7 +1485,9 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       phi0Effect: 0.04,     // 4% increase in care seeking (minimal - just side effect recognition)
       sigmaIEffect: 1.05,   // 5% faster transition (minimal impact)
       visitReductionEffect: 0.03,  // 3% visit reduction (minimal - just appointment reminders)
-      smartRoutingRate: 0.05       // 5% better routing (minimal)
+      smartRoutingRate: 0.05,      // 5% better routing (minimal)
+      queuePreventionRate: 0.03,   // 3% queue prevention (minimal - advice only)
+      routingImprovementEffect: 0.03 // 3% routing improvement (minimal - advice only)
     },
     chwAI: {
       mu0Effect: 0.15,      // 15% increase (adherence counseling)
@@ -1495,6 +1501,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       mu2Effect: 0.18,      // 18% increase at L2 (resistance testing AI)
       delta2Effect: 0.82,   // 18% mortality reduction at L2
       rho2Effect: 0.88      // 12% reduction in L2 referrals
+    },
+    triageAI: {
+      phi0Effect: 0.04,     // 4% increase in care seeking (minimal - same as selfCareAI for advice-only)
+      sigmaIEffect: 1.10    // 10% faster transition to formal care
     }
   },
   
@@ -1561,7 +1571,7 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       rho2Effect: 1.10      // 10% increase in L2 referrals (very complex cases)
     },
     triageAI: {
-      phi0Effect: 0.15,     // 15% increase in care seeking (symptom recognition)
+      phi0Effect: 0.03,     // 3% increase in care seeking (minimal - same as selfCareAI for advice-only)
       sigmaIEffect: 1.30    // 30% faster transition (urgent OI symptoms)
     },
     hospitalDecisionAI: {
@@ -1574,7 +1584,9 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       phi0Effect: 0.03,     // 3% increase in care seeking (minimal - just symptom recognition)
       sigmaIEffect: 1.05,   // 5% faster transition (minimal impact)
       visitReductionEffect: 0.02,  // 2% visit reduction (minimal)
-      smartRoutingRate: 0.05       // 5% better routing (minimal)
+      smartRoutingRate: 0.05,      // 5% better routing (minimal)
+      queuePreventionRate: 0.02,   // 2% queue prevention (minimal - advice only)
+      routingImprovementEffect: 0.03 // 3% routing improvement (minimal - advice only)
     }
   },
   
@@ -1584,14 +1596,18 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       // CHF requires medical management - no informal care resolution possible
       muIEffect: 0.00,      // 0% - no resolution without medical care
       deltaIEffect: 1.0,    // No mortality reduction without medical intervention
-      visitReductionEffect: 0.02,  // 2% visit reduction (weight monitoring alerts)
-      routingImprovementEffect: 0.025  // 2.5% routing improvement
+      phi0Effect: 0.02,     // 2% increase in care seeking (minimal - weight monitoring alerts)
+      sigmaIEffect: 1.02,   // 2% faster transition (minimal impact)
+      visitReductionEffect: 0.02,  // 2% visit reduction (minimal)
+      smartRoutingRate: 0.02,      // 2% better routing (minimal)
+      queuePreventionRate: 0.02,   // 2% queue prevention (minimal - monitoring only)
+      routingImprovementEffect: 0.025  // 2.5% routing improvement (minimal)
     },
     triageAI: {
       // High effectiveness (0.9 multiplier)
       queuePreventionRate: 0.36,   // 36% prevention (0.4 * 0.9)
       smartRoutingRate: 0.405,     // 40.5% routing (0.45 * 0.9)
-      phi0Effect: 0.108,           // 10.8% increase in care seeking
+      phi0Effect: 0.02,            // 2% increase in care seeking (minimal - same as selfCareAI for advice-only)
       sigmaIEffect: 1.18           // 18% increase in transition
     },
     chwAI: {

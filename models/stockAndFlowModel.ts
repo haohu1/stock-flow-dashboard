@@ -1365,10 +1365,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     selfCareAI: {
       muIEffect: 0.05,      // 5% - danger sign recognition only, needs antibiotics
       deltaIEffect: 0.98,   // 2% mortality reduction (early recognition)
-      phi0Effect: 0.15,     // 15% increase in care seeking (danger sign education)
-      sigmaIEffect: 1.25,   // 25% faster transition (urgency recognition)
-      visitReductionEffect: 0.10,  // 10% visit reduction (less panic visits)
-      smartRoutingRate: 0.20       // 20% better routing (when to skip CHW)
+      phi0Effect: 0.03,     // 3% increase in care seeking (minimal - just danger signs)
+      sigmaIEffect: 1.05,   // 5% faster transition (minimal impact)
+      visitReductionEffect: 0.02,  // 2% visit reduction (minimal)
+      smartRoutingRate: 0.05       // 5% better routing (minimal)
     },
     triageAI: {
       phi0Effect: 0.15,     // 15% increase in care seeking (respiratory distress recognition)
@@ -1462,10 +1462,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     selfCareAI: {
       muIEffect: 0.05,      // 5% increase (adherence support only, not treatment)
       deltaIEffect: 0.98,   // 2% mortality reduction (limited impact)
-      phi0Effect: 0.10,     // 10% increase in care seeking (symptom monitoring)
-      sigmaIEffect: 1.15,   // 15% faster transition (persistence of symptoms)
-      visitReductionEffect: 0.05,  // 5% visit reduction (very limited)
-      smartRoutingRate: 0.15       // 15% better routing to TB services
+      phi0Effect: 0.03,     // 3% increase in care seeking (minimal - just adherence reminders)
+      sigmaIEffect: 1.05,   // 5% faster transition (minimal impact)
+      visitReductionEffect: 0.02,  // 2% visit reduction (minimal)
+      smartRoutingRate: 0.05       // 5% better routing (minimal)
     },
     triageAI: {
       phi0Effect: 0.18,     // 18% increase in care seeking (symptom screening algorithms)
@@ -1478,10 +1478,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     selfCareAI: {
       muIEffect: 0.08,      // 8% increase (adherence support only, not treatment)
       deltaIEffect: 0.97,   // 3% mortality reduction (adherence impact)
-      phi0Effect: 0.08,     // 8% increase in care seeking (side effect recognition)
-      sigmaIEffect: 1.10,   // 10% faster transition (limited urgency)
-      visitReductionEffect: 0.12,  // 12% visit reduction (appointment scheduling)
-      smartRoutingRate: 0.20       // 20% better routing to HIV clinics
+      phi0Effect: 0.04,     // 4% increase in care seeking (minimal - just side effect recognition)
+      sigmaIEffect: 1.05,   // 5% faster transition (minimal impact)
+      visitReductionEffect: 0.03,  // 3% visit reduction (minimal - just appointment reminders)
+      smartRoutingRate: 0.05       // 5% better routing (minimal)
     },
     chwAI: {
       mu0Effect: 0.15,      // 15% increase (adherence counseling)
@@ -1571,10 +1571,10 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     selfCareAI: {
       muIEffect: 0.05,      // 5% - mixed: some OIs treatable (thrush), most need medical care
       deltaIEffect: 0.98,   // 2% mortality reduction (early recognition)
-      phi0Effect: 0.15,     // 15% increase in care seeking (OI symptom recognition)
-      sigmaIEffect: 1.25,   // 25% faster transition (urgency for serious OIs)
-      visitReductionEffect: 0.08,  // 8% visit reduction (limited)
-      smartRoutingRate: 0.25       // 25% better routing to HIV specialists
+      phi0Effect: 0.03,     // 3% increase in care seeking (minimal - just symptom recognition)
+      sigmaIEffect: 1.05,   // 5% faster transition (minimal impact)
+      visitReductionEffect: 0.02,  // 2% visit reduction (minimal)
+      smartRoutingRate: 0.05       // 5% better routing (minimal)
     }
   },
   

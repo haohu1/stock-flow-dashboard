@@ -14,6 +14,9 @@ import {
   loadScenarioAtom,
   deleteScenarioAtom,
   updateScenarioAtom,
+  selectedCountryAtom,
+  isUrbanSettingAtom,
+  useCountrySpecificModelAtom,
   Scenario
 } from '../lib/store';
 import SimulationChart from './SimulationChart';
@@ -22,6 +25,36 @@ import ResultsTable from './ResultsTable';
 import QueueVisualization from './QueueVisualization';
 import { formatNumber, calculateSuggestedFeasibility } from '../lib/utils';
 import { SimulationResults } from '../models/stockAndFlowModel';
+
+// Helper function to get country-specific baseline
+const getCountrySpecificBaseline = (
+  baselineMap: Record<string, Record<string, any>>, 
+  disease: string, 
+  countryCode?: string, 
+  isUrban?: boolean
+) => {
+  // Try country-specific baseline first
+  if (countryCode && isUrban !== undefined) {
+    const countryKey = `${countryCode}_${isUrban ? 'urban' : 'rural'}`;
+    if (baselineMap[countryKey] && baselineMap[countryKey][disease]) {
+      return baselineMap[countryKey][disease];
+    }
+  }
+  
+  // Fall back to generic baseline
+  if (baselineMap['generic'] && baselineMap['generic'][disease]) {
+    return baselineMap['generic'][disease];
+  }
+  
+  // Last resort: search all country baselines for this disease
+  for (const countryData of Object.values(baselineMap)) {
+    if (countryData && countryData[disease]) {
+      return countryData[disease];
+    }
+  }
+  
+  return null;
+};
 
 const Dashboard: React.FC = () => {
   const [results] = useAtom(simulationResultsAtom);
@@ -37,6 +70,9 @@ const Dashboard: React.FC = () => {
   const [, loadScenario] = useAtom(loadScenarioAtom);
   const [, deleteScenario] = useAtom(deleteScenarioAtom);
   const [, updateScenario] = useAtom(updateScenarioAtom);
+  const [selectedCountry] = useAtom(selectedCountryAtom);
+  const [isUrban] = useAtom(isUrbanSettingAtom);
+  const [useCountrySpecific] = useAtom(useCountrySpecificModelAtom);
   const [scenariosExpanded, setScenariosExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'comparison'>('overview');
 
@@ -341,8 +377,18 @@ const Dashboard: React.FC = () => {
   const calculateMetricsForDisease = (disease: string, diseaseResults: SimulationResults | null) => {
     if (!diseaseResults) return { deathsAverted: 0, dalysAverted: 0, icer: undefined };
     
-    // Use disease-specific baseline if available, otherwise use the primary baseline
-    const diseaseBaseline = baselineMap[disease] || baseline;
+    // Use country-specific baseline lookup
+    let diseaseBaseline = getCountrySpecificBaseline(
+      baselineMap, 
+      disease, 
+      useCountrySpecific ? selectedCountry : undefined, 
+      useCountrySpecific ? isUrban : undefined
+    );
+    
+    // Fall back to primary baseline if country-specific not found
+    if (!diseaseBaseline) {
+      diseaseBaseline = baseline;
+    }
     
     if (!diseaseBaseline) return { deathsAverted: 0, dalysAverted: 0, icer: undefined };
     

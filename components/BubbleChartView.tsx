@@ -5,6 +5,36 @@ import { formatNumber, estimateTimeToScale } from '../lib/utils';
 import * as d3 from 'd3';
 import { baselineResultsMapAtom } from '../lib/store';
 
+// Helper function to get country-specific baseline
+const getCountrySpecificBaseline = (
+  baselineMap: Record<string, Record<string, any>>, 
+  disease: string, 
+  countryCode?: string, 
+  isUrban?: boolean
+) => {
+  // Try country-specific baseline first
+  if (countryCode && isUrban !== undefined) {
+    const countryKey = `${countryCode}_${isUrban ? 'urban' : 'rural'}`;
+    if (baselineMap[countryKey] && baselineMap[countryKey][disease]) {
+      return baselineMap[countryKey][disease];
+    }
+  }
+  
+  // Fall back to generic baseline
+  if (baselineMap['generic'] && baselineMap['generic'][disease]) {
+    return baselineMap['generic'][disease];
+  }
+  
+  // Last resort: search all country baselines for this disease
+  for (const countryData of Object.values(baselineMap)) {
+    if (countryData && countryData[disease]) {
+      return countryData[disease];
+    }
+  }
+  
+  return null;
+};
+
 const BubbleChartView: React.FC = () => {
   const [scenarios] = useAtom(scenariosAtom);
   const [, updateScenario] = useAtom(updateScenarioAtom);
@@ -25,8 +55,11 @@ const BubbleChartView: React.FC = () => {
     const countrySet = new Set<string>();
 
     scenarios.forEach(scenario => {
-      const disease = scenario.parameters.disease || 'Unknown';
-      diseaseSet.add(disease);
+      // Only add diseases from scenarios that have results
+      if (scenario.results) {
+        const disease = scenario.parameters.disease || 'Unknown';
+        diseaseSet.add(disease);
+      }
       
       const country = scenario.countryName || 'Generic';
       countrySet.add(country);
@@ -38,12 +71,15 @@ const BubbleChartView: React.FC = () => {
     const countryList = Array.from(countrySet).sort();
     setAvailableCountries(countryList);
     
+    // Initialize selections to include all if empty
     if (selectedDiseases.size === 0 && diseaseList.length > 0) {
       setSelectedDiseases(new Set(diseaseList));
+      console.log('IPM Bubble Chart: Initialized disease selection with:', diseaseList);
     }
     
     if (selectedCountries.size === 0 && countryList.length > 0) {
       setSelectedCountries(new Set(countryList));
+      console.log('IPM Bubble Chart: Initialized country selection with:', countryList);
     }
   }, [scenarios]);
   
@@ -60,6 +96,7 @@ const BubbleChartView: React.FC = () => {
       newSelectedDiseases.add(disease);
     }
     
+    console.log('IPM Bubble Chart: Disease filter changed to:', Array.from(newSelectedDiseases));
     setSelectedDiseases(newSelectedDiseases);
   };
   
@@ -107,66 +144,36 @@ const BubbleChartView: React.FC = () => {
     const height = 500;
     const margin = { top: 40, right: 40, bottom: 60, left: 60 };
     
-    // Get valid scenarios - when multiple diseases selected, prioritize aggregated scenarios
+    // Get valid scenarios - be more inclusive for AI comparison scenarios
     const validScenarios = (() => {
-      if (selectedDiseases.size > 1) {
-        // Multi-disease mode: prefer aggregated/combined scenarios over individual disease scenarios
-        console.log(`BubbleChart: Multi-disease mode with ${selectedDiseases.size} diseases selected`);
+      return scenarios.filter(s => {
+        if (!s.results) return false;
         
-        // First, look for scenarios that represent the aggregated health system total
-        const aggregatedScenarios = scenarios.filter(s => {
-          if (!s.results) return false;
-          
-          // Look for scenarios that:
-          // 1. Have multiple diseases selected (true aggregated scenarios)
-          // 2. OR scenarios where the disease is "health_system_total" (aggregated result indicator)
-          const isAggregatedScenario = (s.selectedDiseases && s.selectedDiseases.length > 1) ||
-                                      s.parameters.disease === 'health_system_total';
-          
-          if (isAggregatedScenario) {
-            // Check if this aggregated scenario matches our current disease selection
-            if (s.selectedDiseases && s.selectedDiseases.length > 1) {
-              // Multi-disease scenario - check if it includes the same diseases we have selected
-              const scenarioDiseases = new Set(s.selectedDiseases);
-              const selectedDiseasesArray = Array.from(selectedDiseases);
-              const hasMatchingDiseases = selectedDiseasesArray.every(d => scenarioDiseases.has(d)) &&
-                                        scenarioDiseases.size === selectedDiseases.size;
-              console.log(`  Aggregated scenario "${s.name}": hasMatchingDiseases=${hasMatchingDiseases}`);
-              return hasMatchingDiseases;
-            } else if (s.parameters.disease === 'health_system_total') {
-              console.log(`  Health system total scenario "${s.name}": including`);
-              return true;
-            }
-          }
+        // Get the scenario's country (use 'Generic' if not specified)
+        const scenarioCountry = s.countryName || 'Generic';
+        
+        // Country filtering - must match selected countries
+        const countryMatch = selectedCountries.has(scenarioCountry);
+        if (!countryMatch) {
           return false;
-        });
-        
-        if (aggregatedScenarios.length > 0) {
-          console.log(`Found ${aggregatedScenarios.length} aggregated scenarios, using those`);
-          return aggregatedScenarios;
         }
         
-        // Fallback: if no aggregated scenarios, show individual disease scenarios
-        console.log(`No aggregated scenarios found, falling back to individual disease scenarios`);
-        return scenarios.filter(s => {
-          if (!s.results) return false;
-          const diseaseMatch = selectedDiseases.has(s.parameters.disease || 'Unknown');
-          const countryMatch = selectedCountries.has(s.countryName || 'Generic');
-          return diseaseMatch && countryMatch;
-        });
-      } else {
-        // Single disease mode - show scenarios for that disease
-        console.log(`BubbleChart: Single disease mode`);
-        return scenarios.filter(s => {
-          if (!s.results) return false;
-          const diseaseMatch = selectedDiseases.has(s.parameters.disease || 'Unknown');
-          const countryMatch = selectedCountries.has(s.countryName || 'Generic');
-          return diseaseMatch && countryMatch;
-        });
-      }
+        // Simple disease filtering - just check if the scenario's disease is selected
+        const scenarioDisease = s.parameters.disease || 'Unknown';
+        const diseaseMatch = selectedDiseases.has(scenarioDisease);
+        
+        console.log(`Scenario "${s.name}": country=${scenarioCountry}, disease=${scenarioDisease}, included=${diseaseMatch}`);
+        
+        return diseaseMatch;
+      });
     })();
     
-    if (validScenarios.length <= 0) return;
+    if (validScenarios.length <= 0) {
+      console.log('IPM Bubble Chart: No valid scenarios found for display');
+      return;
+    }
+    
+    console.log(`IPM Bubble Chart: Displaying ${validScenarios.length} scenarios:`, validScenarios.map(s => s.name));
 
     d3.select(chartRef.current).selectAll("svg").remove();
     
@@ -266,22 +273,28 @@ const BubbleChartView: React.FC = () => {
       // Get the specific disease for this scenario
       const disease = scenario.parameters.disease || 'Unknown';
       
-      // ENHANCED BASELINE SELECTION LOGIC
+      // ENHANCED BASELINE SELECTION LOGIC WITH COUNTRY-SPECIFIC SUPPORT
       let diseaseBaseline = null;
       
-      // 1. First choice: Disease-specific baseline from baselineMap
-      if (baselineMap[disease]) {
-        diseaseBaseline = baselineMap[disease];
-      } 
+      // 1. First choice: Country-specific baseline for this disease
+      diseaseBaseline = getCountrySpecificBaseline(
+        baselineMap, 
+        disease, 
+        scenario.countryCode, 
+        scenario.isUrban
+      );
+      
       // 2. Second choice: Scenario's own baselineResults
-      else if (scenario.baselineResults) {
+      if (!diseaseBaseline && scenario.baselineResults) {
         diseaseBaseline = scenario.baselineResults;
       }
-      // 3. Last resort: Use first available baseline from baselineMap
-      else if (Object.keys(baselineMap).length > 0) {
-        const firstAvailableDisease = Object.keys(baselineMap)[0];
-        diseaseBaseline = baselineMap[firstAvailableDisease];
-        console.warn(`WARNING: No specific baseline for ${disease}, falling back to ${firstAvailableDisease} baseline`);
+      
+      // 3. Log which baseline we're using
+      if (diseaseBaseline) {
+        const countryKey = scenario.countryCode && scenario.isUrban !== undefined 
+          ? `${scenario.countryCode}_${scenario.isUrban ? 'urban' : 'rural'}` 
+          : 'generic';
+        console.log(`Using baseline for ${disease} from ${countryKey} for scenario: ${scenario.name}`);
       }
       
       // If still no baseline, log warning and use a placeholder value
@@ -846,7 +859,12 @@ const BubbleChartView: React.FC = () => {
                 onChange={() => toggleDiseaseFilter(disease)}
                 className="form-checkbox h-4 w-4 text-blue-600"
               />
-              <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{disease}</span>
+              <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                {disease === 'health_system_total' 
+                  ? 'Health System Total' 
+                  : disease.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                }
+              </span>
             </label>
           ))}
         </div>

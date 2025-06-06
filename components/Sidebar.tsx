@@ -32,7 +32,8 @@ import {
   effectiveCongestionAtom,
   aiUptakeParametersAtom,
   effectMagnitudesAtom,
-  aiTimeToScaleParametersAtom
+  aiTimeToScaleParametersAtom,
+  isGeneratingScenariosBatchAtom
 } from '../lib/store';
 import { healthSystemStrengthDefaults, AIInterventions } from '../models/stockAndFlowModel';
 import { countryProfiles } from '../models/countrySpecificModel';
@@ -73,6 +74,7 @@ const Sidebar: React.FC = () => {
   const [aiUptakeParams, setAIUptakeParams] = useAtom(aiUptakeParametersAtom);
   const [effectMagnitudes] = useAtom(effectMagnitudesAtom);
   const [timeToScaleParams] = useAtom(aiTimeToScaleParametersAtom);
+  const [, setIsGeneratingBatch] = useAtom(isGeneratingScenariosBatchAtom);
   
   // Local state for disease checkboxes
   const [diseaseOptions, setDiseaseOptions] = useState<{
@@ -325,8 +327,13 @@ const Sidebar: React.FC = () => {
     }
     
     setIsGeneratingScenarios(true);
+    setIsGeneratingBatch(true);
     
     try {
+      // Debug: Log current scenario count before generation
+      console.log(`🔄 Starting AI comparison generation. Current scenarios: ${scenarios.length}`);
+      scenarios.forEach((s, i) => console.log(`  ${i + 1}. ${s.name} (${s.countryName || 'Generic'})`));
+      
       // Get all disease options
       const allDiseases = [
         'tuberculosis',
@@ -355,8 +362,12 @@ const Sidebar: React.FC = () => {
       // Set to aggregated mode for bubble charts
       setScenarioMode('aggregated');
       
-      // Set all diseases as selected
+      // Wait a moment to let any pending renders complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Set all diseases as selected for comprehensive comparison
       setSelectedDiseases(allDiseases);
+      console.log(`🔧 Changed disease selection from ${originalSelectedDiseases} to all diseases for AI comparison`);
       
       // Define AI intervention types
       const aiInterventionTypes: Array<{ key: keyof AIInterventions; name: string }> = [
@@ -367,6 +378,9 @@ const Sidebar: React.FC = () => {
         { key: 'hospitalDecisionAI', name: 'Hospital Decision Support' },
         { key: 'selfCareAI', name: 'AI Self-Care Platform' }
       ];
+      
+      // Store original baseline data to help debug any issues
+      console.log('🔍 Starting AI comparison with baseline preservation');
       
       // First, create baseline scenario with no AI interventions
       const noAIInterventions: AIInterventions = {
@@ -389,12 +403,13 @@ const Sidebar: React.FC = () => {
       // Wait for simulation to complete - longer wait for multi-disease
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Set this as the baseline for ICER calculations
+      // Set the baseline for AI comparison scenarios (now preserves existing baseline data)
+      console.log('🏗️ Setting baseline for AI comparison scenarios');
       await setBaseline();
       await new Promise(resolve => setTimeout(resolve, 200));
       
       // Save baseline scenario
-      setCustomScenarioName(`${scenarioPrefix} - Baseline (No AI)`);
+      setCustomScenarioName(`Baseline (No AI)`);
       await new Promise(resolve => setTimeout(resolve, 200));
       await addScenario();
       
@@ -423,7 +438,7 @@ const Sidebar: React.FC = () => {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Save scenario
-        setCustomScenarioName(`${scenarioPrefix} - ${intervention.name}`);
+        setCustomScenarioName(intervention.name);
         await new Promise(resolve => setTimeout(resolve, 200));
         await addScenario();
       }
@@ -433,12 +448,17 @@ const Sidebar: React.FC = () => {
       setSelectedDiseases(originalSelectedDiseases);
       setScenarioMode(originalScenarioMode);
       
+      // Debug: Log scenario count after generation
+      console.log(`✅ AI comparison generation complete. Total scenarios now: ${scenarios.length}`);
+      scenarios.forEach((s, i) => console.log(`  ${i + 1}. ${s.name} (${s.countryName || 'Generic'})`));
+      
       alert('Successfully created 7 AI comparison scenarios (1 baseline + 6 AI interventions)!');
     } catch (error) {
       console.error('Error generating AI comparison scenarios:', error);
       alert('Error generating scenarios. Please try again.');
     } finally {
       setIsGeneratingScenarios(false);
+      setIsGeneratingBatch(false);
     }
   };
 
@@ -532,7 +552,7 @@ const Sidebar: React.FC = () => {
               <p>South Africa: World's largest HIV epidemic (20.4% prevalence) with extremely high TB burden and extensive drug resistance. Strong public health system with good infrastructure but overwhelmed by disease burden. AI interventions may improve efficiency in managing complex co-infections.</p>
             )}
             {selectedCountry === 'rwanda' && (
-              <p>Rwanda: Universal health coverage (>90% Mutuelle de Santé) with strong CHW network (45,000+ cooperatives). High system utilization but efficiency challenges: long wait times, overcrowded facilities. AI can optimize patient flow, reduce bottlenecks, and support CHWs in managing high volumes.</p>
+              <p>Rwanda: Universal health coverage (&gt;90% Mutuelle de Santé) with strong CHW network (45,000+ cooperatives). High system utilization but efficiency challenges: long wait times, overcrowded facilities. AI can optimize patient flow, reduce bottlenecks, and support CHWs in managing high volumes.</p>
             )}
             {selectedCountry === 'test_country' && (
               <p className="text-red-600 dark:text-red-400 font-semibold">TEST: Perfect health system with 100% formal care seeking. Self-care AI should show ZERO impact. Use this to verify calculations are working correctly.</p>

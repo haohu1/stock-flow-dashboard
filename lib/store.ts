@@ -21,6 +21,11 @@ import {
 } from '../models/countrySpecificModel';
 import { calculateSuggestedFeasibility, formatNumber, calculateDefaultCongestion } from './utils';
 
+// Helper function to generate country-specific baseline key
+const getCountryBaselineKey = (countryCode: string, isUrban: boolean): string => {
+  return `${countryCode}_${isUrban ? 'urban' : 'rural'}`;
+};
+
 // Selected health system strength and disease
 export const selectedHealthSystemStrengthAtom = atom<string>('moderate_urban_system');
 export const selectedDiseaseAtom = atom<string>('childhood_pneumonia');
@@ -37,6 +42,9 @@ export const multiConditionModeAtom = atom<boolean>(false);
 export const multiConditionMortalityMultiplierAtom = atom<number>(1.5);
 export const multiConditionResolutionReductionAtom = atom<number>(0.8);
 export const multiConditionCareSeekingBoostAtom = atom<number>(1.2);
+
+// Flag to track when automated scenario generation is happening
+export const isGeneratingScenariosBatchAtom = atom<boolean>(false);
 
 // Dynamic system congestion
 export const userOverriddenCongestionAtom = atom<number | null>(null);
@@ -138,8 +146,9 @@ export const healthSystemMultipliersAtom = atom<HealthSystemMultipliers>({
 // Store results for multiple diseases
 export const simulationResultsMapAtom = atom<Record<string, SimulationResults | null>>({});
 
-// Add a map for baselines per disease
-export const baselineResultsMapAtom = atom<Record<string, SimulationResults | null>>({});
+// Add a map for baselines per disease, organized by country/setting
+// Structure: { "countryCode_urban": { "disease": SimulationResults } }
+export const baselineResultsMapAtom = atom<Record<string, Record<string, SimulationResults | null>>>({});
 
 // Simulation results
 export const simulationResultsAtom = atom<SimulationResults | null>(null);
@@ -674,8 +683,14 @@ export const setBaselineAtom = atom(
     const results = get(simulationResultsAtom);
     const resultsMap = get(simulationResultsMapAtom);
     const selectedDiseases = get(selectedDiseasesAtom);
+    const countryCode = get(selectedCountryAtom);
+    const isUrban = get(isUrbanSettingAtom);
+    const useCountrySpecific = get(useCountrySpecificModelAtom);
     
-    console.log("Setting baseline with selected diseases:", selectedDiseases);
+    // Generate country-specific key
+    const countryKey = useCountrySpecific ? getCountryBaselineKey(countryCode, isUrban) : 'generic';
+    
+    console.log(`Setting baseline for country key: ${countryKey}, diseases:`, selectedDiseases);
     console.log("Current results map has keys:", Object.keys(resultsMap));
     
     if (results) {
@@ -686,30 +701,44 @@ export const setBaselineAtom = atom(
       if (Object.keys(resultsMap).length > 1) {
         console.log("Setting per-disease baselines and recalculating ICERs");
         
-        // Store per-disease baselines
-        const baselineMap: Record<string, SimulationResults | null> = {};
+        // Store per-disease baselines for this specific country/setting
+        const diseaseBaselineMap: Record<string, SimulationResults | null> = {};
         
         // First, store all current results as baselines for each disease
         Object.entries(resultsMap).forEach(([disease, diseaseResults]) => {
           if (diseaseResults) {
             // Store the current result as baseline for this disease
-            baselineMap[disease] = { 
+            diseaseBaselineMap[disease] = { 
               ...JSON.parse(JSON.stringify(diseaseResults)),
               weeklyStates: diseaseResults.weeklyStates.map(state => ({...state}))
             };
           }
         });
         
-        // Update the baseline map
-        set(baselineResultsMapAtom, baselineMap);
+        // Update the baseline map with country-specific storage
+        const currentBaselineMap = get(baselineResultsMapAtom);
+        const updatedBaselineMap = {
+          ...currentBaselineMap,
+          [countryKey]: {
+            ...currentBaselineMap[countryKey],
+            ...diseaseBaselineMap
+          }
+        };
+        set(baselineResultsMapAtom, updatedBaselineMap);
         
-        // For now, don't recalculate ICERs - they will be calculated dynamically when needed
-        // This ensures we have the correct baselines for each disease while allowing
-        // future simulations to properly calculate ICERs against their respective baselines
+        console.log(`Stored baselines for ${countryKey}:`, Object.keys(diseaseBaselineMap));
       } else {
         console.log("Using single disease baseline for:", selectedDiseases[0]);
-        // For single disease, still store in the map
-        set(baselineResultsMapAtom, { [selectedDiseases[0]]: results });
+        // For single disease, store in country-specific map
+        const currentBaselineMap = get(baselineResultsMapAtom);
+        const updatedBaselineMap = {
+          ...currentBaselineMap,
+          [countryKey]: {
+            ...currentBaselineMap[countryKey],
+            [selectedDiseases[0]]: results
+          }
+        };
+        set(baselineResultsMapAtom, updatedBaselineMap);
       }
     }
   }

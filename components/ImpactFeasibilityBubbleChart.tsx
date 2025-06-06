@@ -5,6 +5,36 @@ import { formatNumber, estimateTimeToScale } from '../lib/utils';
 import * as d3 from 'd3';
 import { baselineResultsMapAtom } from '../lib/store';
 
+// Helper function to get country-specific baseline
+const getCountrySpecificBaseline = (
+  baselineMap: Record<string, Record<string, any>>, 
+  disease: string, 
+  countryCode?: string, 
+  isUrban?: boolean
+) => {
+  // Try country-specific baseline first
+  if (countryCode && isUrban !== undefined) {
+    const countryKey = `${countryCode}_${isUrban ? 'urban' : 'rural'}`;
+    if (baselineMap[countryKey] && baselineMap[countryKey][disease]) {
+      return baselineMap[countryKey][disease];
+    }
+  }
+  
+  // Fall back to generic baseline
+  if (baselineMap['generic'] && baselineMap['generic'][disease]) {
+    return baselineMap['generic'][disease];
+  }
+  
+  // Last resort: search all country baselines for this disease
+  for (const countryData of Object.values(baselineMap)) {
+    if (countryData && countryData[disease]) {
+      return countryData[disease];
+    }
+  }
+  
+  return null;
+};
+
 interface ImpactFeasibilityData {
   scenario: Scenario;
   impact: number; // DALYs averted per 1000 population or % deaths averted
@@ -44,8 +74,11 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     const countrySet = new Set<string>();
     
     scenarios.forEach(scenario => {
-      const disease = scenario.parameters.disease || 'Unknown';
-      diseaseSet.add(disease);
+      // Only add diseases from scenarios that have results
+      if (scenario.results) {
+        const disease = scenario.parameters.disease || 'Unknown';
+        diseaseSet.add(disease);
+      }
       
       const country = scenario.countryName || 'Generic';
       countrySet.add(country);
@@ -57,21 +90,38 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     const countryList = Array.from(countrySet).sort();
     setAvailableCountries(countryList);
     
+    // Initialize selections to include all if empty
     if (selectedDiseases.size === 0 && diseaseList.length > 0) {
       setSelectedDiseases(new Set(diseaseList));
+      console.log('Impact vs Feasibility Chart: Initialized disease selection with:', diseaseList);
     }
     
+    // Initialize country selection only when empty, like IPM chart does
     if (selectedCountries.size === 0 && countryList.length > 0) {
       setSelectedCountries(new Set(countryList));
+      console.log('Impact vs Feasibility Chart: Initialized country selection with:', countryList);
     }
   }, [scenarios]);
+
 
   // Calculate impact metrics for each scenario
   const calculateImpactData = (scenario: Scenario): ImpactFeasibilityData | null => {
     if (!scenario.results) return null;
     
     const disease = scenario.parameters.disease || 'Unknown';
-    const diseaseBaseline = baselineMap[disease] || scenario.baselineResults;
+    
+    // Use country-specific baseline lookup
+    let diseaseBaseline = getCountrySpecificBaseline(
+      baselineMap, 
+      disease, 
+      scenario.countryCode, 
+      scenario.isUrban
+    );
+    
+    // Fall back to scenario's own baseline if country-specific not found
+    if (!diseaseBaseline) {
+      diseaseBaseline = scenario.baselineResults;
+    }
     
     if (!diseaseBaseline) return null;
     
@@ -98,7 +148,9 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     
     // Determine bubble size based on selected metric
     // When showing %, use absolute numbers; when showing per capita, use totals
-    const populationImpact = yAxisMetric === 'dalys' ? dalysAverted : deathsAverted;
+    // Ensure we never have negative bubble sizes by taking absolute value and adding a minimum
+    const rawPopulationImpact = yAxisMetric === 'dalys' ? dalysAverted : deathsAverted;
+    const populationImpact = Math.max(Math.abs(rawPopulationImpact), 1); // Minimum size of 1
     
     // Determine quadrant based on impact and time to scale
     const quadrant = determineQuadrant(impactValue, timeToScale, yAxisMetric);
@@ -141,6 +193,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       newSelectedDiseases.add(disease);
     }
     
+    console.log('Impact vs Feasibility Chart: Disease filter changed to:', Array.from(newSelectedDiseases));
     setSelectedDiseases(newSelectedDiseases);
   };
 
@@ -191,70 +244,47 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     const height = 600;
     const margin = { top: 40, right: 150, bottom: 80, left: 80 };
     
-    // Get valid scenarios with impact data - when multiple diseases selected, prioritize aggregated scenarios
+    // Get valid scenarios with impact data - be more inclusive for AI comparison scenarios
     const impactData = (() => {
-      if (selectedDiseases.size > 1) {
-        // Multi-disease mode: prefer aggregated/combined scenarios over individual disease scenarios
-        console.log(`ImpactFeasibility: Multi-disease mode with ${selectedDiseases.size} diseases selected`);
+      // Filter scenarios based on current selections - be more inclusive
+      const filteredScenarios = scenarios.filter(s => {
+        if (!s.results) return false;
         
-        // First, look for scenarios that represent the aggregated health system total
-        const aggregatedScenarios = scenarios.filter(s => {
-          if (!s.results) return false;
-          
-          // Check country filter
-          const countryMatch = selectedCountries.has(s.countryName || 'Generic');
-          if (!countryMatch) return false;
-          
-          // Look for scenarios that:
-          // 1. Have multiple diseases selected (true aggregated scenarios)
-          // 2. OR scenarios where the disease is "health_system_total" (aggregated result indicator)
-          const isAggregatedScenario = (s.selectedDiseases && s.selectedDiseases.length > 1) ||
-                                      s.parameters.disease === 'health_system_total';
-          
-          if (isAggregatedScenario) {
-            // Check if this aggregated scenario matches our current disease selection
-            if (s.selectedDiseases && s.selectedDiseases.length > 1) {
-              // Multi-disease scenario - check if it includes the same diseases we have selected
-              const scenarioDiseases = new Set(s.selectedDiseases);
-              const selectedDiseasesArray = Array.from(selectedDiseases);
-              const hasMatchingDiseases = selectedDiseasesArray.every(d => scenarioDiseases.has(d)) &&
-                                        scenarioDiseases.size === selectedDiseases.size;
-              console.log(`  Aggregated scenario "${s.name}": hasMatchingDiseases=${hasMatchingDiseases}`);
-              return hasMatchingDiseases;
-            } else if (s.parameters.disease === 'health_system_total') {
-              console.log(`  Health system total scenario "${s.name}": including`);
-              return true;
-            }
-          }
+        // Get the scenario's country (use 'Generic' if not specified)
+        const scenarioCountry = s.countryName || 'Generic';
+        
+        // Country filtering - must match selected countries
+        const countryMatch = selectedCountries.has(scenarioCountry);
+        if (!countryMatch) {
           return false;
-        });
-        
-        if (aggregatedScenarios.length > 0) {
-          console.log(`Found ${aggregatedScenarios.length} aggregated scenarios, using those`);
-          return aggregatedScenarios.map(calculateImpactData).filter((d): d is ImpactFeasibilityData => d !== null);
         }
         
-        // Fallback: if no aggregated scenarios, show individual disease scenarios
-        console.log(`No aggregated scenarios found, falling back to individual disease scenarios`);
-        return scenarios.filter(s => {
-          if (!s.results) return false;
-          const diseaseMatch = selectedDiseases.has(s.parameters.disease || 'Unknown');
-          const countryMatch = selectedCountries.has(s.countryName || 'Generic');
-          return diseaseMatch && countryMatch;
-        }).map(calculateImpactData).filter((d): d is ImpactFeasibilityData => d !== null);
-      } else {
-        // Single disease mode - show scenarios for that disease
-        console.log(`ImpactFeasibility: Single disease mode`);
-        return scenarios.filter(s => {
-          if (!s.results) return false;
-          const diseaseMatch = selectedDiseases.has(s.parameters.disease || 'Unknown');
-          const countryMatch = selectedCountries.has(s.countryName || 'Generic');
-          return diseaseMatch && countryMatch;
-        }).map(calculateImpactData).filter((d): d is ImpactFeasibilityData => d !== null);
-      }
+        // Simple disease filtering - just check if the scenario's disease is selected
+        const scenarioDisease = s.parameters.disease || 'Unknown';
+        const diseaseMatch = selectedDiseases.has(scenarioDisease);
+        
+        console.log(`Impact/Feasibility Scenario "${s.name}": country=${scenarioCountry}, disease=${scenarioDisease}, included=${diseaseMatch}`);
+        
+        return diseaseMatch;
+      });
+      
+      // Simple debug logging
+      console.log(`Impact vs Feasibility: ${filteredScenarios.length} scenarios matched filters:`, filteredScenarios.map(s => s.name));
+      
+      return filteredScenarios.map(calculateImpactData).filter((d): d is ImpactFeasibilityData => d !== null);
     })();
     
-    if (impactData.length === 0) return;
+    // Ensure we have data to display
+    if (impactData.length === 0) {
+      console.log('Impact vs Feasibility Chart: No impact data available for chart');
+      return;
+    }
+    
+    console.log(`Impact vs Feasibility Chart: Displaying ${impactData.length} scenarios`);
+    
+    const countriesInData = Array.from(new Set(impactData.map(d => d.scenario.countryName || 'Generic')));
+    console.log(`Impact vs Feasibility: Rendering ${impactData.length} bubbles for countries: ${countriesInData.join(', ')}`);
+    console.log('Scenario names:', impactData.map(d => d.scenario.name));
 
     // Clear previous chart
     d3.select(chartRef.current).selectAll("svg").remove();
@@ -289,11 +319,11 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .filter((d): d is ImpactFeasibilityData => d !== null);
     
     const maxPopulationImpact = allImpactData.length > 0 
-      ? Math.max(...allImpactData.map(d => d.populationImpact))
+      ? Math.max(...allImpactData.map(d => d.populationImpact), 10) // Ensure minimum scale of 10
       : 1000; // fallback value
     
     const sizeScale = d3.scaleSqrt()
-      .domain([0, maxPopulationImpact])
+      .domain([1, maxPopulationImpact]) // Start from 1 instead of 0
       .range([5, 50]);
     
     // Color scale based on colorBy option
@@ -301,8 +331,11 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .domain(['big-bets', 'moonshots', 'quick-wins', 'incremental'])
       .range(['#2a9d8f', '#e9c46a', '#8ecae6', '#e76f51']);
     
+    // Create a stable country color scale that doesn't depend on data order
+    // Use all available countries, not just those in current data, for consistency
+    const allAvailableCountries = Array.from(new Set(scenarios.map(s => s.countryName || 'Generic'))).sort();
     const countryColorScale = d3.scaleOrdinal<string>()
-      .domain(availableCountries)
+      .domain(allAvailableCountries)
       .range(d3.schemeSet3);
     
     const getColor = (data: ImpactFeasibilityData) => {
@@ -582,7 +615,18 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
               <tr>
                 <td style="padding: 4px 8px 4px 0; color: #6B7280;">${yAxisMetric === 'dalys' ? 'Total DALYs Averted' : 'Total Deaths Averted'}:</td>
                 <td style="padding: 4px 0; text-align: right; font-weight: 500;">
-                  ${formatNumber(data.populationImpact)}
+                  ${(() => {
+                    const disease = data.scenario.parameters.disease || 'Unknown';
+                    const diseaseBaseline = baselineMap[disease] || data.scenario.baselineResults;
+                    if (!diseaseBaseline || !data.scenario.results) return 'N/A';
+                    
+                    const rawValue = yAxisMetric === 'dalys' 
+                      ? diseaseBaseline.dalys - data.scenario.results.dalys
+                      : diseaseBaseline.cumulativeDeaths - data.scenario.results.cumulativeDeaths;
+                    return rawValue >= 0 
+                      ? formatNumber(rawValue) + ' averted'
+                      : formatNumber(Math.abs(rawValue)) + ' additional';
+                  })()}
                 </td>
               </tr>
               <tr>
@@ -670,7 +714,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
         tooltip.remove();
       }
     };
-  }, [scenarios, selectedDiseases, selectedCountries, showLabels, baselineMap, yAxisMetric, colorBy, availableCountries]);
+  }, [scenarios, selectedDiseases, selectedCountries, showLabels, baselineMap, yAxisMetric, colorBy]);
 
   if (scenarios.length <= 1) {
     return (
@@ -751,7 +795,12 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
                 onChange={() => toggleDiseaseFilter(disease)}
                 className="form-checkbox h-4 w-4 text-blue-600"
               />
-              <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{disease}</span>
+              <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                {disease === 'health_system_total' 
+                  ? 'Health System Total' 
+                  : disease.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                }
+              </span>
             </label>
           ))}
         </div>

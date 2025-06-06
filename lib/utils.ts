@@ -146,6 +146,7 @@ export const calculateDefaultCongestion = (
   // Higher incidence = more congestion
   // More diseases = more congestion (competing for same resources)
   // Weaker health systems = more congestion
+  // Note: Formula adjusted to prevent unrealistic congestion when many diseases selected
   
   // Health system capacity multipliers
   const systemCapacityMultipliers: Record<string, number> = {
@@ -161,12 +162,14 @@ export const calculateDefaultCongestion = (
   // Base congestion from total incidence
   // Using logarithmic scale to prevent extreme values
   // Normal single disease incidence: 0.2-2.0, multi-disease could be 3-6+
-  let baseCongestion = Math.min(0.8, Math.log10(totalIncidence + 1) * 0.3);
+  // Adjusted formula to be more reasonable for high disease counts
+  let baseCongestion = Math.min(0.3, Math.log10(totalIncidence + 1) * 0.15);
   
   // Multi-disease complexity multiplier
   // Each additional disease adds coordination complexity
+  // Reduced from 15% to 5% per disease to be more realistic
   const diseaseComplexityMultiplier = numberOfDiseases > 1 ? 
-    1.0 + (numberOfDiseases - 1) * 0.15 : 1.0; // +15% per additional disease
+    1.0 + (numberOfDiseases - 1) * 0.05 : 1.0; // +5% per additional disease
   
   // Calculate final congestion
   let finalCongestion = baseCongestion * capacityMultiplier * diseaseComplexityMultiplier;
@@ -177,6 +180,7 @@ export const calculateDefaultCongestion = (
     healthSystemStrength,
     capacityMultiplier,
     baseCongestion,
+    baseCongestionCalculation: `log10(${totalIncidence} + 1) * 0.3 = log10(${totalIncidence + 1}) * 0.3 = ${Math.log10(totalIncidence + 1)} * 0.3 = ${baseCongestion}`,
     diseaseComplexityMultiplier,
     finalCongestion: finalCongestion,
     finalCongestionBeforeRounding: finalCongestion

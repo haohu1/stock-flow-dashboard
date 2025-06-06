@@ -318,7 +318,6 @@ const AIInterventionManager: React.FC = () => {
   // State for expandable sections
   const [showParameterEffects, setShowParameterEffects] = useState(false);
   const [showInterventionStrength, setShowInterventionStrength] = useState(false);
-  const [showPresetScenarios, setShowPresetScenarios] = useState(false);
   
   // State for locally tracking selected scenario (UI state)
   const [localSelectedScenario, setLocalSelectedScenario] = useState<string | null>(null);
@@ -1004,112 +1003,6 @@ const AIInterventionManager: React.FC = () => {
                 Clear All
               </button>
             )}
-          </div>
-        </div>
-        
-        <div className="mb-6 bg-blue-50 dark:bg-blue-900 rounded-md">
-          <div 
-            className="p-4 flex justify-between items-center cursor-pointer" 
-            onClick={() => setShowPresetScenarios(!showPresetScenarios)}
-          >
-            <h4 className="text-md font-medium text-blue-800 dark:text-blue-300">AI Implementation Scenarios</h4>
-            <button className="text-blue-700 dark:text-blue-400">
-              {showPresetScenarios ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              )}
-            </button>
-          </div>
-          
-          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showPresetScenarios ? 'max-h-[40rem]' : 'max-h-0'}`}>
-            <div className="p-4 pt-0">
-              <p className="text-sm text-blue-700 dark:text-blue-400 mb-4">
-                <strong>Stage-based scenarios</strong> show different levels of AI maturity and implementation success. 
-                <strong>Disease-specific scenarios</strong> demonstrate AI impact optimized for particular health conditions.
-              </p>
-              
-              <div className="space-y-4">
-                {/* Stage-based scenarios */}
-                <div>
-                  <h5 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">Implementation Stages</h5>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {AIScenarioPresets.slice(0, 3).map((preset) => (
-                      <div 
-                        key={preset.id}
-                        onClick={() => applyConfig(preset)}
-                        className={`border ${
-                          preset.id.includes('full-integration') 
-                            ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950' 
-                            : preset.id.includes('challenges')
-                              ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950'
-                              : 'border-orange-200 dark:border-orange-700 bg-orange-50 dark:bg-orange-950'
-                        } ${localSelectedScenario === preset.id ? 'ring-2 ring-offset-1 ring-blue-500 dark:ring-blue-400' : ''} 
-                        rounded-md p-3 hover:bg-opacity-80 dark:hover:bg-opacity-80 transition-colors cursor-pointer`}
-                      >
-                        <h5 className={`font-medium text-sm mb-1 ${
-                          preset.id.includes('full-integration') 
-                            ? 'text-green-800 dark:text-green-300' 
-                            : preset.id.includes('challenges')
-                              ? 'text-red-800 dark:text-red-300'
-                              : 'text-orange-800 dark:text-orange-300'
-                        }`}>{preset.name}</h5>
-                        <p className={`text-xs mb-2 ${
-                          preset.id.includes('full-integration') 
-                            ? 'text-green-600 dark:text-green-400' 
-                            : preset.id.includes('challenges')
-                              ? 'text-red-600 dark:text-red-400'
-                              : 'text-orange-600 dark:text-orange-400'
-                        }`}>{preset.description}</p>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">
-                          <span className="font-medium">Active tools: </span>
-                          {Object.entries(preset.interventions)
-                            .filter(([_, isActive]) => isActive)
-                            .map(([name]) => name.replace('AI', ' AI'))
-                            .join(', ')
-                          }
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Disease-specific scenarios */}
-                <div>
-                  <h5 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">Disease-Specific Focus</h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {AIScenarioPresets.slice(3).map((preset) => (
-                      <div 
-                        key={preset.id}
-                        onClick={() => applyConfig(preset)}
-                        className={`border border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-950 ${
-                          localSelectedScenario === preset.id ? 'ring-2 ring-offset-1 ring-blue-500 dark:ring-blue-400' : ''
-                        } rounded-md p-3 hover:bg-opacity-80 dark:hover:bg-opacity-80 transition-colors cursor-pointer`}
-                      >
-                        <h5 className="font-medium text-sm mb-1 text-purple-800 dark:text-purple-300">{preset.name}</h5>
-                        <p className="text-xs mb-2 text-purple-600 dark:text-purple-400">{preset.description}</p>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">
-                          <span className="font-medium">Active tools: </span>
-                          {Object.entries(preset.interventions)
-                            .filter(([_, isActive]) => isActive)
-                            .map(([name]) => name.replace('AI', ' AI'))
-                            .join(', ')
-                          }
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-3 italic">
-                Click on any scenario to apply it to your simulation.
-              </p>
-            </div>
           </div>
         </div>
         

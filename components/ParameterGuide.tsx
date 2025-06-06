@@ -1,6 +1,13 @@
 import React from 'react';
 import { useAtom } from 'jotai';
-import { derivedParametersAtom, aiInterventionsAtom, selectedDiseaseAtom, selectedDiseasesAtom, selectedHealthSystemStrengthAtom, individualDiseaseParametersAtom } from '../lib/store';
+import { 
+  derivedParametersAtom, 
+  aiInterventionsAtom, 
+  selectedDiseaseAtom, 
+  selectedDiseasesAtom, 
+  selectedHealthSystemStrengthAtom, 
+  individualDiseaseParametersAtom 
+} from '../lib/store';
 
 const ParameterGuide: React.FC = () => {
   const [params] = useAtom(derivedParametersAtom);
@@ -10,1183 +17,413 @@ const ParameterGuide: React.FC = () => {
   const [selectedHealthSystem] = useAtom(selectedHealthSystemStrengthAtom);
   const [individualDiseaseParams] = useAtom(individualDiseaseParametersAtom);
   
-  // Check if we're in multi-disease mode
   const isMultiDiseaseMode = selectedDiseases.length > 1;
 
+  // Formatting helpers
   const formatPercentage = (value: number | undefined) => {
-    if (value === undefined) return 'Not configured';
+    if (value === undefined) return 'Not set';
     return `${(value * 100).toFixed(1)}%`;
   };
 
   const formatRate = (value: number | undefined) => {
-    if (value === undefined) return 'Not configured';
+    if (value === undefined) return 'Not set';
     return `${(value * 100).toFixed(2)}%`;
   };
 
-  const formatCost = (value: number | undefined) => {
-    if (value === undefined) return 'Not configured';
-    return `$${value.toFixed(0)}`;
+  const formatIncidence = (value: number) => {
+    return `${(value * 100000).toFixed(0).toLocaleString()} per 100,000`;
   };
 
-  const getDiseaseName = (diseaseKey: string) => {
-    const diseaseNames: { [key: string]: string } = {
-      'childhood_pneumonia': 'Childhood Pneumonia',
-      'maternal_sepsis': 'Maternal Sepsis',
-      'tuberculosis': 'Tuberculosis',
-      'acute_diarrhea': 'Acute Diarrhea',
-      'hiv_management_chronic': 'HIV Management (Chronic)',
-      'congestive_heart_failure': 'Congestive Heart Failure',
-      'malaria': 'Malaria',
-      'fever': 'Fever of Unknown Origin',
-      'diarrhea': 'Diarrheal Disease',
-      'anemia': 'Anemia',
-      'high_risk_pregnancy_low_anc': 'High-Risk Pregnancy (Low ANC)',
-      'urti': 'Upper Respiratory Tract Infection',
-      'hiv_opportunistic': 'HIV-Related Opportunistic Infections'
-    };
-    return diseaseNames[diseaseKey] || diseaseKey;
-  };
-
-  const getHealthSystemName = (systemKey: string) => {
-    const systemNames: { [key: string]: string } = {
-      'weak_rural_system': 'Weak Rural Health System',
-      'moderate_urban_system': 'Moderate Urban Health System',
-      'strong_urban_system': 'Strong Urban Health System',
-      'fragile_conflict_system': 'Fragile/Conflict-Affected System',
-      'well_functioning_system': 'Well-Functioning Health System'
-    };
-    return systemNames[systemKey] || systemKey;
-  };
-
-  const ClinicalSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
-      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-600 pb-2">
+  // Clinical section component
+  const ClinicalSection = ({ title, children, className = "" }: { 
+    title: string; 
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <div className={`rounded-lg p-6 mb-6 ${className}`}>
+      <h3 className="text-lg font-bold mb-4">
         {title}
       </h3>
       {children}
     </div>
   );
 
-  const ClinicalInsight = ({ title, value, interpretation, context }: { 
-    title: string; 
-    value: string; 
-    interpretation: string; 
-    context?: string;
-  }) => (
-    <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-      <div className="flex justify-between items-start mb-2">
-        <h4 className="font-semibold text-gray-900 dark:text-white">{title}</h4>
-        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{value}</span>
-      </div>
-      <p className="text-gray-700 dark:text-gray-300 mb-2">{interpretation}</p>
-      {context && (
-        <p className="text-sm text-gray-600 dark:text-gray-400 italic">{context}</p>
-      )}
+  // Parameter table component
+  const ParameterTable = ({ parameters }: { parameters: Array<{
+    name: string;
+    symbol: string;
+    value: string | number;
+    clinical: string;
+  }>}) => (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead>
+          <tr className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <th className="py-2 pr-4">Parameter</th>
+            <th className="py-2 pr-4">Symbol</th>
+            <th className="py-2 pr-4">Current Value</th>
+            <th className="py-2">Clinical Meaning</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          {parameters.map((param, idx) => (
+            <tr key={idx} className="text-sm">
+              <td className="py-2 pr-4 font-medium text-gray-900 dark:text-white">{param.name}</td>
+              <td className="py-2 pr-4 font-mono text-gray-600 dark:text-gray-400">{param.symbol}</td>
+              <td className="py-2 pr-4 font-semibold text-blue-600 dark:text-blue-400">{param.value}</td>
+              <td className="py-2 text-gray-700 dark:text-gray-300">{param.clinical}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 
-  const ActiveInterventions = () => {
-    const interventionNames = {
-      triageAI: 'AI-Powered Triage',
-      chwAI: 'CHW Decision Support',
-      diagnosticAI: 'Point-of-Care Diagnostics',
-      bedManagementAI: 'Hospital Bed Management',
-      hospitalDecisionAI: 'Clinical Decision Support',
-      selfCareAI: 'Patient Self-Care Guidance'
-    };
-
+  // Disease contribution summary for multi-disease mode
+  const DiseaseContribution = ({ disease, params: diseaseParams, totalLambda }: { 
+    disease: string; 
+    params: any;
+    totalLambda: number;
+  }) => {
+    if (!diseaseParams) return null;
+    
+    const diseaseName = disease.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const contribution = totalLambda > 0 ? ((diseaseParams.lambda / totalLambda) * 100).toFixed(1) : '0';
+    
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {Object.entries(aiInterventions).map(([key, active]) => (
-          <div key={key} className={`p-3 rounded-lg border-2 ${active ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-300 bg-gray-50 dark:bg-gray-700'}`}>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-900 dark:text-white">
-                {interventionNames[key as keyof typeof interventionNames]}
-              </span>
-              <span className={`text-xs px-2 py-1 rounded-full ${active ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
-                {active ? 'ACTIVE' : 'OFF'}
-              </span>
-            </div>
-          </div>
-        ))}
+      <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+        <div className="flex justify-between items-start mb-2">
+          <h5 className="font-semibold text-gray-900 dark:text-white">{diseaseName}</h5>
+          <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{contribution}% incidence</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+          <div>Incidence: {formatIncidence(diseaseParams.lambda)}</div>
+          <div>Formal care: {formatPercentage(diseaseParams.phi0)}</div>
+          <div>Untreated mort: {formatRate(diseaseParams.deltaU)}/wk</div>
+          <div>CHW resolution: {formatRate(diseaseParams.mu0)}/wk</div>
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto px-4">
       {/* Header */}
-      <div className="mb-8 text-center">
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
-          {isMultiDiseaseMode ? 'Health System Parameter Overview' : 'Clinical Parameter Overview'}
-        </h2>
-        {isMultiDiseaseMode ? (
-          <>
-            <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">
-              Understanding your aggregated health system model with <strong>{selectedDiseases.length} diseases</strong>: {selectedDiseases.map(d => getDiseaseName(d)).join(', ')}
-            </p>
-            
-            {/* Multi-Disease Calculation Methodology */}
-            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-4">
-              <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-3">🔬 How Multi-Disease Outcomes Are Calculated</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div className="bg-white dark:bg-gray-800 p-3 rounded border border-purple-300 dark:border-purple-700">
-                  <h5 className="font-medium text-purple-800 dark:text-purple-200 mb-2">1. Individual Disease Simulations</h5>
-                  <p className="text-purple-700 dark:text-purple-300">
-                    <strong>Each disease runs its own complete simulation</strong> using disease-specific parameters:
-                  </p>
-                  <ul className="text-xs text-purple-600 dark:text-purple-400 mt-1 ml-2">
-                    <li>• Separate 52-week simulation per disease</li>
-                    <li>• Disease-specific λ, φ₀, μ, δ values</li>
-                    <li>• Individual deaths, DALYs, costs calculated</li>
-                    <li>• No parameter averaging or mixing</li>
-                  </ul>
-                </div>
-                
-                <div className="bg-white dark:bg-gray-800 p-3 rounded border border-purple-300 dark:border-purple-700">
-                  <h5 className="font-medium text-purple-800 dark:text-purple-200 mb-2">2. Outcome Summation</h5>
-                  <p className="text-purple-700 dark:text-purple-300">
-                    <strong>Final outcomes are summed across diseases:</strong>
-                  </p>
-                  <ul className="text-xs text-purple-600 dark:text-purple-400 mt-1 ml-2">
-                    <li>• Total Deaths = Deaths₁ + Deaths₂ + ...</li>
-                    <li>• Total DALYs = DALYs₁ + DALYs₂ + ...</li>
-                    <li>• Total Costs = Costs₁ + Costs₂ + ...</li>
-                    <li>• Epidemiologically accurate approach</li>
-                  </ul>
-                </div>
-                
-                <div className="bg-white dark:bg-gray-800 p-3 rounded border border-purple-300 dark:border-purple-700">
-                  <h5 className="font-medium text-purple-800 dark:text-purple-200 mb-2">3. True Health System Burden</h5>
-                  <p className="text-purple-700 dark:text-purple-300">
-                    <strong>Results represent real multi-disease burden:</strong>
-                  </p>
-                  <ul className="text-xs text-purple-600 dark:text-purple-400 mt-1 ml-2">
-                    <li>• Each disease contributes its own burden</li>
-                    <li>• No cross-disease interactions assumed</li>
-                    <li>• Total reflects additive disease impact</li>
-                    <li>• Suitable for health system planning</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
-              <p className="text-green-800 dark:text-green-200">
-                <strong>Summed Results:</strong> The outcomes shown below represent the total health system burden from all {selectedDiseases.length} diseases. 
-                Each disease was simulated separately using its own parameters, then deaths, DALYs, and costs were summed for total impact.
-              </p>
-            </div>
-          </>
-        ) : (
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">
-            Understanding your model configuration for <strong>{getDiseaseName(selectedDisease)}</strong> in a <strong>{getHealthSystemName(selectedHealthSystem)}</strong>
-          </p>
-        )}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <p className="text-blue-800 dark:text-blue-200">
-            This guide translates the technical model parameters into clinically meaningful insights for healthcare professionals and policy makers.
-          </p>
-        </div>
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+          Clinical Parameter Reference
+        </h1>
+        <p className="text-lg text-gray-600 dark:text-gray-400">
+          {isMultiDiseaseMode 
+            ? `Modeling ${selectedDiseases.length} diseases in aggregate`
+            : `Single disease model: ${selectedDisease.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`
+          }
+        </p>
       </div>
 
-      {/* Total Health System Burden (Multi-Disease) */}
+      {/* Multi-Disease Overview */}
       {isMultiDiseaseMode && (
-        <ClinicalSection title="Total Health System Burden">
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
-            <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">Summed Disease Burden</h4>
-            <p className="text-sm text-green-700 dark:text-green-300">
-              These values represent the total burden from all {selectedDiseases.length} selected diseases after separate simulations.
-              <strong> Total λ = {params.lambda.toFixed(3)}</strong> (sum of individual disease incidence rates)
+        <ClinicalSection title="📊 Multi-Disease Model Overview" className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700">
+          <div className="mb-4">
+            <p className="text-gray-700 dark:text-gray-300 mb-4">
+              <strong>Methodology:</strong> Each disease runs independently through the same health system structure. 
+              Final outcomes (deaths, DALYs, costs) are summed across all diseases.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {(() => {
+                // Calculate actual sum of individual disease lambdas
+                const actualSum = selectedDiseases.reduce((sum, d) => {
+                  return sum + (individualDiseaseParams[d]?.lambda || 0);
+                }, 0);
+                
+                return selectedDiseases.map(disease => (
+                  <DiseaseContribution 
+                    key={disease} 
+                    disease={disease} 
+                    params={individualDiseaseParams[disease]}
+                    totalLambda={actualSum}
+                  />
+                ));
+              })()}
+            </div>
+          </div>
+          <div className="bg-purple-100 dark:bg-purple-900/40 p-3 rounded-lg">
+            <p className="text-sm text-purple-800 dark:text-purple-200">
+              <strong>Total System Load:</strong> λ = {params.lambda.toFixed(3)} ({formatIncidence(params.lambda)} annually)
             </p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ClinicalInsight
-              title="Total Annual Health System Load"
-              value={`${(params.lambda * 100000).toFixed(0)} cases per 100,000 people`}
-              interpretation="This represents the combined expected number of new cases across all selected diseases per year. Each disease contributed its individual incidence rate to this total."
-              context="This is the sum of separate disease burdens, not an average - it represents the true total health system load."
-            />
-            
-            <ClinicalInsight
-              title="Overall System Outcomes"
-              value="Individual Disease Calculations"
-              interpretation="Each disease calculates its own deaths, DALYs, and costs using disease-specific parameters. The final results shown in the dashboard are the sum of these individual calculations."
-              context="This ensures each disease's unique clinical characteristics are preserved while showing total health system impact."
-            />
-          </div>
-          
-          <ClinicalInsight
-            title="Multi-Disease Methodology"
-            value="Separate Simulations + Summation"
-            interpretation="Unlike single-disease models, this approach runs a complete 52-week simulation for each disease independently, then sums the final outcomes. This is epidemiologically accurate and suitable for health system planning."
-            context="Each disease 'competes' for the same health system resources but maintains its own clinical behavior patterns."
-          />
-        </ClinicalSection>
-      )}
-      
-      {/* Individual Disease Breakdown (Multi-Disease) */}
-      {isMultiDiseaseMode && (
-        <ClinicalSection title="Individual Disease Simulations">
-          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-6">
-            <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-2">🔍 Separate Disease Calculations</h4>
-            <p className="text-sm text-orange-700 dark:text-orange-300">
-              <strong>Each disease below ran its own complete 52-week simulation</strong> using disease-specific clinical parameters. 
-              Deaths, DALYs, and costs were calculated separately for each disease using its own incidence rates, mortality rates, and care-seeking patterns. 
-              These individual results were then summed to create the total health system burden shown in the dashboard.
-            </p>
-          </div>
-          
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Understanding how each disease contributes to the total health system burden through separate disease-specific calculations.
-          </p>
-          
-          {selectedDiseases.map((disease) => {
-            // Get actual calculated disease parameters (includes country adjustments, health system multipliers, etc.)
-            const diseaseParams = individualDiseaseParams[disease];
-            const diseaseName = getDiseaseName(disease);
-            
-            // Calculate contribution percentage using actual calculated values
-            const diseaseIncidence = diseaseParams?.lambda || 0;
-            const contributionPercentage = params.lambda > 0 ? ((diseaseIncidence / params.lambda) * 100).toFixed(1) : '0';
-            
-            // Generate description based on calculated parameters
-            const getDescription = (params: any) => {
-              if (!params) return 'Parameters not calculated';
-              const lambda = params.lambda || 0;
-              const phi0 = params.phi0 || 0;
-              
-              const incidenceLevel = lambda >= 1.5 ? 'Very high' : 
-                                   lambda >= 0.5 ? 'High' : 
-                                   lambda >= 0.1 ? 'Moderate' : 
-                                   lambda >= 0.01 ? 'Low' : 'Very low';
-              
-              const careSeekingLevel = phi0 >= 0.8 ? 'excellent' : 
-                                     phi0 >= 0.6 ? 'good' : 
-                                     phi0 >= 0.4 ? 'moderate' : 
-                                     phi0 >= 0.2 ? 'low' : 'very low';
-              
-              return `${incidenceLevel} incidence, ${careSeekingLevel} care-seeking behavior`;
-            };
-            
-            return (
-              <div key={disease} className="mb-4 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-                <h5 className="font-semibold text-orange-800 dark:text-orange-200 mb-2">
-                  {diseaseName}
-                  <span className="text-sm font-normal text-orange-600 dark:text-orange-400 ml-2">
-                    ({contributionPercentage}% of total burden)
-                  </span>
-                </h5>
-                {diseaseParams && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <strong>Individual Incidence:</strong> {(diseaseIncidence * 100000).toFixed(0).toLocaleString()} per 100,000
-                      <div className="text-xs text-orange-600 dark:text-orange-400">
-                        λ = {diseaseIncidence.toFixed(4)} episodes per person per year
-                      </div>
-                    </div>
-                    <div>
-                      <strong>Formal Care-Seeking:</strong> {formatPercentage(diseaseParams.phi0)}
-                      <div className="text-xs text-orange-600 dark:text-orange-400">
-                        φ₀ = {(diseaseParams.phi0 || 0).toFixed(3)} initial formal care probability
-                      </div>
-                    </div>
-                    <div>
-                      <strong>Clinical Profile:</strong> {getDescription(diseaseParams)}
-                    </div>
-                  </div>
-                )}
-                {!diseaseParams && (
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Disease parameters not yet calculated. Please ensure the disease is properly selected.
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </ClinicalSection>
-      )}
-      
-      {/* Disease-Specific Clinical Parameter Heterogeneity (Multi-Disease) */}
-      {isMultiDiseaseMode && (
-        <ClinicalSection title="Disease-Specific Clinical Parameter Comparison">
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-            <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">🧬 Clinical Heterogeneity Analysis</h4>
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              The tables below show the dramatic clinical differences between diseases. This heterogeneity explains why separate simulations 
-              are necessary - averaging these parameters would not reflect real clinical behavior. Each disease has its own mortality risks, 
-              recovery patterns, and optimal care pathways.
-            </p>
-          </div>
-          
-          {/* Mortality Rates Comparison */}
-          <div className="mb-8">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">☠️ Weekly Mortality Rates by Care Level</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Shows the weekly probability of death for each disease at different care levels. Note the extreme variation - from virtually zero (URTI) to life-threatening (CHF, HIV).
-            </p>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border border-gray-300 dark:border-gray-600">
-                <thead>
-                  <tr className="bg-gray-100 dark:bg-gray-700">
-                    <th className="p-2 text-left border border-gray-300 dark:border-gray-600 font-semibold">Disease</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Untreated (δU)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Informal (δI)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">CHW (δ0)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Primary (δ1)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">District (δ2)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Tertiary (δ3)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Risk Level</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedDiseases.map((disease) => {
-                    const diseaseParams = individualDiseaseParams[disease];
-                    const diseaseName = getDiseaseName(disease);
-                    
-                    if (!diseaseParams) return null;
-                    
-                    const getRiskLevel = (deltaU: number) => {
-                      if (deltaU >= 0.05) return { level: 'Very High', color: 'text-red-700 bg-red-100' };
-                      if (deltaU >= 0.01) return { level: 'High', color: 'text-red-600 bg-red-50' };
-                      if (deltaU >= 0.001) return { level: 'Moderate', color: 'text-yellow-600 bg-yellow-50' };
-                      if (deltaU >= 0.0001) return { level: 'Low', color: 'text-green-600 bg-green-50' };
-                      return { level: 'Very Low', color: 'text-green-700 bg-green-100' };
-                    };
-                    
-                    const riskInfo = getRiskLevel(diseaseParams.deltaU || 0);
-                    
-                    return (
-                      <tr key={disease} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="p-2 border border-gray-300 dark:border-gray-600 font-medium">{diseaseName}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.deltaU)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.deltaI)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.delta0)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.delta1)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.delta2)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.delta3)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">
-                          <span className={`px-2 py-1 rounded text-xs ${riskInfo.color}`}>
-                            {riskInfo.level}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            
-            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-sm">
-              <p className="text-red-800 dark:text-red-200">
-                <strong>Clinical Insight:</strong> The mortality heterogeneity spans several orders of magnitude. 
-                Upper respiratory infections have essentially zero mortality risk, while congestive heart failure has &gt;5% weekly death risk when untreated. 
-                This justifies disease-specific treatment protocols and resource allocation priorities.
-              </p>
-            </div>
-          </div>
-          
-          {/* Recovery Rates Comparison */}
-          <div className="mb-8">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">🌱 Weekly Recovery Rates by Care Level</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Shows the weekly probability of recovery for each disease at different care levels. Recovery patterns reflect treatment effectiveness and natural disease course.
-            </p>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border border-gray-300 dark:border-gray-600">
-                <thead>
-                  <tr className="bg-gray-100 dark:bg-gray-700">
-                    <th className="p-2 text-left border border-gray-300 dark:border-gray-600 font-semibold">Disease</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Untreated (μU)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Informal (μI)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">CHW (μ0)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Primary (μ1)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">District (μ2)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Tertiary (μ3)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Treatment Response</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedDiseases.map((disease) => {
-                    const diseaseParams = individualDiseaseParams[disease];
-                    const diseaseName = getDiseaseName(disease);
-                    
-                    if (!diseaseParams) return null;
-                    
-                    const getTreatmentResponse = (mu0: number, mu3: number) => {
-                      const improvement = mu3 / (mu0 || 0.001); // Fold improvement from CHW to tertiary
-                      if (improvement >= 3) return { level: 'Excellent', color: 'text-green-700 bg-green-100' };
-                      if (improvement >= 2) return { level: 'Good', color: 'text-green-600 bg-green-50' };
-                      if (improvement >= 1.5) return { level: 'Moderate', color: 'text-yellow-600 bg-yellow-50' };
-                      if (improvement >= 1.1) return { level: 'Modest', color: 'text-orange-600 bg-orange-50' };
-                      return { level: 'Limited', color: 'text-red-600 bg-red-50' };
-                    };
-                    
-                    const responseInfo = getTreatmentResponse(diseaseParams.mu0 || 0, diseaseParams.mu3 || 0);
-                    
-                    return (
-                      <tr key={disease} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="p-2 border border-gray-300 dark:border-gray-600 font-medium">{diseaseName}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.muU)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.muI)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.mu0)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.mu1)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.mu2)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.mu3)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">
-                          <span className={`px-2 py-1 rounded text-xs ${responseInfo.color}`}>
-                            {responseInfo.level}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            
-            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-sm">
-              <p className="text-green-800 dark:text-green-200">
-                <strong>Clinical Insight:</strong> Recovery rates show which diseases benefit most from higher-level care. 
-                Diarrhea achieves excellent outcomes at CHW level (85% weekly recovery), while TB requires specialized, long-term treatment (3-6% weekly recovery across all levels). 
-                This guides optimal resource allocation and referral strategies.
-              </p>
-            </div>
-          </div>
-          
-          {/* Referral Patterns Comparison */}
-          <div className="mb-8">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">🔄 Referral Patterns Between Care Levels</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Shows the weekly probability of referral from each care level. High referral rates may indicate complex conditions requiring specialized care or limited capacity at lower levels.
-            </p>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border border-gray-300 dark:border-gray-600">
-                <thead>
-                  <tr className="bg-gray-100 dark:bg-gray-700">
-                    <th className="p-2 text-left border border-gray-300 dark:border-gray-600 font-semibold">Disease</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">CHW → Primary (ρ0)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Primary → District (ρ1)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">District → Tertiary (ρ2)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Care Seeking (φ0)</th>
-                    <th className="p-2 text-center border border-gray-300 dark:border-gray-600 font-semibold">Complexity Level</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedDiseases.map((disease) => {
-                    const diseaseParams = individualDiseaseParams[disease];
-                    const diseaseName = getDiseaseName(disease);
-                    
-                    if (!diseaseParams) return null;
-                    
-                    const getComplexityLevel = (rho0: number, rho1: number, phi0: number) => {
-                      const totalReferralPressure = (rho0 || 0) + (rho1 || 0) + (1 - (phi0 || 0));
-                      if (totalReferralPressure >= 1.5) return { level: 'Very High', color: 'text-red-700 bg-red-100' };
-                      if (totalReferralPressure >= 1.0) return { level: 'High', color: 'text-red-600 bg-red-50' };
-                      if (totalReferralPressure >= 0.7) return { level: 'Moderate', color: 'text-yellow-600 bg-yellow-50' };
-                      if (totalReferralPressure >= 0.4) return { level: 'Low', color: 'text-green-600 bg-green-50' };
-                      return { level: 'Very Low', color: 'text-green-700 bg-green-100' };
-                    };
-                    
-                    const complexityInfo = getComplexityLevel(diseaseParams.rho0 || 0, diseaseParams.rho1 || 0, diseaseParams.phi0 || 0);
-                    
-                    return (
-                      <tr key={disease} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="p-2 border border-gray-300 dark:border-gray-600 font-medium">{diseaseName}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.rho0)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.rho1)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatRate(diseaseParams.rho2)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">{formatPercentage(diseaseParams.phi0)}</td>
-                        <td className="p-2 text-center border border-gray-300 dark:border-gray-600">
-                          <span className={`px-2 py-1 rounded text-xs ${complexityInfo.color}`}>
-                            {complexityInfo.level}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm">
-              <p className="text-blue-800 dark:text-blue-200">
-                <strong>Clinical Insight:</strong> Referral patterns reflect disease complexity and required expertise. 
-                High-risk pregnancy has 90% CHW→Primary referral (appropriate for specialist obstetric care), 
-                while URTI has 5% referral (most cases manageable at community level). 
-                These patterns should align with clinical guidelines and available expertise.
-              </p>
-            </div>
-          </div>
-          
-          {/* Clinical Summary */}
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6">
-            <h4 className="text-lg font-semibold text-purple-800 dark:text-purple-200 mb-4">📊 Clinical Parameter Heterogeneity Summary</h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-              <div>
-                <h5 className="font-semibold text-purple-700 dark:text-purple-300 mb-3">Mortality Risk Stratification</h5>
-                <ul className="space-y-1 text-purple-600 dark:text-purple-400">
-                  <li>• <strong>Life-threatening:</strong> CHF (9% untreated), HIV opportunistic (8%)</li>
-                  <li>• <strong>Serious:</strong> High-risk pregnancy (3%), TB (2%), Pneumonia (1.5%)</li>
-                  <li>• <strong>Moderate:</strong> Malaria (0.5%), Fever (0.3%)</li>
-                  <li>• <strong>Low risk:</strong> Diarrhea (0.1%), Anemia (0.05%)</li>
-                  <li>• <strong>Minimal:</strong> URTI (&lt;0.01%)</li>
-                </ul>
-              </div>
-              
-              <div>
-                <h5 className="font-semibold text-purple-700 dark:text-purple-300 mb-3">Optimal Care Level by Disease</h5>
-                <ul className="space-y-1 text-purple-600 dark:text-purple-400">
-                  <li>• <strong>Self-care effective:</strong> URTI (70% spontaneous recovery)</li>
-                  <li>• <strong>CHW-manageable:</strong> Diarrhea (85% recovery), Malaria (80%)</li>
-                  <li>• <strong>Primary care optimal:</strong> Pneumonia, Fever, TB</li>
-                  <li>• <strong>Hospital-dependent:</strong> CHF, High-risk pregnancy</li>
-                  <li>• <strong>Specialist required:</strong> HIV (chronic management)</li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="mt-4 pt-4 border-t border-purple-300 dark:border-purple-700">
-              <p className="text-purple-700 dark:text-purple-300 text-sm">
-                <strong>Key Takeaway:</strong> This heterogeneity demonstrates why health system planning must be disease-specific. 
-                A "one-size-fits-all" approach fails to optimize outcomes or resource allocation. Each disease requires tailored 
-                care pathways, different levels of expertise, and appropriate technology deployment for maximum health impact.
-              </p>
-            </div>
-          </div>
-        </ClinicalSection>
-      )}
-      
-      {/* Disease Burden & Care Seeking (Single Disease) */}
-      {!isMultiDiseaseMode && (
-        <ClinicalSection title="Disease Burden & Patient Care-Seeking Behavior">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ClinicalInsight
-              title="Annual Disease Incidence"
-              value={`${(params.lambda * 100000).toFixed(0)} cases per 100,000 people`}
-              interpretation="This represents the expected number of new cases of this condition per year in a population of 100,000 people."
-              context="For comparison: childhood pneumonia typically ranges from 1,000-5,000 per 100,000 children annually in LMICs."
-            />
-            
-            <ClinicalInsight
-              title="Healthcare-Seeking Behavior"
-              value={formatPercentage(params.phi0)}
-              interpretation={`${formatPercentage(params.phi0)} of patients with this condition initially seek formal healthcare, while ${formatPercentage(1 - (params.phi0 || 0))} either self-treat or seek traditional care first.`}
-              context="Higher rates indicate better health system access and trust. Rural areas typically show lower formal care-seeking rates."
-            />
-          </div>
-  
-          <ClinicalInsight
-            title="Care Pathway Transitions"
-            value={`${formatPercentage(params.sigmaI)} weekly transition rate`}
-            interpretation={`Each week, ${formatPercentage(params.sigmaI)} of patients receiving traditional/informal care will transition to formal healthcare, typically when their condition worsens or traditional treatment fails.`}
-            context="This reflects the integration between traditional and modern healthcare systems."
-          />
         </ClinicalSection>
       )}
 
-      {/* Clinical Outcomes by Care Level */}
-      <ClinicalSection title="Treatment Effectiveness Across Care Levels">
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
-          These rates show the weekly probability of recovery and death at each level of care, reflecting both the natural disease progression and the effectiveness of interventions.
-        </p>
+      {/* Disease Epidemiology */}
+      <ClinicalSection title="🦠 Disease Epidemiology" className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
+        <ParameterTable parameters={[
+          {
+            name: "Annual Incidence",
+            symbol: "λ",
+            value: formatIncidence(params.lambda),
+            clinical: "New cases per 100,000 population per year"
+          },
+          {
+            name: "Weekly New Cases",
+            symbol: "λ×Pop/52",
+            value: `${((params.lambda * 100000) / 52).toFixed(0)} per 100k`,
+            clinical: "Expected new symptomatic cases entering the system each week"
+          },
+          {
+            name: "Mean Age",
+            symbol: "Age",
+            value: `${params.meanAgeOfInfection} years`,
+            clinical: "Average age at disease onset (affects YLL calculations)"
+          },
+          {
+            name: "Disability Weight",
+            symbol: "DW",
+            value: params.disabilityWeight.toFixed(3),
+            clinical: "Disease severity (0=perfect health, 1=death equivalent)"
+          }
+        ]} />
+      </ClinicalSection>
+
+      {/* Care-Seeking Behavior */}
+      <ClinicalSection title="🏥 Care-Seeking Patterns" className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700">
+        <ParameterTable parameters={[
+          {
+            name: "Initial Formal Care",
+            symbol: "φ₀",
+            value: formatPercentage(params.phi0),
+            clinical: "Proportion seeking formal healthcare immediately"
+          },
+          {
+            name: "Informal Care Ratio",
+            symbol: "r",
+            value: formatPercentage(params.informalCareRatio),
+            clinical: "Among non-formal seekers, proportion using informal care vs staying untreated"
+          },
+          {
+            name: "Informal→Formal",
+            symbol: "σᵢ",
+            value: formatRate(params.sigmaI) + "/wk",
+            clinical: "Weekly probability of informal care patients seeking formal care"
+          }
+        ]} />
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recovery Rates */}
-          <div>
-            <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Weekly Recovery Rates</h4>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/20 rounded">
-                <span>No Treatment</span>
-                <span className="font-bold text-red-600">{formatRate(params.muU)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded">
-                <span>Traditional Care</span>
-                <span className="font-bold text-orange-600">{formatRate(params.muI)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
-                <span>Community Health Worker</span>
-                <span className="font-bold text-yellow-600">{formatRate(params.mu0)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
-                <span>Primary Care</span>
-                <span className="font-bold text-blue-600">{formatRate(params.mu1)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded">
-                <span>District Hospital</span>
-                <span className="font-bold text-indigo-600">{formatRate(params.mu2)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded">
-                <span>Tertiary Hospital</span>
-                <span className="font-bold text-green-600">{formatRate(params.mu3)}</span>
-              </div>
-            </div>
-          </div>
+        <div className="mt-4 p-3 bg-green-100 dark:bg-green-900/40 rounded-lg">
+          <p className="text-sm text-green-800 dark:text-green-200">
+            <strong>Initial Distribution:</strong> {formatPercentage(params.phi0)} formal, {formatPercentage((1-params.phi0)*(1-params.informalCareRatio))} informal, {formatPercentage((1-params.phi0)*params.informalCareRatio)} untreated
+          </p>
+        </div>
+      </ClinicalSection>
 
+      {/* Clinical Outcomes by Level */}
+      <ClinicalSection title="💊 Clinical Outcomes by Care Level" className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700">
+        <div className="space-y-4">
           {/* Mortality Rates */}
           <div>
-            <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Weekly Mortality Rates</h4>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/20 rounded">
-                <span>No Treatment</span>
-                <span className="font-bold text-red-600">{formatRate(params.deltaU)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded">
-                <span>Traditional Care</span>
-                <span className="font-bold text-orange-600">{formatRate(params.deltaI)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
-                <span>Community Health Worker</span>
-                <span className="font-bold text-yellow-600">{formatRate(params.delta0)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
-                <span>Primary Care</span>
-                <span className="font-bold text-blue-600">{formatRate(params.delta1)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded">
-                <span>District Hospital</span>
-                <span className="font-bold text-indigo-600">{formatRate(params.delta2)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded">
-                <span>Tertiary Hospital</span>
-                <span className="font-bold text-green-600">{formatRate(params.delta3)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 p-6 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-          <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-300 dark:border-gray-500">
-            Disease-Specific Clinical Context
-          </h4>
-          
-          {/* Helper function to get disease-specific content */}
-          {(() => {
-            const diseaseInfo = {
-              'childhood_pneumonia': {
-                name: 'Childhood Pneumonia',
-                category: 'Acute Infectious Disease',
-                overview: 'A leading cause of death in children under 5, particularly in low-resource settings. The dramatic improvement in outcomes from CHW to primary care reflects the critical importance of timely access to appropriate antibiotics and oxygen therapy.',
-                treatmentRationale: 'Most childhood pneumonia is bacterial and responds well to antibiotics. CHWs can provide first-line amoxicillin, but severe cases require oxygen therapy and parenteral antibiotics available at health facilities.',
-                keyPoints: [
-                  'High spontaneous recovery rates (70-80%) reflect mild viral cases that resolve without intervention',
-                  'Bacterial pneumonia requires immediate antibiotic treatment - delays significantly increase mortality',
-                  'High CHW→Primary referral rate (60%) ensures access to oxygen therapy for severe cases',
-                  'Fast-breathing pneumonia can be managed by CHWs, but danger signs require facility care'
-                ]
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Weekly Mortality Rates (δ)</h4>
+            <ParameterTable parameters={[
+              {
+                name: "Untreated",
+                symbol: "δᵤ",
+                value: formatRate(params.deltaU) + "/wk",
+                clinical: "Baseline mortality without any care"
               },
-              'tuberculosis': {
-                name: 'Tuberculosis',
-                category: 'Chronic Infectious Disease',
-                overview: 'Requires standardized long-term treatment (6+ months) with multiple drugs. The modest differences in recovery rates across care levels reflect the standardized nature of TB treatment protocols, though higher levels provide crucial monitoring.',
-                treatmentRationale: 'TB treatment is highly standardized globally. Success depends more on treatment completion than care level, but higher facilities provide better adherence monitoring and drug resistance management.',
-                keyPoints: [
-                  'Treatment protocols are standardized across all levels following WHO guidelines',
-                  'High CHW→Primary referral rate (85%) reflects need for specialized TB clinics and DOTS programs',
-                  'Lower mortality at higher levels reflects better adherence monitoring and side effect management',
-                  'Drug-resistant TB requires specialized facilities with culture and sensitivity testing'
-                ]
+              {
+                name: "Informal Care",
+                symbol: "δᵢ",
+                value: formatRate(params.deltaI) + "/wk",
+                clinical: "Mortality with traditional/self-care"
               },
-              'malaria': {
-                name: 'Malaria',
-                category: 'Acute Parasitic Disease',
-                overview: 'Highly treatable with rapid diagnostic tests (RDTs) and artemisinin-based combination therapy (ACT). Excellent outcomes at CHW and primary care levels demonstrate the remarkable effectiveness of community-based malaria management programs.',
-                treatmentRationale: 'Uncomplicated malaria is easily treated at community level with RDTs and ACT. Hospital cases typically represent severe malaria requiring intensive supportive care.',
-                keyPoints: [
-                  'Community health workers achieve 80-85% cure rates with RDTs and ACT',
-                  'Lower recovery rates at hospitals reflect severe malaria cases requiring intensive care',
-                  'Rapid diagnosis and treatment within 24 hours prevents progression to severe disease',
-                  'Community case management has dramatically reduced malaria mortality in endemic areas'
-                ]
+              {
+                name: "CHW Level",
+                symbol: "δ₀",
+                value: formatRate(params.delta0) + "/wk",
+                clinical: "Mortality with community health worker care"
               },
-              'diarrhea': {
-                name: 'Diarrheal Disease',
-                category: 'Acute Gastrointestinal Condition',
-                overview: 'Primarily managed with oral rehydration solution (ORS) and zinc supplementation. The excellent outcomes at CHW level demonstrate the remarkable effectiveness of community-based case management for acute diarrhea.',
-                treatmentRationale: 'Most childhood diarrhea responds to simple rehydration. The WHO/UNICEF protocol of ORS + zinc is highly effective and can be safely administered by trained CHWs.',
-                keyPoints: [
-                  'ORS + zinc treatment achieves 85-90% success rates at community level',
-                  'CHWs can effectively manage mild to moderate dehydration using ORS',
-                  'Hospital referral is reserved for severe dehydration requiring IV fluids',
-                  'Prevention through improved water, sanitation, and hygiene remains crucial'
-                ]
+              {
+                name: "Primary Care",
+                symbol: "δ₁",
+                value: formatRate(params.delta1) + "/wk",
+                clinical: "Mortality at primary health centers"
               },
-              'hiv_management_chronic': {
-                name: 'HIV Management (Chronic)',
-                category: 'Chronic Viral Disease',
-                overview: 'Focuses on stable patients receiving antiretroviral therapy (ART). Success depends on consistent medication adherence, regular monitoring, and proactive management of comorbidities and opportunistic infections.',
-                treatmentRationale: 'HIV is a chronic manageable condition with ART. "Recovery" means viral suppression and immune reconstitution, not cure. Higher care levels provide specialized monitoring and complex case management.',
-                keyPoints: [
-                  '"Recovery rates" represent viral suppression and stable clinical management, not cure',
-                  'ART adherence >95% is required for sustained viral suppression',
-                  'Higher referral rates (90%) reflect need for specialist HIV care and monitoring',
-                  'Regular CD4 counts and viral load monitoring optimize treatment outcomes'
-                ]
+              {
+                name: "District Hospital",
+                symbol: "δ₂",
+                value: formatRate(params.delta2) + "/wk",
+                clinical: "Mortality at district hospitals"
               },
-              'anemia': {
-                name: 'Anemia',
-                category: 'Nutritional/Hematologic Condition',
-                overview: 'Often nutritional (iron deficiency) but may have multiple underlying causes requiring systematic investigation. The gradual improvement across care levels reflects increasing diagnostic and therapeutic capabilities.',
-                treatmentRationale: 'Most anemia in LMICs is iron deficiency, treatable with iron supplements. However, proper diagnosis requires blood testing, and severe cases may need transfusion or treatment of underlying causes.',
-                keyPoints: [
-                  'Very low mortality reflects the chronic, non-life-threatening nature of most anemia',
-                  'Iron deficiency anemia responds well to oral iron supplementation',
-                  'Higher care levels provide diagnostic testing to identify underlying causes',
-                  'Severe anemia (Hb <7g/dL) may require blood transfusion at hospital level'
-                ]
-              },
-              'congestive_heart_failure': {
-                name: 'Congestive Heart Failure',
-                category: 'Chronic Cardiovascular Disease',
-                overview: 'A complex chronic condition requiring specialized management with evidence-based medications (ACE inhibitors, diuretics) and careful monitoring. Poor outcomes without formal care reflect the critical need for guideline-based heart failure management.',
-                treatmentRationale: 'Heart failure requires complex medication management, fluid balance monitoring, and treatment of underlying causes. This expertise is typically only available at hospital levels.',
-                keyPoints: [
-                  'High mortality without formal care reflects the life-threatening nature of untreated heart failure',
-                  'Evidence-based medications (ACE inhibitors, diuretics) dramatically improve survival',
-                  'Requires specialized cardiology expertise for optimal medication titration',
-                  'High referral rates (70%+) are clinically appropriate for this complex condition'
-                ]
-              },
-              'high_risk_pregnancy_low_anc': {
-                name: 'High-Risk Pregnancy (Low ANC)',
-                category: 'Maternal Health Emergency',
-                overview: 'Pregnant women without adequate antenatal care monitoring, representing high-risk deliveries. Poor outcomes at lower levels reflect the critical need for skilled birth attendance and emergency obstetric care.',
-                treatmentRationale: 'High-risk pregnancies require skilled birth attendants and access to emergency obstetric care. Complications like hemorrhage, eclampsia, and obstructed labor need immediate hospital intervention.',
-                keyPoints: [
-                  'Very high referral rates (90%+) reflect appropriate need for skilled birth attendance',
-                  'Emergency obstetric care (cesarean, blood transfusion) is only available at hospitals',
-                  'Maternal mortality decreases dramatically with access to comprehensive emergency care',
-                  'Lack of ANC increases risks of undetected complications during delivery'
-                ]
-              },
-              'urti': {
-                name: 'Upper Respiratory Tract Infection',
-                category: 'Acute Viral Illness',
-                overview: 'Common viral infections that are typically self-limiting with excellent prognosis. The minimal differences across care levels and very low referral rates reflect the mild, self-resolving nature of most URTIs.',
-                treatmentRationale: 'Most URTIs are viral and self-limiting. Treatment is symptomatic. Healthcare primarily provides reassurance and identifies rare bacterial complications requiring antibiotics.',
-                keyPoints: [
-                  'Very high spontaneous recovery rates (70%+) reflect viral, self-limiting nature',
-                  'Minimal mortality reflects the benign course of most viral URTIs',
-                  'Formal care provides symptomatic relief and identifies rare complications',
-                  'Antibiotic use should be reserved for proven bacterial infections'
-                ]
-              },
-              'fever': {
-                name: 'Fever of Unknown Origin',
-                category: 'Symptom Complex',
-                overview: 'A clinical presentation requiring systematic diagnostic evaluation for underlying causes including malaria, respiratory infections, typhoid, or other febrile illnesses. Variable outcomes reflect the diversity of underlying conditions.',
-                treatmentRationale: 'Fever is a symptom, not a diagnosis. Successful management depends on identifying and treating the underlying cause, which requires diagnostic capabilities that increase with care level.',
-                keyPoints: [
-                  'Moderate spontaneous recovery (30%) reflects self-limiting viral illnesses',
-                  'Higher care levels provide better diagnostic capabilities (lab tests, imaging)',
-                  'Common causes include malaria, pneumonia, typhoid, and viral syndromes',
-                  'Systematic evaluation prevents missed diagnoses of serious conditions'
-                ]
-              },
-              'hiv_opportunistic': {
-                name: 'HIV-Related Opportunistic Infections',
-                category: 'Immunodeficiency Complications',
-                overview: 'Serious infections occurring in HIV patients with severely compromised immune systems. Poor outcomes without formal care reflect the urgent need for specialized treatment and immune system support.',
-                treatmentRationale: 'Opportunistic infections in HIV patients require specialized knowledge, diagnostic capabilities, and specific antimicrobial treatments typically only available at higher care levels.',
-                keyPoints: [
-                  'High mortality without formal care reflects severity in immunocompromised patients',
-                  'Requires specialized HIV expertise and specific antimicrobial treatments',
-                  'Common infections include TB, Pneumocystis pneumonia, cryptococcal meningitis',
-                  'Prevention through ART and prophylaxis is more effective than treatment'
-                ]
+              {
+                name: "Tertiary Hospital",
+                symbol: "δ₃",
+                value: formatRate(params.delta3) + "/wk",
+                clinical: "Mortality at referral hospitals"
               }
-            };
+            ]} />
+          </div>
 
-            const currentDisease = diseaseInfo[selectedDisease as keyof typeof diseaseInfo];
-            
-            if (currentDisease) {
-              return (
-                <div className="space-y-6">
-                  {/* Disease Header */}
-                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                    <div className="flex items-center justify-between mb-3">
-                      <h5 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {currentDisease.name}
-                      </h5>
-                      <span className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">
-                        {currentDisease.category}
-                      </span>
-                    </div>
-                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                      {currentDisease.overview}
-                    </p>
-                  </div>
-
-                  {/* Treatment Rationale */}
-                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                    <h6 className="font-semibold text-gray-900 dark:text-white mb-2">
-                      Treatment Rationale & Care Level Logic
-                    </h6>
-                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                      {currentDisease.treatmentRationale}
-                    </p>
-                  </div>
-
-                  {/* Key Clinical Points */}
-                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                    <h6 className="font-semibold text-gray-900 dark:text-white mb-3">
-                      Key Clinical Insights
-                    </h6>
-                    <ul className="space-y-2">
-                      {currentDisease.keyPoints.map((point, index) => (
-                        <li key={index} className="flex items-start">
-                          <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                          <span className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-                            {point}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              );
-            } else {
-              // Default explanation for diseases not specifically covered
-              return (
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                    Higher-level care generally shows better recovery rates and lower mortality, but this varies significantly by condition. 
-                    For acute conditions like pneumonia, the difference between care levels can be dramatic due to access to life-saving interventions. 
-                    For chronic conditions, the differences may be smaller but still clinically significant over time, often reflecting 
-                    improved monitoring, medication management, and specialist expertise available at higher levels.
-                  </p>
-                </div>
-              );
-            }
-          })()}
+          {/* Resolution Rates */}
+          <div>
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Weekly Resolution Rates (μ)</h4>
+            <ParameterTable parameters={[
+              {
+                name: "Untreated",
+                symbol: "μᵤ",
+                value: formatRate(params.muU) + "/wk",
+                clinical: "Natural recovery without care"
+              },
+              {
+                name: "Informal Care",
+                symbol: "μᵢ",
+                value: formatRate(params.muI) + "/wk",
+                clinical: "Recovery with traditional/self-care"
+              },
+              {
+                name: "CHW Level",
+                symbol: "μ₀",
+                value: formatRate(params.mu0) + "/wk",
+                clinical: "Recovery rate with CHW care"
+              },
+              {
+                name: "Primary Care",
+                symbol: "μ₁",
+                value: formatRate(params.mu1) + "/wk",
+                clinical: "Recovery rate at primary facilities"
+              },
+              {
+                name: "District Hospital",
+                symbol: "μ₂",
+                value: formatRate(params.mu2) + "/wk",
+                clinical: "Recovery rate at district hospitals"
+              },
+              {
+                name: "Tertiary Hospital",
+                symbol: "μ₃",
+                value: formatRate(params.mu3) + "/wk",
+                clinical: "Recovery rate at tertiary facilities"
+              }
+            ]} />
+          </div>
         </div>
       </ClinicalSection>
 
-      {/* Health System Capacity & Congestion */}
-      <ClinicalSection title="Health System Capacity & Patient Flow">
-        <ClinicalInsight
-          title="System Congestion Level"
-          value={formatPercentage(params.systemCongestion)}
-          interpretation={
-            (params.systemCongestion || 0) < 0.5 
-              ? "The health system is operating below capacity with manageable patient loads and minimal delays."
-              : (params.systemCongestion || 0) < 0.8
-              ? "The health system is experiencing moderate strain with some delays and resource competition."
-              : "The health system is severely congested with significant delays, rationing, and compromised care quality."
+      {/* Referral Patterns */}
+      <ClinicalSection title="🔄 Referral Patterns" className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700">
+        <ParameterTable parameters={[
+          {
+            name: "CHW → Primary",
+            symbol: "ρ₀",
+            value: formatRate(params.rho0) + "/wk",
+            clinical: "Weekly probability of referral from CHW to primary care"
+          },
+          {
+            name: "Primary → District",
+            symbol: "ρ₁",
+            value: formatRate(params.rho1) + "/wk",
+            clinical: "Weekly probability of referral from primary to district hospital"
+          },
+          {
+            name: "District → Tertiary",
+            symbol: "ρ₂",
+            value: formatRate(params.rho2) + "/wk",
+            clinical: "Weekly probability of referral from district to tertiary hospital"
           }
-          context="Congestion affects all levels of care, with patients facing longer wait times and potentially seeking alternative care pathways."
-        />
-
-        {(params.systemCongestion || 0) > 0.3 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            <ClinicalInsight
-              title="Queue Abandonment"
-              value={formatPercentage(params.queueAbandonmentRate)}
-              interpretation="Patients who give up waiting and return home untreated each week."
-              context="Higher in rural areas due to travel costs and opportunity costs of waiting."
-            />
-            
-            <ClinicalInsight
-              title="Alternative Care Seeking"
-              value={formatPercentage(params.queueBypassRate)}
-              interpretation="Patients who seek traditional healers or self-medication while waiting."
-              context="Common coping mechanism when formal care is delayed."
-            />
-            
-            <ClinicalInsight
-              title="Excess Mortality from Delays"
-              value={`${((params.congestionMortalityMultiplier || 1) - 1) * 100}% increase`}
-              interpretation="Additional deaths due to delayed care and disease progression while waiting."
-              context="Most critical for time-sensitive conditions like sepsis or severe pneumonia."
-            />
-          </div>
-        )}
+        ]} />
       </ClinicalSection>
 
-      {/* Patient Flow Transitions */}
-      <ClinicalSection title="Patient Flow Transitions & System Navigation">
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Understanding how patients move through the health system, including referral patterns, queue formation during congestion, and alternative pathways.
-        </p>
-
-        {/* Referral Flow */}
-        <div className="mb-6">
-          <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Referral Patterns Between Care Levels</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-gradient-to-r from-yellow-50 to-blue-50 dark:from-yellow-900/20 dark:to-blue-900/20 rounded-lg border">
-              <div className="text-center">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">CHW → Primary Care</div>
-                <div className="text-2xl font-bold text-blue-600">{formatRate(params.rho0)}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">weekly referral rate</div>
-              </div>
-            </div>
-            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border">
-              <div className="text-center">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Primary → District Hospital</div>
-                <div className="text-2xl font-bold text-indigo-600">{formatRate(params.rho1)}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">weekly referral rate</div>
-              </div>
-            </div>
-            <div className="p-4 bg-gradient-to-r from-indigo-50 to-green-50 dark:from-indigo-900/20 dark:to-green-900/20 rounded-lg border">
-              <div className="text-center">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">District → Tertiary Hospital</div>
-                <div className="text-2xl font-bold text-green-600">{formatRate(params.rho2)}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">weekly referral rate</div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              <strong>Clinical Interpretation:</strong> Higher referral rates may indicate limited capacity at lower levels, more complex case mix, or inadequate resources for managing conditions locally. Optimal referral patterns balance appropriate escalation with system efficiency.
-            </p>
-          </div>
-        </div>
-
-        {/* Queue Dynamics */}
-        {(params.systemCongestion || 0) > 0.2 && (
-          <div className="mb-6">
-            <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Queue Formation & Management During Congestion</h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <h5 className="font-semibold text-red-800 dark:text-red-200 mb-3">When Capacity is Exceeded</h5>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Queue Clearance Capacity:</span>
-                    <span className="font-semibold">{formatPercentage(params.queueClearanceRate)} weekly</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Competition Sensitivity:</span>
-                    <span className="font-semibold">{(params.competitionSensitivity || 1).toFixed(1)}×</span>
-                  </div>
-                  {params.queuePreventionRate && (
-                    <div className="flex justify-between">
-                      <span>AI Triage Prevention:</span>
-                      <span className="font-semibold text-green-600">{formatPercentage(params.queuePreventionRate)}</span>
-                    </div>
-                  )}
-                </div>
-                <p className="text-xs text-red-700 dark:text-red-300 mt-2">
-                  When demand exceeds capacity, patients form queues at each level. Higher competition sensitivity means this condition competes more aggressively for limited resources.
-                </p>
-              </div>
-
-              <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-                <h5 className="font-semibold text-orange-800 dark:text-orange-200 mb-3">Patient Responses to Delays</h5>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Abandon Care (Return Home):</span>
-                    <span className="font-semibold">{formatPercentage(params.queueAbandonmentRate)} weekly</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Seek Traditional Care:</span>
-                    <span className="font-semibold">{formatPercentage(params.queueBypassRate)} weekly</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Mortality Risk Increase:</span>
-                    <span className="font-semibold text-red-600">+{((params.congestionMortalityMultiplier || 1) - 1) * 100}%</span>
-                  </div>
-                </div>
-                <p className="text-xs text-orange-700 dark:text-orange-300 mt-2">
-                  Patients facing long waits may abandon formal care or seek alternatives, potentially leading to worse outcomes.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Care Pathway Transitions */}
-        <div className="mb-6">
-          <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Alternative Care Pathways</h4>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <h5 className="font-semibold text-blue-800 dark:text-blue-200 mb-3">Initial Care-Seeking Behavior</h5>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded">
-                  <span className="text-sm">Seek Formal Care First</span>
-                  <span className="font-bold text-blue-600">{formatPercentage(params.phi0)}</span>
-                </div>
-                <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded">
-                  <span className="text-sm">Self-treat or Traditional Care</span>
-                  <span className="font-bold text-orange-600">{formatPercentage(1 - (params.phi0 || 0))}</span>
-                </div>
-              </div>
-              <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
-                Initial healthcare-seeking patterns reflect access, affordability, cultural preferences, and trust in the formal system.
-              </p>
-            </div>
-
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <h5 className="font-semibold text-green-800 dark:text-green-200 mb-3">Transitions to Formal Care</h5>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded">
-                  <span className="text-sm">Traditional → Formal Care</span>
-                  <span className="font-bold text-green-600">{formatPercentage(params.sigmaI)} weekly</span>
-                </div>
-                <div className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded">
-                  <span className="text-sm">Untreated Population Mix</span>
-                  <span className="font-bold text-gray-600">{formatPercentage(params.informalCareRatio)} stay untreated</span>
-                </div>
-              </div>
-              <p className="text-xs text-green-700 dark:text-green-300 mt-2">
-                Patients typically transition to formal care when traditional treatment fails or symptoms worsen significantly.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* AI Impact on Flow */}
-        {Object.values(aiInterventions).some(Boolean) && (
-          <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
-            <h5 className="font-semibold text-purple-800 dark:text-purple-200 mb-3">AI Impact on Patient Flow</h5>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              {aiInterventions.selfCareAI && (
-                <div>
-                  <span className="font-semibold text-purple-700 dark:text-purple-300">Demand Reduction:</span>
-                  <span className="ml-2">{formatPercentage(params.visitReduction)} fewer initial visits</span>
-                </div>
-              )}
-              {aiInterventions.triageAI && (
-                <div>
-                  <span className="font-semibold text-purple-700 dark:text-purple-300">Smart Routing:</span>
-                  <span className="ml-2">{formatPercentage(params.directRoutingImprovement)} better level matching</span>
-                </div>
-              )}
-              {aiInterventions.diagnosticAI && (
-                <div>
-                  <span className="font-semibold text-purple-700 dark:text-purple-300">Referral Optimization:</span>
-                  <span className="ml-2">{formatPercentage(params.referralPrecision)} reduction in unnecessary referrals</span>
-                </div>
-              )}
-              {aiInterventions.bedManagementAI && (
-                <div>
-                  <span className="font-semibold text-purple-700 dark:text-purple-300">Throughput Improvement:</span>
-                  <span className="ml-2">{formatPercentage(params.lengthOfStayReduction)} faster patient turnover</span>
-                </div>
-              )}
-            </div>
-            <p className="text-xs text-purple-700 dark:text-purple-300 mt-2">
-              AI interventions optimize patient flow by reducing unnecessary visits, improving routing decisions, and increasing system efficiency.
-            </p>
-          </div>
-        )}
-      </ClinicalSection>
-
-      {/* AI Interventions Impact */}
-      <ClinicalSection title="AI Interventions & Clinical Impact">
-        <div className="mb-6">
-          <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Currently Active Interventions</h4>
-          <ActiveInterventions />
-        </div>
-
-        {Object.values(aiInterventions).some(Boolean) ? (
-          <div className="space-y-4">
-            {aiInterventions.chwAI && (
-              <ClinicalInsight
-                title="CHW Decision Support Impact"
-                value={formatPercentage(params.resolutionBoost)}
-                interpretation="AI tools help community health workers make more accurate diagnoses and treatment decisions, improving patient outcomes at the community level."
-                context="Particularly valuable in areas with limited CHW training or supervision."
-              />
-            )}
-            
-            {aiInterventions.diagnosticAI && (
-              <ClinicalInsight
-                title="Point-of-Care Diagnostic Impact"
-                value={formatPercentage(params.pointOfCareResolution)}
-                interpretation="AI-assisted diagnostics at primary care level reduce misdiagnosis and unnecessary referrals to higher levels."
-                context="Helps primary care providers manage more cases locally, reducing system burden."
-              />
-            )}
-            
-            {aiInterventions.bedManagementAI && (
-              <ClinicalInsight
-                title="Hospital Efficiency Gains"
-                value={formatPercentage(params.lengthOfStayReduction)}
-                interpretation="AI optimization of bed allocation and discharge planning reduces average length of stay, increasing effective hospital capacity."
-                context="Critical for managing patient flow during high-demand periods."
-              />
-            )}
-            
-            {aiInterventions.selfCareAI && (
-              <ClinicalInsight
-                title="Demand Management"
-                value={formatPercentage(params.visitReduction)}
-                interpretation="AI-powered patient guidance reduces unnecessary healthcare visits by helping patients manage appropriate conditions at home."
-                context="Reduces system burden while maintaining patient safety through smart triage."
-              />
-            )}
-          </div>
-        ) : (
-          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-            <p className="text-yellow-800 dark:text-yellow-200">
-              No AI interventions are currently active. Consider enabling relevant interventions to see their potential clinical impact.
-            </p>
-          </div>
-        )}
-      </ClinicalSection>
-
-      {/* Economic Context */}
-      <ClinicalSection title="Economic Context">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatCost(params.perDiemCosts.L0)}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">CHW Care</div>
-          </div>
-          <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatCost(params.perDiemCosts.L1)}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Primary Care</div>
-          </div>
-          <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatCost(params.perDiemCosts.L2)}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">District Hospital</div>
-          </div>
-          <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatCost(params.perDiemCosts.L3)}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Tertiary Hospital</div>
-          </div>
-        </div>
+      {/* System Capacity */}
+      <ClinicalSection title="⚡ System Capacity & Congestion" className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700">
+        <ParameterTable parameters={[
+          {
+            name: "System Congestion",
+            symbol: "s",
+            value: formatPercentage(params.systemCongestion || 0),
+            clinical: "Current system utilization (0%=empty, 100%=at capacity)"
+          },
+          {
+            name: "Capacity Multiplier",
+            symbol: "c",
+            value: (Math.max(0.2, 1 - 0.5 * (params.systemCongestion || 0))).toFixed(2),
+            clinical: "Flow rate reduction due to congestion"
+          },
+          {
+            name: "Queue Mortality",
+            symbol: "δQ",
+            value: formatRate(params.deltaU) + "/wk",
+            clinical: "Mortality while waiting in queues (same as untreated)"
+          }
+        ]} />
         
-        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <p className="text-blue-800 dark:text-blue-200">
-            <strong>Cost per episode:</strong> These represent the average cost to treat one patient episode at each level of care, 
-            including staff time, supplies, diagnostics, and facility overhead. Higher-level care costs more but may prevent 
-            complications and reduce overall treatment duration.
-          </p>
+        {params.systemCongestion > 0 && (
+          <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/40 rounded-lg">
+            <p className="text-sm text-red-800 dark:text-red-200">
+              <strong>Congestion Effects:</strong> Queues are forming. Patient flow reduced to {formatPercentage(Math.max(0.2, 1 - 0.5 * params.systemCongestion))} of normal capacity.
+            </p>
+          </div>
+        )}
+      </ClinicalSection>
+
+      {/* AI Interventions */}
+      <ClinicalSection title="🤖 AI Intervention Status" className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-700">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Object.entries({
+            triageAI: { name: 'AI Triage', effect: 'Improves initial care-seeking (φ₀)' },
+            chwAI: { name: 'CHW Support', effect: 'Enhances CHW effectiveness (μ₀, ρ₀)' },
+            diagnosticAI: { name: 'Diagnostics AI', effect: 'Better primary/district care (μ₁, μ₂)' },
+            selfCareAI: { name: 'Self-Care AI', effect: 'Reduces visits, improves informal care' },
+            bedManagementAI: { name: 'Bed Management', effect: 'Optimizes hospital capacity' },
+            hospitalDecisionAI: { name: 'Clinical Decisions', effect: 'Reduces hospital mortality' }
+          }).map(([key, info]) => (
+            <div key={key} className={`p-3 rounded-lg border-2 ${
+              aiInterventions[key as keyof typeof aiInterventions] 
+                ? 'bg-teal-100 dark:bg-teal-900/40 border-teal-500' 
+                : 'bg-gray-100 dark:bg-gray-800 border-gray-300'
+            }`}>
+              <div className="flex justify-between items-center mb-1">
+                <span className="font-semibold text-gray-900 dark:text-white">{info.name}</span>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  aiInterventions[key as keyof typeof aiInterventions]
+                    ? 'bg-teal-200 text-teal-800 dark:bg-teal-800 dark:text-teal-200'
+                    : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                }`}>
+                  {aiInterventions[key as keyof typeof aiInterventions] ? 'ACTIVE' : 'OFF'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400">{info.effect}</p>
+            </div>
+          ))}
         </div>
       </ClinicalSection>
 
       {/* Key Clinical Insights */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">Key Clinical Insights</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Patient Flow Patterns</h4>
-            <ul className="space-y-1 text-blue-700 dark:text-blue-300">
-              <li>• Referral rates: CHW→Primary ({formatRate(params.rho0)}), Primary→District ({formatRate(params.rho1)}), District→Tertiary ({formatRate(params.rho2)})</li>
-              <li>• Higher referral rates may indicate limited capacity at lower levels or more severe case mix</li>
-              <li>• AI interventions can optimize referral patterns and reduce unnecessary escalations</li>
-            </ul>
+      <ClinicalSection title="💡 Key Clinical Insights" className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700">
+        <div className="space-y-3">
+          <div className="p-3 bg-yellow-100 dark:bg-yellow-900/40 rounded-lg">
+            <h4 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">Case Fatality Comparison</h4>
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              Untreated: {formatPercentage(params.deltaU)} vs Best care (L3): {formatPercentage(params.delta3)} per week
+              → {((params.deltaU / params.delta3 - 1) * 100).toFixed(0)}% mortality reduction with optimal care
+            </p>
           </div>
-          <div>
-            <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">System Performance</h4>
-            <ul className="space-y-1 text-blue-700 dark:text-blue-300">
-              <li>• Recovery rates should generally increase with higher levels of care</li>
-              <li>• Mortality rates should generally decrease with higher levels of care</li>
-              <li>• System congestion affects all levels and can reverse these expected patterns</li>
-            </ul>
+          
+          <div className="p-3 bg-yellow-100 dark:bg-yellow-900/40 rounded-lg">
+            <h4 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">Time to Resolution</h4>
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              Informal care: ~{(1/params.muI).toFixed(1)} weeks vs Primary care: ~{(1/params.mu1).toFixed(1)} weeks
+              → {((1/params.muI - 1/params.mu1)).toFixed(1)} weeks saved with formal care
+            </p>
+          </div>
+          
+          <div className="p-3 bg-yellow-100 dark:bg-yellow-900/40 rounded-lg">
+            <h4 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">Health System Coverage</h4>
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              {formatPercentage(params.phi0)} seek formal care initially. 
+              With AI triage: potential to reach {formatPercentage(Math.min(1, params.phi0 * 1.5))}-{formatPercentage(Math.min(1, params.phi0 * 2))}
+            </p>
           </div>
         </div>
-      </div>
+      </ClinicalSection>
     </div>
   );
 };
 
-export default ParameterGuide; 
+export default ParameterGuide;

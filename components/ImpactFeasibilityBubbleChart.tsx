@@ -260,7 +260,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
 
     const width = chartRef.current.clientWidth;
     const height = 600;
-    const margin = { top: 40, right: 150, bottom: 80, left: 80 };
+    const margin = { top: 40, right: 80, bottom: 80, left: 80 };
     
     // Get valid scenarios with impact data - be more inclusive for AI comparison scenarios
     const impactData = (() => {
@@ -332,15 +332,20 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     const allImpactValues = allScenariosImpactData.map(d => d.impact);
     const impactValues = impactData.map(d => d.impact);
     
-    // Calculate a smart max value based on ALL data (not just filtered)
+    // Calculate min and max values based on ALL data (not just filtered)
+    const dataMin = allImpactValues.length > 0 ? Math.min(...allImpactValues) : 
+                    (impactValues.length > 0 ? Math.min(...impactValues) : 0);
     const dataMax = allImpactValues.length > 0 ? Math.max(...allImpactValues) : 
                     (impactValues.length > 0 ? Math.max(...impactValues) : 10);
     const impactThreshold = yAxisMetric === 'dalys' ? 100 : 10; // Thresholds for quadrants
     
-    // Determine the y-axis max:
-    // - If data is well below threshold, scale to show data with some padding
-    // - If data is near or above threshold, ensure threshold is visible
+    // Determine the y-axis bounds:
+    // - Always include 0 to show the threshold line
+    // - Handle negative values (scenarios worse than baseline)
+    // - Ensure threshold is visible if data is near it
+    let minImpact = Math.min(0, dataMin);
     let maxImpact;
+    
     if (dataMax < impactThreshold * 0.5) {
       // Data is well below threshold - focus on the data range
       maxImpact = dataMax * 1.2; // 20% padding above max data point
@@ -352,6 +357,11 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       maxImpact = dataMax * 1.1; // 10% padding for larger values
     }
     
+    // Add padding for negative values
+    if (minImpact < 0) {
+      minImpact = minImpact * 1.1; // 10% padding for negative values
+    }
+    
     // Ensure minimum scale for very small values
     if (yAxisMetric === 'dalys' && maxImpact < 20) {
       maxImpact = 20;
@@ -360,21 +370,30 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     }
     
     const yScale = d3.scaleLinear()
-      .domain([0, maxImpact])
+      .domain([minImpact, maxImpact])
       .range([innerHeight, 0]);
     
-    // Size scale for bubbles - use all scenarios for consistent sizing
-    const allImpactData = scenarios
-      .map(calculateImpactData)
-      .filter((d): d is ImpactFeasibilityData => d !== null);
+    // Size scale for bubbles - calculate based on actual deaths averted for consistency
+    // This ensures bubble sizes are comparable across different views
+    const maxDeathsAverted = Math.max(
+      ...impactData.map(d => {
+        if (!d.scenario.results || !d.scenario.baselineResults) return 1;
+        const baseline = getCountrySpecificBaseline(
+          baselineMap, 
+          d.scenario.parameters.disease || 'Unknown', 
+          d.scenario.countryCode, 
+          d.scenario.isUrban
+        ) || d.scenario.baselineResults;
+        if (!baseline || baseline.cumulativeDeaths === undefined) return 1;
+        return Math.abs(baseline.cumulativeDeaths - d.scenario.results.cumulativeDeaths);
+      }),
+      10 // Minimum scale
+    );
     
-    const maxPopulationImpact = allImpactData.length > 0 
-      ? Math.max(...allImpactData.map(d => d.populationImpact), 10) // Ensure minimum scale of 10
-      : 1000; // fallback value
-    
+    // Use sqrt scale for better visual differentiation
     const sizeScale = d3.scaleSqrt()
-      .domain([1, maxPopulationImpact]) // Start from 1 instead of 0
-      .range([5, 50]);
+      .domain([0, maxDeathsAverted])
+      .range([8, 50]); // Slightly larger minimum size for visibility
     
     // Color scale based on colorBy option
     const quadrantColorScale = d3.scaleOrdinal<string>()
@@ -565,7 +584,19 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .attr("class", "bubble")
       .attr("cx", d => xScale(d.timeToScale))
       .attr("cy", d => yScale(d.impact))
-      .attr("r", d => sizeScale(d.populationImpact))
+      .attr("r", d => {
+        // Always use deaths averted for bubble size, regardless of y-axis metric
+        if (!d.scenario.results) return sizeScale(1);
+        const baseline = getCountrySpecificBaseline(
+          baselineMap, 
+          d.scenario.parameters.disease || 'Unknown', 
+          d.scenario.countryCode, 
+          d.scenario.isUrban
+        ) || d.scenario.baselineResults;
+        if (!baseline || baseline.cumulativeDeaths === undefined) return sizeScale(1);
+        const deathsAverted = Math.abs(baseline.cumulativeDeaths - d.scenario.results.cumulativeDeaths);
+        return sizeScale(deathsAverted);
+      })
       .style("fill", d => getColor(d))
       .style("fill-opacity", 0.7)
       .style("stroke", "white")
@@ -583,7 +614,20 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
         .attr("y", d => yScale(d.impact))
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "middle")
-        .attr("font-size", d => Math.max(10, Math.min(14, sizeScale(d.populationImpact) / 3)))
+        .attr("font-size", d => {
+          // Calculate font size based on actual bubble size
+          if (!d.scenario.results) return 10;
+          const baseline = getCountrySpecificBaseline(
+            baselineMap, 
+            d.scenario.parameters.disease || 'Unknown', 
+            d.scenario.countryCode, 
+            d.scenario.isUrban
+          ) || d.scenario.baselineResults;
+          if (!baseline || baseline.cumulativeDeaths === undefined) return 10;
+          const deathsAverted = Math.abs(baseline.cumulativeDeaths - d.scenario.results.cumulativeDeaths);
+          const bubbleRadius = sizeScale(deathsAverted);
+          return Math.max(10, Math.min(14, bubbleRadius / 3));
+        })
         .attr("font-weight", "bold")
         .attr("fill", "#333")
         .attr("stroke", "white")
@@ -670,22 +714,53 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
                 </td>
               </tr>
               <tr>
-                <td style="padding: 4px 8px 4px 0; color: #6B7280;">${yAxisMetric === 'dalys' ? 'Total DALYs Averted' : 'Total Deaths Averted'}:</td>
+                <td style="padding: 4px 8px 4px 0; color: #6B7280;">Deaths Averted (bubble size):</td>
                 <td style="padding: 4px 0; text-align: right; font-weight: 500;">
                   ${(() => {
-                    const disease = data.scenario.parameters.disease || 'Unknown';
-                    const diseaseBaseline = baselineMap[disease] || data.scenario.baselineResults;
-                    if (!diseaseBaseline || !data.scenario.results) return 'N/A';
+                    const baseline = getCountrySpecificBaseline(
+                      baselineMap, 
+                      data.scenario.parameters.disease || 'Unknown', 
+                      data.scenario.countryCode, 
+                      data.scenario.isUrban
+                    ) || data.scenario.baselineResults;
                     
-                    const rawValue = yAxisMetric === 'dalys' 
-                      ? diseaseBaseline.dalys - data.scenario.results.dalys
-                      : diseaseBaseline.cumulativeDeaths - data.scenario.results.cumulativeDeaths;
-                    return rawValue >= 0 
-                      ? formatNumber(rawValue) + ' averted'
-                      : formatNumber(Math.abs(rawValue)) + ' additional';
+                    console.log('Deaths averted calculation:', {
+                      scenario: data.scenario.name,
+                      baseline: baseline,
+                      results: data.scenario.results,
+                      baselineDeaths: baseline?.cumulativeDeaths,
+                      resultDeaths: data.scenario.results?.cumulativeDeaths
+                    });
+                    
+                    if (!baseline || !data.scenario.results) return 'N/A';
+                    
+                    const deathsAverted = baseline.cumulativeDeaths - data.scenario.results.cumulativeDeaths;
+                    return deathsAverted >= 0 
+                      ? formatNumber(deathsAverted)
+                      : formatNumber(Math.abs(deathsAverted)) + ' additional';
                   })()}
                 </td>
               </tr>
+              ${yAxisMetric === 'dalys' ? `
+              <tr>
+                <td style="padding: 4px 8px 4px 0; color: #6B7280;">Total DALYs Averted:</td>
+                <td style="padding: 4px 0; text-align: right; font-weight: 500;">
+                  ${(() => {
+                    const baseline = getCountrySpecificBaseline(
+                      baselineMap, 
+                      data.scenario.parameters.disease || 'Unknown', 
+                      data.scenario.countryCode, 
+                      data.scenario.isUrban
+                    ) || data.scenario.baselineResults;
+                    if (!baseline || !data.scenario.results) return 'N/A';
+                    
+                    const dalysAverted = baseline.dalys - data.scenario.results.dalys;
+                    return dalysAverted >= 0 
+                      ? formatNumber(dalysAverted)
+                      : formatNumber(Math.abs(dalysAverted)) + ' additional';
+                  })()}
+                </td>
+              </tr>` : ''}
               <tr>
                 <td style="padding: 4px 8px 4px 0; color: #6B7280;">Disease:</td>
                 <td style="padding: 4px 0; text-align: right; font-weight: 500;">
@@ -738,31 +813,65 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       });
     });
     
-    // Add legend
+    // Add bubble size legend at bottom right of chart
     const legend = svg.append("g")
-      .attr("transform", `translate(${innerWidth + 20}, 20)`);
+      .attr("transform", `translate(${innerWidth - 150}, ${innerHeight - 145})`);
+    
+    // Add semi-transparent background for legend
+    legend.append("rect")
+      .attr("x", -10)
+      .attr("y", -10)
+      .attr("width", 160)
+      .attr("height", 155)
+      .attr("fill", "white")
+      .attr("fill-opacity", 0.9)
+      .attr("stroke", "#ddd")
+      .attr("stroke-width", 1)
+      .attr("rx", 5);
     
     legend.append("text")
-      .attr("x", 0)
-      .attr("y", 0)
-      .attr("font-size", "14px")
+      .attr("x", 5)
+      .attr("y", 10)
+      .attr("font-size", "13px")
       .attr("font-weight", "bold")
-      .attr("fill", "currentColor")
+      .attr("fill", "#333")
       .text("Bubble Size:");
     
     legend.append("text")
-      .attr("x", 0)
-      .attr("y", 20)
-      .attr("font-size", "12px")
-      .attr("fill", "currentColor")
-      .text(yAxisMetric === 'dalys' ? "Total DALYs" : "Total Deaths");
+      .attr("x", 5)
+      .attr("y", 28)
+      .attr("font-size", "11px")
+      .attr("fill", "#666")
+      .text("Deaths Averted");
     
-    legend.append("text")
-      .attr("x", 0)
-      .attr("y", 35)
-      .attr("font-size", "12px")
-      .attr("fill", "currentColor")
-      .text("Averted");
+    // Add example bubbles to show scale
+    const legendBubbles = [
+      { size: 10, label: "10" },
+      { size: 100, label: "100" },
+      { size: 1000, label: "1,000" },
+      { size: Math.min(10000, maxDeathsAverted), label: formatNumber(Math.min(10000, maxDeathsAverted)) }
+    ];
+    
+    legendBubbles.forEach((bubble, i) => {
+      const yOffset = 50 + (i * 25);
+      const radius = sizeScale(bubble.size);
+      
+      legend.append("circle")
+        .attr("cx", 25)
+        .attr("cy", yOffset)
+        .attr("r", radius)
+        .attr("fill", "#999")
+        .attr("fill-opacity", 0.3)
+        .attr("stroke", "#666")
+        .attr("stroke-width", 1);
+      
+      legend.append("text")
+        .attr("x", 50)
+        .attr("y", yOffset + 4)
+        .attr("font-size", "11px")
+        .attr("fill", "#666")
+        .text(bubble.label);
+    });
     
     // Cleanup
     return () => {

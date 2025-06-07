@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAtom } from 'jotai';
 import {
   aiInterventionsAtom,
@@ -9,12 +9,10 @@ import {
   aiTimeToScaleParametersAtom,
   selectedDiseaseAtom,
   selectedDiseasesAtom,
-  AICostParameters,
-  AITimeToScaleParameters
+  aiUptakeParametersAtom
 } from '../lib/store';
-import { AIInterventions, diseaseSpecificAIEffects, defaultAIBaseEffects, diseaseAIRationales } from '../models/stockAndFlowModel';
+import { AIInterventions, AIUptakeParameters } from '../models/stockAndFlowModel';
 import InfoTooltip from './InfoTooltip';
-import { getParameterRationale } from '../data/parameter_rationales';
 
 // Define types for AI intervention configurations
 interface AIInterventionConfig {
@@ -23,278 +21,151 @@ interface AIInterventionConfig {
   description: string;
   interventions: AIInterventions;
   effectMagnitudes: {[key: string]: number};
-  timeToScaleParams?: AITimeToScaleParameters;
 }
 
 interface InterventionEffect {
   param: string;
   effect: string;
   description: string;
+  category?: 'resolution' | 'mortality' | 'referral' | 'care-seeking' | 'queue';
 }
 
 interface InterventionInfo {
   key: keyof AIInterventions;
   name: string;
   description: string;
+  careLevel: string;
   effects: InterventionEffect[];
+  keyBenefits: string[];
+  useCase: string;
 }
 
-// Streamlined AI scenario presets organized by implementation stages and disease focus
-const AIScenarioPresets: AIInterventionConfig[] = [
-  // === BREAKTHROUGH STAGE SCENARIOS ===
-  {
-    id: 'breakthrough-full-integration',
-    name: 'Full AI Integration (Best Case)',
-    description: 'Breakthrough scenario with strong AI adoption across all care levels. Assumes excellent infrastructure, training, and user acceptance.',
-    interventions: {
-      triageAI: true,
-      chwAI: true,
-      diagnosticAI: true,
-      bedManagementAI: true,
-      hospitalDecisionAI: true,
-      selfCareAI: true
-    },
-    effectMagnitudes: {
-      'triageAI_φ₀': 2.0,        // +10% formal care seeking (2.0 × 5%)
-      'triageAI_σI': 1.8,        // +27% informal→formal transition
-      'chwAI_μ₀': 2.0,           // +10% resolution at CHW
-      'chwAI_δ₀': 2.0,           // -16% mortality at CHW
-      'chwAI_ρ₀': 1.5,           // -12% unnecessary referrals
-      'diagnosticAI_μ₁': 2.2,     // +13% resolution at primary care
-      'diagnosticAI_δ₁': 2.0,     // -16% mortality
-      'diagnosticAI_ρ₁': 1.5,     // -12% referrals
-      'bedManagementAI_μ₂': 1.5,  // +4.5% resolution at hospitals
-      'bedManagementAI_μ₃': 1.5,
-      'hospitalDecisionAI_δ₂': 2.0, // -20% mortality at hospitals
-      'hospitalDecisionAI_δ₃': 2.0,
-      'selfCareAI_μI': 2.0,       // +16% resolution in informal care
-      'selfCareAI_δI': 1.8        // -27% mortality reduction
-    }
-  },
-  {
-    id: 'early-stage-deployment',
-    name: 'Early Stage Deployment',
-    description: 'Conservative rollout focusing on proven AI tools at community and primary care levels. Limited hospital AI due to infrastructure constraints.',
-    interventions: {
-      triageAI: false,           // Not yet ready for widespread deployment
-      chwAI: true,               // Proven in pilots
-      diagnosticAI: true,        // TB/malaria AI showing success
-      bedManagementAI: false,    // Requires hospital IT systems
-      hospitalDecisionAI: false, // Complex implementation
-      selfCareAI: true           // Mobile penetration enables this
-    },
-    effectMagnitudes: {
-      'chwAI_μ₀': 1.2,           // +6% resolution (conservative based on pilots)
-      'chwAI_δ₀': 1.2,           // -9.6% mortality
-      'chwAI_ρ₀': 1.2,           // -9.6% unnecessary referrals
-      'diagnosticAI_μ₁': 1.5,     // +9% resolution (TB/malaria focus)
-      'diagnosticAI_δ₁': 1.3,     // -10.4% mortality
-      'diagnosticAI_ρ₁': 1.2,     // -9.6% referrals
-      'selfCareAI_μI': 1.0,       // Standard effects
-      'selfCareAI_δI': 1.0
-    }
-  },
-  {
-    id: 'implementation-challenges',
-    name: 'Implementation Challenges (Worst Case)',
-    description: 'AI faces significant barriers: poor connectivity, user resistance, limited training, and integration difficulties. Minimal effectiveness achieved.',
-    interventions: {
-      triageAI: true,            // Attempted but limited success
-      chwAI: true,               // Basic deployment only
-      diagnosticAI: true,        // Equipment and training issues
-      bedManagementAI: false,    // Too complex for current infrastructure
-      hospitalDecisionAI: false, // Requires EHR integration not available
-      selfCareAI: true           // Low smartphone penetration limits impact
-    },
-    effectMagnitudes: {
-      'triageAI_φ₀': 0.3,        // Only +1.5% formal care seeking (0.3 × 5%)
-      'triageAI_σI': 0.3,        // Minimal impact due to trust issues
-      'chwAI_μ₀': 0.4,           // +2% resolution (connectivity problems)
-      'chwAI_δ₀': 0.4,           // -3.2% mortality
-      'chwAI_ρ₀': 0.5,           // -4% referrals
-      'diagnosticAI_μ₁': 0.5,     // +3% resolution (equipment issues)
-      'diagnosticAI_δ₁': 0.5,     // -4% mortality
-      'diagnosticAI_ρ₁': 0.5,     // -4% referrals
-      'selfCareAI_μI': 0.3,       // +2.4% resolution (low penetration)
-      'selfCareAI_δI': 0.5        // -7.5% mortality
-    }
-  },
-
-  // === DISEASE-SPECIFIC SCENARIOS ===
-  {
-    id: 'infectious-diseases-tb-malaria',
-    name: 'Infectious Diseases (TB/Malaria)',
-    description: 'AI excels at TB chest X-ray reading and malaria microscopy. Optimized for high-burden infectious disease settings with strong diagnostic focus.',
-    interventions: {
-      triageAI: false,
-      chwAI: true,              // CHWs screen for TB/malaria
-      diagnosticAI: true,        // Core intervention for infectious diseases
-      bedManagementAI: false,
-      hospitalDecisionAI: true,  // Drug resistance detection
-      selfCareAI: false
-    },
-    effectMagnitudes: {
-      'chwAI_μ₀': 1.5,           // +7.5% resolution (better screening)
-      'chwAI_δ₀': 1.8,           // -14.4% mortality (early detection)
-      'chwAI_ρ₀': 2.0,           // -16% referrals (better triage of suspects)
-      'diagnosticAI_μ₁': 3.0,     // +18% resolution (huge impact for early TB detection)
-      'diagnosticAI_δ₁': 2.5,     // -20% mortality (early treatment saves lives)
-      'diagnosticAI_ρ₁': 2.0,     // -16% referrals (accurate diagnosis at primary)
-      'hospitalDecisionAI_δ₂': 1.8, // -16% mortality (MDR-TB detection)
-      'hospitalDecisionAI_δ₃': 1.8
-    }
-  },
-  {
-    id: 'child-health-pneumonia-diarrhea',
-    name: 'Child Health (Pneumonia/Diarrhea)',
-    description: 'AI supports integrated management of childhood illness (IMCI). CHWs get AI assistance for danger signs, respiratory rate counting, and dehydration assessment.',
-    interventions: {
-      triageAI: false,
-      chwAI: true,               // Core intervention for IMCI
-      diagnosticAI: false,
-      bedManagementAI: false,
-      hospitalDecisionAI: false,
-      selfCareAI: true           // Parents receive guidance on care and danger signs
-    },
-    effectMagnitudes: {
-      'chwAI_μ₀': 2.5,           // +12.5% resolution (better assessment of pneumonia/diarrhea)
-      'chwAI_δ₀': 2.5,           // -20% mortality (critical for preventing child deaths)
-      'chwAI_ρ₀': 2.0,           // -16% unnecessary referrals (better danger sign recognition)
-      'selfCareAI_μI': 2.0,       // +16% resolution (ORS compliance, early care seeking)
-      'selfCareAI_δI': 2.0        // -30% mortality (parents recognize danger signs)
-    }
-  },
-  {
-    id: 'maternal-health-comprehensive',
-    name: 'Maternal Health Comprehensive',
-    description: 'Full AI suite for maternal health: antenatal care, ultrasound interpretation, labor ward management, and complication prediction.',
-    interventions: {
-      triageAI: true,            // Birth preparedness and facility delivery promotion
-      chwAI: true,               // Antenatal care and danger sign recognition
-      diagnosticAI: true,        // Ultrasound AI and pregnancy complication detection
-      bedManagementAI: true,     // Labor ward and maternity bed management
-      hospitalDecisionAI: true,  // Obstetric emergency protocols
-      selfCareAI: true           // Pregnancy monitoring and education apps
-    },
-    effectMagnitudes: {
-      'triageAI_φ₀': 2.5,        // +12.5% facility delivery (2.5 × 5%, critical for maternal outcomes)
-      'triageAI_σI': 2.0,        // +30% transition to facility care
-      'chwAI_μ₀': 1.5,           // +7.5% resolution of complications
-      'chwAI_δ₀': 3.0,           // -24% mortality (danger sign recognition saves lives)
-      'chwAI_ρ₀': 2.5,           // -20% unnecessary referrals
-      'diagnosticAI_μ₁': 2.0,     // +12% resolution (ectopic, pre-eclampsia detection)
-      'diagnosticAI_δ₁': 2.5,     // -20% mortality
-      'diagnosticAI_ρ₁': 1.5,     // -12% referrals
-      'bedManagementAI_μ₂': 2.0,  // +6% resolution (optimal cesarean timing)
-      'bedManagementAI_μ₃': 2.0,
-      'hospitalDecisionAI_δ₂': 3.0, // -30% mortality (hemorrhage protocols)
-      'hospitalDecisionAI_δ₃': 3.0,
-      'selfCareAI_μI': 1.5,       // +12% better pregnancy self-care
-      'selfCareAI_δI': 2.0        // -30% mortality (early warning recognition)
-    }
-  },
-  {
-    id: 'chronic-diseases-hiv-diabetes',
-    name: 'Chronic Diseases (HIV/Diabetes)',
-    description: 'AI optimizes long-term chronic disease management through medication adherence support, complication prediction, and treatment optimization.',
-    interventions: {
-      triageAI: false,
-      chwAI: true,               // Adherence support and complication monitoring
-      diagnosticAI: true,        // Viral load prediction, diabetic complication detection
-      bedManagementAI: false,
-      hospitalDecisionAI: true,  // Treatment adjustment and complication management
-      selfCareAI: true           // Medication adherence and lifestyle management apps
-    },
-    effectMagnitudes: {
-      'chwAI_μ₀': 3.0,           // +15% treatment success (adherence is critical)
-      'chwAI_δ₀': 1.5,           // -12% mortality
-      'chwAI_ρ₀': 0.8,           // +4% referrals (appropriate escalation for complications)
-      'diagnosticAI_μ₁': 2.0,     // +12% resolution (early complication detection)
-      'diagnosticAI_δ₁': 2.0,     // -16% mortality
-      'diagnosticAI_ρ₁': 1.5,     // -12% referrals
-      'hospitalDecisionAI_δ₂': 2.5, // -25% mortality (optimized treatment protocols)
-      'hospitalDecisionAI_δ₃': 2.5,
-      'selfCareAI_μI': 3.0,       // +24% resolution (medication adherence critical)
-      'selfCareAI_δI': 2.0        // -30% mortality (lifestyle management)
-    }
-  }
-];
-
-// Define intervention info before the component
+// Enhanced intervention info with better organization
 const interventionInfo: InterventionInfo[] = [
+  { 
+    key: 'selfCareAI', 
+    name: 'AI Self-Care Platform', 
+    description: 'Comprehensive self-management ecosystem combining AI health coaching, symptom assessment, wearable monitoring, and point-of-care diagnostics',
+    careLevel: 'Home & Community',
+    effects: [
+      { param: 'φ₀', effect: '+0.05', description: 'Increases formal care seeking through health guidance', category: 'care-seeking' },
+      { param: 'σI', effect: '×1.13', description: 'Accelerates transition from informal to formal care', category: 'care-seeking' },
+      { param: 'μI', effect: '+0.08', description: 'Improves resolution through better self-management', category: 'resolution' },
+      { param: 'δI', effect: '×0.85', description: 'Reduces mortality by detecting warning signs early', category: 'mortality' },
+      { param: 'visitReduction', effect: '0.20', description: 'Prevents 20% of unnecessary healthcare visits', category: 'queue' },
+      { param: 'directRoutingImprovement', effect: '0.15', description: 'Routes 15% directly to appropriate care level', category: 'queue' }
+    ],
+    keyBenefits: [
+      '24/7 personalized health guidance in local languages',
+      'Early warning system for serious conditions',
+      'Medication adherence support with OTC guidance',
+      'Home diagnostics and wearable integration',
+      'Reduces burden on healthcare facilities'
+    ],
+    useCase: 'Comprehensive platform for home health management, chronic disease support, and preventive care'
+  },
   { 
     key: 'triageAI', 
     name: 'AI Health Advisor', 
-    description: 'LLM-powered conversational AI that provides personalized health guidance, symptom assessment, and care navigation through natural language interaction',
+    description: 'Subset of Self-Care AI Platform focused only on conversational health advising and symptom assessment without diagnostics or treatment',
+    careLevel: 'Entry Point',
     effects: [
-      { param: 'φ₀', effect: '+0.05', description: 'Increases initial formal care seeking. LLMs provide 24/7 multilingual support, understand complex symptoms in context, and build trust through empathetic conversation. This removes barriers of health literacy, language, and access that currently prevent care-seeking.' }
-    ]
+      { param: 'φ₀', effect: '+0.05', description: 'Increases initial formal care seeking by 5%', category: 'care-seeking' },
+      { param: 'queuePreventionRate', effect: '0.40', description: 'Prevents 40% of inappropriate visits', category: 'queue' },
+      { param: 'smartRoutingRate', effect: '0.35', description: 'Routes 35% directly to correct care level', category: 'queue' }
+    ],
+    keyBenefits: [
+      'Advice-only function without diagnostics or treatment',
+      'Reduces unnecessary emergency visits through education',
+      'Multilingual conversational support',
+      'Available 24/7 via basic smartphones',
+      'Lower cost subset of full Self-Care Platform'
+    ],
+    useCase: 'Entry-level AI for health education and care navigation when full Self-Care Platform is not feasible'
   },
   { 
     key: 'chwAI', 
     name: 'CHW Decision Support', 
-    description: 'Advanced AI assistant that provides CHWs with real-time clinical guidance, automated documentation, and predictive risk assessment through mobile devices',
+    description: 'Mobile AI assistant providing CHWs with clinical protocols, drug dosing, and risk assessment',
+    careLevel: 'Community (L0)',
     effects: [
-      { param: 'μ₀', effect: '+0.15', description: 'Improves resolution at community level. Systematic baseline: 15 percentage point increase in weekly resolution rate. AI enables CHWs to handle more complex cases safely through clinical protocols, drug dosing guidance, and confidence scoring.' },
-      { param: 'δ₀', effect: '×0.92', description: 'Reduces mortality at community level. AI helps identify high-risk patients through predictive models, ensures protocol compliance for critical conditions, and triggers automatic escalation for danger signs that might be missed by human assessment alone.' },
-      { param: 'ρ₀', effect: '×0.80', description: 'Optimizes referrals from CHW to primary care. Systematic baseline: ±20% referral optimization. AI can reduce unnecessary referrals by improving diagnostic confidence, or increase appropriate referrals by identifying severity requiring escalation. Direction varies by disease complexity.' },
-      { param: 'resolutionBoost', effect: '0.10', description: 'Queue reduction: Additional resolution at CHW level reduces need for referrals. AI enables CHWs to successfully treat more complex cases locally, preventing queue formation at higher levels of care.' },
-      { param: 'referralOptimization', effect: '0.08', description: 'Queue reduction: Further reduces inappropriate referrals through improved clinical decision-making. AI helps CHWs distinguish cases that truly need escalation from those that can be managed locally.' }
-    ]
+      { param: 'μ₀', effect: '+0.15', description: 'Improves CHW resolution rate by 15 percentage points', category: 'resolution' },
+      { param: 'δ₀', effect: '×0.92', description: 'Reduces mortality by 8% through better care', category: 'mortality' },
+      { param: 'ρ₀', effect: '×0.80', description: 'Optimizes referrals (±20% based on need)', category: 'referral' },
+      { param: 'resolutionBoost', effect: '0.10', description: 'Additional 10% cases resolved locally', category: 'queue' },
+      { param: 'referralOptimization', effect: '0.08', description: 'Further 8% reduction in unnecessary referrals', category: 'queue' }
+    ],
+    keyBenefits: [
+      'Enables CHWs to safely handle complex cases',
+      'Automated danger sign detection',
+      'Real-time drug dosing calculations',
+      'Offline functionality for remote areas'
+    ],
+    useCase: 'Essential for expanding CHW capabilities in rural/underserved areas'
   },
   { 
     key: 'diagnosticAI', 
-    name: 'Diagnostic AI (L1/L2)', 
-    description: 'Suite of AI diagnostic tools including computer vision for medical imaging, LLM-based differential diagnosis, and ML-powered lab result interpretation deployed at primary care and district hospital levels',
+    name: 'Diagnostic AI Suite', 
+    description: 'AI-powered diagnostic tools including medical imaging, lab interpretation, and differential diagnosis',
+    careLevel: 'Primary & District (L1/L2)',
     effects: [
-      { param: 'μ₁', effect: '+0.20', description: 'Improves resolution at primary care level. Systematic baseline: 20 percentage point increase in weekly resolution rate. AI enables earlier and more accurate diagnosis through pattern recognition across symptoms, medical imaging, and lab results.' },
-      { param: 'δ₁', effect: '×0.92', description: 'Reduces mortality at primary care level. Early detection of serious conditions (TB, cancer, sepsis) through AI screening, plus reduced diagnostic errors from AI double-checking, prevents deaths from delayed or missed diagnoses.' },
-      { param: 'ρ₁', effect: '×0.80', description: 'Optimizes referrals from primary to secondary care. Systematic baseline: ±20% referral optimization. AI can reduce unnecessary referrals through diagnostic confidence, or increase appropriate referrals by identifying high-risk conditions requiring specialist care. Direction varies by disease complexity.' },
-      { param: 'μ₂', effect: '+0.15', description: 'Improves resolution at district hospital level. AI-powered diagnostic imaging, lab result interpretation, and clinical decision support enable district hospitals to handle more complex cases locally without tertiary referral.' },
-      { param: 'δ₂', effect: '×0.94', description: 'Reduces mortality at district hospital level. Advanced diagnostic AI helps detect complications earlier, guides treatment selection, and provides specialist-level insights for complex cases.' },
-      { param: 'ρ₂', effect: '×0.85', description: 'Optimizes referrals from district to tertiary care. AI diagnostic confidence scoring helps determine which cases truly require tertiary-level specialist intervention versus local management.' },
-      { param: 'pointOfCareResolution', effect: '0.12', description: 'Queue reduction: Additional resolution at primary care through faster, more accurate diagnosis. AI enables point-of-care decision making that resolves cases without requiring hospital referral.' },
-      { param: 'referralPrecision', effect: '0.10', description: 'Queue reduction: Further reduces unnecessary referrals through precise diagnostic confidence scoring. AI provides certainty levels that help clinicians make better referral decisions.' }
-    ] 
+      { param: 'μ₁', effect: '+0.20', description: 'Improves primary care resolution by 20 percentage points', category: 'resolution' },
+      { param: 'δ₁', effect: '×0.92', description: 'Reduces primary care mortality by 8%', category: 'mortality' },
+      { param: 'ρ₁', effect: '×0.80', description: 'Optimizes primary→district referrals (±20%)', category: 'referral' },
+      { param: 'μ₂', effect: '+0.15', description: 'Improves district hospital resolution by 15 percentage points', category: 'resolution' },
+      { param: 'δ₂', effect: '×0.94', description: 'Reduces district hospital mortality by 6%', category: 'mortality' },
+      { param: 'ρ₂', effect: '×0.85', description: 'Optimizes district→tertiary referrals (±15%)', category: 'referral' },
+      { param: 'pointOfCareResolution', effect: '0.12', description: 'Resolves 12% more cases at point of care', category: 'queue' },
+      { param: 'referralPrecision', effect: '0.10', description: 'Reduces referral queues by 10%', category: 'queue' }
+    ],
+    keyBenefits: [
+      '90%+ accuracy for TB/pneumonia X-ray reading',
+      'Rapid malaria microscopy interpretation',
+      'Early cancer detection capabilities',
+      'Reduces diagnostic errors significantly'
+    ],
+    useCase: 'Critical for facilities lacking specialist radiologists or lab technicians'
   },
   { 
     key: 'bedManagementAI', 
-    name: 'Bed Management AI', 
-    description: 'Intelligent hospital operations system using predictive analytics for patient flow, automated discharge planning, and dynamic resource allocation',
+    name: 'Smart Hospital Operations', 
+    description: 'AI system for patient flow optimization, bed allocation, and discharge planning',
+    careLevel: 'Hospitals (L2/L3)',
     effects: [
-      { param: 'μ₂', effect: '+0.03', description: 'Improves discharge efficiency from district hospitals. AI predicts discharge readiness, automates discharge documentation, coordinates post-discharge care, and identifies patients suitable for early discharge with home monitoring.' },
-      { param: 'μ₃', effect: '+0.03', description: 'Improves discharge efficiency from tertiary hospitals. ML models optimize bed turnover by predicting length of stay, preventing unnecessary delays, coordinating complex discharges, and managing step-down care transitions more effectively.' },
-      { param: 'lengthOfStayReduction', effect: '0.15', description: 'Queue reduction: Reduces patient days in hospital through optimized care pathways. AI identifies opportunities for faster treatment and recovery, freeing up capacity for queued patients.' },
-      { param: 'dischargeOptimization', effect: '0.12', description: 'Queue reduction: Accelerates patient discharge through predictive analytics and automated planning. AI ensures patients are discharged as soon as clinically appropriate, maximizing bed availability.' }
-    ]
+      { param: 'μ₂', effect: '+0.03', description: 'Improves district hospital discharge efficiency by 3%', category: 'resolution' },
+      { param: 'μ₃', effect: '+0.03', description: 'Improves tertiary hospital discharge efficiency by 3%', category: 'resolution' },
+      { param: 'lengthOfStayReduction', effect: '0.15', description: 'Reduces length of stay by 15%', category: 'queue' },
+      { param: 'dischargeOptimization', effect: '0.12', description: 'Accelerates discharge planning by 12%', category: 'queue' }
+    ],
+    keyBenefits: [
+      'Predicts discharge readiness accurately',
+      'Optimizes bed utilization',
+      'Reduces waiting times for admission',
+      'Coordinates complex discharge planning'
+    ],
+    useCase: 'Essential for congested hospitals with bed shortages'
   },
   { 
     key: 'hospitalDecisionAI', 
-    name: 'Hospital Decision Support', 
-    description: 'Comprehensive clinical AI system providing real-time treatment recommendations, early warning scores, and evidence-based protocol guidance at the point of care',
+    name: 'Clinical Decision Support', 
+    description: 'Real-time AI system providing treatment recommendations and early warning alerts',
+    careLevel: 'Hospitals (L2/L3)',
     effects: [
-      { param: 'δ₂', effect: '×0.90', description: 'Reduces mortality at district hospitals. AI provides 24/7 specialist-equivalent decision support, catches deteriorating patients hours earlier through continuous monitoring, and ensures evidence-based treatment even when specialists are unavailable.' },
-      { param: 'δ₃', effect: '×0.90', description: 'Reduces mortality at tertiary hospitals. AI prevents medical errors through drug interaction checking and protocol verification, optimizes complex treatment plans using latest evidence, and provides predictive alerts for complications before clinical signs appear.' },
-      { param: 'treatmentEfficiency', effect: '0.08', description: 'Queue reduction: Improves treatment effectiveness leading to faster patient recovery. AI-guided protocols optimize treatment pathways, reducing time to resolution and freeing up hospital capacity.' },
-      { param: 'resourceUtilization', effect: '0.10', description: 'Queue reduction: Better utilization of hospital resources through intelligent scheduling and resource allocation. AI optimizes bed assignments, procedure scheduling, and staff allocation to reduce bottlenecks.' }
-    ]
-  },
-  { 
-    key: 'selfCareAI', 
-    name: 'AI Self-Care Platform', 
-    description: 'Comprehensive self-management ecosystem combining AI health coaching, point-of-care diagnostics, over-the-counter medications, wearable devices, and predictive analytics for empowered patient care',
-    effects: [
-      { param: 'φ₀', effect: '+0.05', description: 'Increases initial formal care seeking (health advisor functionality). Comprehensive platform provides 24/7 health guidance, symptom assessment, and care navigation, encouraging appropriate healthcare utilization when needed.' },
-      { param: 'σI', effect: '×1.13', description: 'Accelerates transition from informal to formal care (health advisor functionality). Platform detects concerning symptoms through wearables and user inputs, providing timely guidance to seek professional care when self-management is insufficient.' },
-      { param: 'μI', effect: '+0.08', description: 'Improves resolution in informal care settings. AI provides personalized treatment adherence support, symptom tracking with actionable insights, and adaptive health education that improves self-management of minor illnesses and chronic conditions.' },
-      { param: 'δI', effect: '×0.85', description: 'Reduces mortality in informal care settings. AI apps detect warning signs early through passive monitoring, ensure medication compliance for chronic diseases, provide emergency guidance, and nudge users to seek care when algorithms detect serious conditions.' },
-      { param: 'queuePreventionRate', effect: '0.25', description: 'Queue reduction: Enhanced prevention of inappropriate visits through comprehensive self-management. Platform enables users to resolve more conditions at home through diagnostics, OTC guidance, and wearable monitoring.' },
-      { param: 'smartRoutingRate', effect: '0.25', description: 'Queue reduction: Advanced routing to appropriate care levels. Platform uses comprehensive health data (symptoms + diagnostics + wearables) to determine optimal care level and route patients efficiently.' },
-      { param: 'visitReduction', effect: '0.20', description: 'Queue reduction: Prevents unnecessary healthcare visits through better self-management. AI apps help users determine when conditions can be managed at home vs. requiring professional care, reducing system demand.' },
-      { param: 'directRoutingImprovement', effect: '0.15', description: 'Queue reduction: Enables smart routing during high congestion. When system congestion >50%, AI apps guide patients to appropriate care levels (60% to primary care, 40% to hospitals), bypassing overwhelmed CHW level.' }
-    ]
+      { param: 'δ₂', effect: '×0.90', description: 'Reduces district hospital mortality by 10%', category: 'mortality' },
+      { param: 'δ₃', effect: '×0.90', description: 'Reduces tertiary hospital mortality by 10%', category: 'mortality' },
+      { param: 'treatmentEfficiency', effect: '0.08', description: 'Improves treatment effectiveness by 8%', category: 'queue' },
+      { param: 'resourceUtilization', effect: '0.10', description: 'Optimizes resource use by 10%', category: 'queue' }
+    ],
+    keyBenefits: [
+      '24/7 specialist-equivalent decision support',
+      'Early deterioration detection (hours before clinical signs)',
+      'Evidence-based treatment protocols',
+      'Reduces medical errors'
+    ],
+    useCase: 'Vital for hospitals with limited specialists or high patient volumes'
   }
 ];
+
 
 const AIInterventionManager: React.FC = () => {
   const [aiInterventions, setAIInterventions] = useAtom(aiInterventionsAtom);
@@ -303,977 +174,801 @@ const AIInterventionManager: React.FC = () => {
   const [selectedPreset, setSelectedPreset] = useAtom(selectedAIScenarioAtom);
   const [aiCostParams, setAiCostParams] = useAtom(aiCostParametersAtom);
   const [timeToScaleParams, setTimeToScaleParams] = useAtom(aiTimeToScaleParametersAtom);
-  const [selectedDisease] = useAtom(selectedDiseaseAtom);
-  const [selectedDiseases] = useAtom(selectedDiseasesAtom);
-  const [showCostSettings, setShowCostSettings] = useState(false);
-  const [showTimeToScaleSettings, setShowTimeToScaleSettings] = useState(false);
-  const [showEffectMagnitudes, setShowEffectMagnitudes] = useState(false);
-  const [expandedInterventions, setExpandedInterventions] = useState<Set<string>>(new Set());
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [aiUptakeParams, setAiUptakeParams] = useAtom(aiUptakeParametersAtom);
   
-  // State for disease selection in multi-disease mode
-  const [viewingDisease, setViewingDisease] = useState<string>(selectedDisease);
+  // UI state
+  const [activeTab, setActiveTab] = useState<'overview' | 'details' | 'uptake' | 'costs'>('overview');
   
-  // State for saved configurations
-  const [savedConfigs, setSavedConfigs] = useState<AIInterventionConfig[]>([]);
-  
-  // State for expandable sections
-  const [showParameterEffects, setShowParameterEffects] = useState(false);
-  const [showInterventionStrength, setShowInterventionStrength] = useState(false);
-  
-  // State for locally tracking selected scenario (UI state)
-  const [localSelectedScenario, setLocalSelectedScenario] = useState<string | null>(null);
-  
-  // Initialize local selected scenario from global atom
-  useEffect(() => {
-    setLocalSelectedScenario(selectedPreset);
-  }, [selectedPreset]);
-  
-  // Keep viewing disease in sync with selected disease
-  useEffect(() => {
-    setViewingDisease(selectedDisease);
-  }, [selectedDisease]);
-  
-  // Helper function to explain why a disease has different AI effects
-  const getDiseaseDifferenceExplanation = (interventionKey: string, param: string, disease: string | null, defaultValue: string, customValue: string): string => {
-    if (!disease) return '';
-    
-    const explanations: {[key: string]: {[param: string]: string}} = {
-      childhood_pneumonia: {
-        'diagnosticAI_μ₁': 'AI chest X-ray reading for pneumonia has 90%+ accuracy, enabling more cases to be resolved at primary care',
-        'diagnosticAI_δ₁': 'Early pneumonia detection via AI prevents progression to severe disease',
-        'chwAI_μ₀': 'AI helps CHWs count respiratory rates accurately, critical for pneumonia diagnosis',
-        'selfCareAI_μI': 'Pneumonia requires antibiotics - self-care apps have minimal impact on resolution'
-      },
-      malaria: {
-        'diagnosticAI_μ₁': 'AI microscopy and RDT interpretation dramatically improves malaria diagnosis accuracy',
-        'chwAI_μ₀': 'AI-guided RDT use and ACT dosing enables CHWs to treat uncomplicated malaria effectively',
-        'selfCareAI_μI': 'Apps help with prevention and early symptom recognition but limited treatment impact'
-      },
-      diarrhea: {
-        'selfCareAI_μI': 'AI apps excel at ORS preparation guidance - the primary treatment for dehydration',
-        'selfCareAI_δI': 'Proper ORS use prevents most diarrhea deaths from dehydration',
-        'chwAI_μ₀': 'AI helps assess dehydration severity using visual cues',
-        'triageAI_φ₀': 'Apps identify danger signs like bloody diarrhea requiring immediate care'
-      },
-      tuberculosis: {
-        'diagnosticAI_μ₁': 'CAD4TB X-ray AI has 90%+ sensitivity, catching cases human readers miss',
-        'diagnosticAI_δ₁': 'Early TB detection prevents transmission and improves treatment outcomes',
-        'selfCareAI_μI': 'Daily adherence reminders critical for 6-month TB treatment success',
-        'hospitalDecisionAI_δ₂': 'AI helps detect MDR-TB patterns requiring different treatment'
-      },
-      congestive_heart_failure: {
-        'selfCareAI_μI': 'CHF cannot be resolved at home - requires medical management (0% effect)',
-        'selfCareAI_δI': 'No mortality benefit as CHF exacerbations need hospital care',
-        'triageAI_φ₀': 'AI helps patients recognize early decompensation signs',
-        'bedManagementAI_μ₂': 'AI optimizes diuretic dosing and fluid balance in hospitals'
-      },
-      high_risk_pregnancy_low_anc: {
-        'triageAI_φ₀': 'Birth preparedness messaging dramatically increases facility delivery rates',
-        'diagnosticAI_μ₁': 'Ultrasound AI detects complications like pre-eclampsia early',
-        'hospitalDecisionAI_δ₂': 'AI hemorrhage protocols address the #1 cause of maternal mortality',
-        'selfCareAI_μI': 'Apps track danger signs but cannot resolve pregnancy complications'
-      }
-    };
-    
-    const key = `${interventionKey}_${param}`;
-    const explanation = explanations[disease]?.[key] || '';
-    
-    if (explanation) {
-      return `${explanation} (Default: ${defaultValue}, Disease-specific: ${customValue})`;
-    }
-    
-    return `Disease-specific effect for ${disease.replace(/_/g, ' ')}. Default: ${defaultValue}, Custom: ${customValue}`;
-  };
-
-  // Helper function to get disease-specific effects
-  const getDiseaseSpecificEffect = (interventionKey: string, effectParam: string): { value: string, isCustom: boolean, description?: string } => {
-    // Map UI parameter names to model effect names
-    const paramToEffectMap: {[key: string]: string} = {
-      'φ₀': 'phi0Effect',
-      'σI': 'sigmaIEffect',
-      'μ₀': 'mu0Effect',
-      'δ₀': 'delta0Effect',
-      'ρ₀': 'rho0Effect',
-      'μ₁': 'mu1Effect',
-      'δ₁': 'delta1Effect',
-      'ρ₁': 'rho1Effect',
-      'μ₂': 'mu2Effect',
-      'μ₃': 'mu3Effect',
-      'δ₂': 'delta2Effect',
-      'δ₃': 'delta3Effect',
-      'μI': 'muIEffect',
-      'δI': 'deltaIEffect',
-      // Queue reduction parameters (don't map to disease-specific effects currently)
-      'queuePreventionRate': null,
-      'smartRoutingRate': null,
-      'resolutionBoost': null,
-      'referralOptimization': null,
-      'pointOfCareResolution': null,
-      'referralPrecision': null,
-      'lengthOfStayReduction': null,
-      'dischargeOptimization': null,
-      'treatmentEfficiency': null,
-      'resourceUtilization': null,
-      'visitReduction': 'visitReductionEffect',
-      'directRoutingImprovement': 'routingImprovementEffect'
-    };
-    
-    const effectName = paramToEffectMap[effectParam];
-    
-    const diseaseEffects = viewingDisease && diseaseSpecificAIEffects[viewingDisease];
-    const interventionEffects = diseaseEffects && diseaseEffects[interventionKey as keyof typeof defaultAIBaseEffects];
-    
-    if (interventionEffects && effectName && interventionEffects[effectName as keyof typeof interventionEffects]) {
-      const effectValue = interventionEffects[effectName as keyof typeof interventionEffects];
-      
-      // Format the effect value
-      let formattedValue = '';
-      if (typeof effectValue === 'number') {
-        // Check if it's a multiplier (for delta and rho effects)
-        if (effectParam.startsWith('δ') || effectParam.startsWith('ρ') || effectParam === 'σI') {
-          formattedValue = `×${effectValue.toFixed(2)}`;
-        } else {
-          // Additive effects (mu and phi)
-          formattedValue = `+${effectValue.toFixed(2)}`;
-        }
-      } else {
-        formattedValue = effectValue.toString();
-      }
-      
-      // Find the default effect value from interventionInfo
-      const intervention = interventionInfo.find(i => i.key === interventionKey);
-      const defaultEffectInfo = intervention?.effects.find(e => e.param === effectParam);
-      const defaultEffect = defaultEffectInfo?.effect || '';
-      
-      // Compare the formatted value with the default to determine if it's custom
-      const isCustom = formattedValue !== defaultEffect;
-      
-      const customDescription = viewingDisease && isCustom ? 
-        `Disease-specific effect for ${viewingDisease.replace(/_/g, ' ')}. Default: ${defaultEffect}` : undefined;
-      
-      return { value: formattedValue, isCustom, description: customDescription };
-    }
-    
-    // Return default effect
-    const intervention = interventionInfo.find(i => i.key === interventionKey);
-    const effect = intervention?.effects.find(e => e.param === effectParam);
-    return { value: effect?.effect || '', isCustom: false };
-  };
-  
-  // Load saved configurations from localStorage on component mount
-  useEffect(() => {
-    const savedConfigsStr = localStorage.getItem('aiInterventionConfigs');
-    if (savedConfigsStr) {
-      try {
-        const configs = JSON.parse(savedConfigsStr);
-        setSavedConfigs(configs);
-      } catch {
-        console.error('Failed to parse saved AI intervention configs');
-      }
-    }
-  }, []);
-  
-  // Save configurations to localStorage when they change
-  useEffect(() => {
-    if (savedConfigs.length > 0) {
-      localStorage.setItem('aiInterventionConfigs', JSON.stringify(savedConfigs));
-    }
-  }, [savedConfigs]);
+  // Helper functions
+  const hasActiveInterventions = Object.values(aiInterventions).some(v => v);
+  const activeInterventionCount = Object.values(aiInterventions).filter(v => v).length;
   
   const handleInterventionToggle = (intervention: keyof AIInterventions) => {
-    const newInterventions = {
+    setAIInterventions({
       ...aiInterventions,
-      [intervention]: !aiInterventions[intervention as keyof AIInterventions]
-    };
-    setAIInterventions(newInterventions);
-    // When manually toggling, unset the selected scenario
-    setLocalSelectedScenario(null);
+      [intervention]: !aiInterventions[intervention]
+    });
     setSelectedPreset(null);
   };
-  
-  const loadConfig = (config: AIInterventionConfig) => {
-    setAIInterventions({ ...config.interventions });
-    setEffectMagnitudes({ ...config.effectMagnitudes });
-    if (config.timeToScaleParams) {
-      setTimeToScaleParams({ ...config.timeToScaleParams });
-    }
-    setLocalSelectedScenario(config.id);
-  };
-  
-  const deleteConfig = (id: string) => {
-    setSavedConfigs(savedConfigs.filter(config => config.id !== id));
-    // If the deleted config was selected, unset selection
-    if (localSelectedScenario === id) {
-      setLocalSelectedScenario(null);
-    }
-  };
-  
-  const applyConfig = (config: AIInterventionConfig) => {
-    setAIInterventions(config.interventions);
-    setEffectMagnitudes(config.effectMagnitudes);
-    if (config.timeToScaleParams) {
-      setTimeToScaleParams(config.timeToScaleParams);
-    }
-    setLocalSelectedScenario(config.id);
-    // Also update the global atom
-    setSelectedPreset(config.id);
-  };
-  
-  // Handle parameter effect adjustment
-  const handleEffectMagnitudeChange = (interventionKey: string, paramName: string, value: number) => {
-    const effectKey = `${interventionKey}_${paramName}`;
-    setEffectMagnitudes({
-      ...effectMagnitudes,
-      [effectKey]: value
+
+
+  const resetAll = () => {
+    setAIInterventions({
+      triageAI: false,
+      chwAI: false,
+      diagnosticAI: false,
+      bedManagementAI: false,
+      hospitalDecisionAI: false,
+      selfCareAI: false
     });
-    // When manually adjusting, unset the selected scenario if it's a preset
-    if (localSelectedScenario && AIScenarioPresets.some(preset => preset.id === localSelectedScenario)) {
-      setLocalSelectedScenario(null);
-      setSelectedPreset(null);
-    }
-  };
-  
-  // Export current configuration to JSON file
-  const exportConfig = () => {
-    const configName = prompt("Enter a name for this configuration:", "My Custom Configuration");
-    if (!configName) return;
-    
-    const configDescription = prompt("Enter a description (optional):", "");
-    
-    const config: AIInterventionConfig = {
-      id: `config-${Date.now()}`,
-      name: configName,
-      description: configDescription || "",
-      interventions: { ...aiInterventions },
-      effectMagnitudes: { ...effectMagnitudes },
-      timeToScaleParams: { ...timeToScaleParams }
-    };
-    
-    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ai-config-${configName.replace(/\s+/g, '-').toLowerCase()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-  
-  // Import configuration from JSON file
-  const importConfig = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const config = JSON.parse(content) as AIInterventionConfig;
-        
-        // Validate the imported configuration
-        if (typeof config !== 'object' || !config.interventions || !config.effectMagnitudes) {
-          alert('Invalid configuration file format');
-          return;
-        }
-        
-        // Generate a new ID to avoid collisions
-        config.id = `imported-${Date.now()}`;
-        
-        // Apply the imported configuration
-        applyConfig(config);
-        
-        // Ask if the user wants to save it to their saved configurations
-        if (confirm('Do you want to save this imported configuration to your saved configurations?')) {
-          setSavedConfigs([...savedConfigs, config]);
-        }
-      } catch (error) {
-        console.error('Error importing configuration:', error);
-        alert('Failed to import configuration. Please check the file format.');
-      }
-      
-      // Reset the file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    };
-    
-    reader.readAsText(file);
-  };
-  
-  // Get the actual effect value with any adjustments
-  const getEffectValue = (interventionKey: string, param: string, defaultEffect: string): string => {
-    const effectKey = `${interventionKey}_${param}`;
-    const magnitude = effectMagnitudes[effectKey];
-    
-    // Get the disease-specific base effect if available
-    const diseaseEffect = getDiseaseSpecificEffect(interventionKey, param);
-    const baseEffect = diseaseEffect.isCustom ? diseaseEffect.value : defaultEffect;
-    
-    // If no custom magnitude is set, return the base effect
-    if (magnitude === undefined) return baseEffect;
-    
-    // If magnitude is 0, explicitly show no effect
-    if (magnitude === 0) return "None";
-    
-    // Otherwise, adjust the effect based on the magnitude
-    if (baseEffect.startsWith('+')) {
-      // For additive effects (+0.15 etc.)
-      const baseValue = parseFloat(baseEffect.substring(1));
-      return `+${(baseValue * magnitude).toFixed(2)}`;
-    } else if (baseEffect.startsWith('×')) {
-      // For multiplicative effects (×0.85 etc.)
-      const baseValue = parseFloat(baseEffect.substring(1));
-      // For multiplicative effects less than 1, closer to 1 means less effect
-      // For effects like ×0.85, a magnitude of 0 should give ×1.0 (no effect)
-      // and a magnitude of 5 should give ×0.50 (5x effect)
-      if (baseValue < 1) {
-        const effect = 1 - ((1 - baseValue) * magnitude);
-        return `×${effect.toFixed(2)}`;
-      } else {
-        // For effects like ×1.25, a magnitude of 0 should give ×1.0 (no effect)
-        // and a magnitude of 5 should give ×2.50 (5x effect)
-        const effect = 1 + ((baseValue - 1) * magnitude);
-        return `×${effect.toFixed(2)}`;
-      }
-    }
-    
-    return baseEffect;
-  };
-  
-  
-  // Reset all effect magnitudes to default values
-  const resetAllEffectMagnitudes = () => {
     setEffectMagnitudes({});
+    setSelectedPreset(null);
   };
+
+  // Get total costs
+  const totalFixedCost = Object.entries(aiInterventions)
+    .filter(([_, isEnabled]) => isEnabled)
+    .reduce((sum, [key]) => sum + aiCostParams[key as keyof AIInterventions].fixed, 0);
   
-  // Reset effect magnitudes to default (1.0) for a specific intervention
-  const resetEffectMagnitudes = (interventionKey: keyof AIInterventions) => {
-    const updatedMagnitudes = { ...effectMagnitudes };
-    
-    // Find the specific intervention
-    const intervention = interventionInfo.find(info => info.key === interventionKey);
-    
-    // Reset only the magnitudes for this intervention's effects
-    if (intervention) {
-      intervention.effects.forEach(effect => {
-        const key = `${interventionKey}_${effect.param}`;
-        delete updatedMagnitudes[key];
-      });
-      
-      setEffectMagnitudes(updatedMagnitudes);
+  const totalVariableCost = Object.entries(aiInterventions)
+    .filter(([_, isEnabled]) => isEnabled)
+    .reduce((sum, [key]) => sum + aiCostParams[key as keyof AIInterventions].variable, 0);
+
+  // Render different views based on active tab
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return renderOverviewTab();
+      case 'details':
+        return renderDetailsTab();
+      case 'uptake':
+        return renderUptakeTab();
+      case 'costs':
+        return renderCostsTab();
+      default:
+        return null;
     }
   };
-  
-  // Determine if any intervention is currently active
-  const hasActiveInterventions = Object.values(aiInterventions).some(v => v);
-  
-  // Determine if any effect magnitudes are customized
-  const hasCustomMagnitudes = Object.keys(effectMagnitudes).length > 0;
-  
-  // Function to determine if a preset scenario is selected
-  const isPresetScenarioSelected = () => {
-    return !!localSelectedScenario && AIScenarioPresets.some(preset => preset.id === localSelectedScenario);
-  };
 
-  // Function to display the selected scenario name
-  const getSelectedPresetName = () => {
-    if (!localSelectedScenario) return null;
-    const selectedPreset = AIScenarioPresets.find(preset => preset.id === localSelectedScenario);
-    return selectedPreset ? selectedPreset.name : null;
-  };
-  
-  // Add handler for AI cost parameter changes
-  const handleCostChange = (
-    intervention: keyof AIInterventions,
-    costType: 'fixed' | 'variable',
-    value: number
-  ) => {
-    setAiCostParams(prev => ({
-      ...prev,
-      [intervention]: {
-        ...prev[intervention],
-        [costType]: value
-      }
-    }));
-  };
+  const renderOverviewTab = () => (
+    <div className="space-y-6">
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+          <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">{activeInterventionCount}/6</div>
+          <div className="text-sm text-blue-700 dark:text-blue-300">Active Interventions</div>
+        </div>
+        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+          <div className="text-2xl font-bold text-green-900 dark:text-green-100">${totalFixedCost.toLocaleString()}</div>
+          <div className="text-sm text-green-700 dark:text-green-300">Total Fixed Cost</div>
+        </div>
+        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+          <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">${totalVariableCost.toFixed(2)}</div>
+          <div className="text-sm text-purple-700 dark:text-purple-300">Per Patient Cost</div>
+        </div>
+        <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4">
+          <div className="text-2xl font-bold text-amber-900 dark:text-amber-100">
+            {hasActiveInterventions ? '✓' : '—'}
+          </div>
+          <div className="text-sm text-amber-700 dark:text-amber-300">AI Active</div>
+        </div>
+      </div>
 
-  const handleTimeToScaleChange = (
-    intervention: keyof AIInterventions,
-    value: number
-  ) => {
-    setTimeToScaleParams(prev => ({
-      ...prev,
-      [intervention]: Math.max(0, Math.min(1, value)) // Clamp between 0 and 1
-    }));
-  };
-  
-  // Add this section where appropriate in the render function
-  const renderCostSettings = () => {
-    if (!showCostSettings) return null;
-    
-    return (
-      <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">AI Cost Settings</h3>
-          <button 
-            onClick={() => setShowCostSettings(false)}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            aria-label="Close cost settings"
+      {/* Instructions and Overview */}
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+        <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">What are AI Interventions?</h4>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          AI interventions are evidence-based digital health tools that improve patient outcomes and system efficiency.
+          Each intervention uses artificial intelligence to enhance specific parts of the healthcare journey:
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-600 dark:text-gray-400 mb-3">
+          <div>
+            <strong>🏠 Home & Community:</strong> Self-care apps, symptom checkers, adherence support
+          </div>
+          <div>
+            <strong>🏥 Primary Care:</strong> Diagnostic tools, clinical decision support, triage systems
+          </div>
+          <div>
+            <strong>🏨 Hospitals:</strong> Bed management, treatment protocols, discharge planning
+          </div>
+        </div>
+        <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+          <strong>How to use:</strong> Click on any intervention card below to enable/disable it. Active interventions are highlighted in green.
+          Configure detailed effects in the "Effect Details" tab.
+        </p>
+      </div>
+
+      {/* Intervention Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {interventionInfo.map((intervention) => {
+          const isActive = aiInterventions[intervention.key];
+          const interventionKey = intervention.key as keyof Omit<AIUptakeParameters, 'globalUptake' | 'urbanMultiplier' | 'ruralMultiplier'>;
+          const uptakeRate = aiUptakeParams[interventionKey] || 1.0;
+          
+          return (
+            <div 
+              key={intervention.key}
+              className={`rounded-lg border-2 transition-all cursor-pointer hover:shadow-lg ${
+                isActive 
+                  ? 'border-green-400 bg-green-50 dark:bg-green-900/20' 
+                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+              }`}
+              onClick={() => handleInterventionToggle(intervention.key)}
+            >
+              <div className="p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <h4 className={`font-semibold ${isActive ? 'text-green-800 dark:text-green-200' : 'text-gray-800 dark:text-gray-200'}`}>
+                      {intervention.name}
+                    </h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{intervention.careLevel}</p>
+                  </div>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                    isActive ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                  }`}>
+                    {isActive && (
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">{intervention.description}</p>
+                
+                <div className="text-xs text-gray-500 dark:text-gray-500">
+                  <div className="mb-1">💡 {intervention.useCase}</div>
+                  {isActive && (
+                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex justify-between items-center">
+                        <span>Uptake Rate:</span>
+                        <span className="font-semibold">{(uptakeRate * 100).toFixed(0)}%</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Cost:</span>
+                        <span className="font-semibold">
+                          ${aiCostParams[intervention.key].fixed.toLocaleString()} + ${aiCostParams[intervention.key].variable}/pt
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-2 justify-center">
+        <button
+          onClick={() => setActiveTab('details')}
+          className="px-4 py-2 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded-lg transition-colors"
+        >
+          Configure Effects
+        </button>
+        {hasActiveInterventions && (
+          <button
+            onClick={resetAll}
+            className="px-4 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-700 dark:text-red-300 rounded-lg transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            Clear All
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderDetailsTab = () => {
+    // Check if any interventions are selected
+    const hasSelectedInterventions = Object.values(aiInterventions).some(v => v);
+    
+    if (!hasSelectedInterventions) {
+      return (
+        <div className="text-center py-12">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
+            <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">No AI Interventions Selected</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-2xl mx-auto">
+            To configure effect details, you need to select at least one AI intervention first. 
+            Go to the <strong>Overview</strong> tab and click on the intervention cards to enable them.
+          </p>
+          <button
+            onClick={() => setActiveTab('overview')}
+            className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+          >
+            Go to Overview
           </button>
         </div>
-        
-        <div className="space-y-4">
-          {/* Total Cost Display */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-            <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Total AI Implementation Costs</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm text-blue-700 dark:text-blue-300">Total Fixed Cost:</span>
-                <p className="text-lg font-bold text-blue-900 dark:text-blue-100">
-                  ${Object.entries(aiInterventions)
-                    .filter(([_, isEnabled]) => isEnabled)
-                    .reduce((sum, [key]) => sum + aiCostParams[key as keyof AIInterventions].fixed, 0)
-                    .toLocaleString()}
-                </p>
+      );
+    }
+    
+    return (
+      <div className="space-y-6">
+        {/* Parameter Guide - More concise */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-6">
+          <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 text-lg">Quick Parameter Guide</h4>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">✓</span>
+                <div>
+                  <h5 className="font-medium text-gray-800 dark:text-gray-200">Resolution (μ)</h5>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Recovery rate. Higher = faster recovery</p>
+                </div>
               </div>
-              <div>
-                <span className="text-sm text-blue-700 dark:text-blue-300">Total Variable Cost:</span>
-                <p className="text-lg font-bold text-blue-900 dark:text-blue-100">
-                  ${Object.entries(aiInterventions)
-                    .filter(([_, isEnabled]) => isEnabled)
-                    .reduce((sum, [key]) => sum + aiCostParams[key as keyof AIInterventions].variable, 0)
-                    .toFixed(2)} per patient
-                </p>
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">💀</span>
+                <div>
+                  <h5 className="font-medium text-gray-800 dark:text-gray-200">Mortality (δ)</h5>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Death rate. Lower = fewer deaths</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">↗️</span>
+                <div>
+                  <h5 className="font-medium text-gray-800 dark:text-gray-200">Referral (ρ)</h5>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Referral rate. AI optimizes up or down</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">🏥</span>
+                <div>
+                  <h5 className="font-medium text-gray-800 dark:text-gray-200">Care-Seeking (φ, σ)</h5>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Formal care usage. Higher = more seek care</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">⏳</span>
+                <div>
+                  <h5 className="font-medium text-gray-800 dark:text-gray-200">Queue Management</h5>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Reduces congestion & wait times</p>
+                </div>
               </div>
             </div>
           </div>
+          <div className="mt-4 p-3 bg-white/60 dark:bg-gray-800/60 rounded-lg">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              <strong>💡 Tip:</strong> Adjust the <span className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">Magnitude</span> to scale effects. 
+              1.0 = default effect • 0 = disabled • 2.0 = double strength
+            </p>
+          </div>
+        </div>
+
+        {/* Group interventions by care level */}
+        {['Home & Community', 'Entry Point', 'Community (L0)', 'Primary & District (L1/L2)', 'Hospitals (L2/L3)'].map(level => {
+          const levelInterventions = interventionInfo.filter(i => i.careLevel === level && aiInterventions[i.key]);
+          if (levelInterventions.length === 0) return null;
           
-          {/* Individual Cost Settings */}
-          {Object.entries(aiInterventions).map(([key, isEnabled]) => {
-            const intervention = key as keyof AIInterventions;
-            if (!isEnabled) return null;
+          return (
+            <div key={level} className="space-y-4">
+              <div className="flex items-center gap-3">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200">{level}</h3>
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+              </div>
+              
+              {levelInterventions.map(intervention => (
+                <div key={intervention.key} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-750 px-6 py-4">
+                    <h4 className="font-bold text-lg text-gray-900 dark:text-gray-100">{intervention.name}</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{intervention.description}</p>
+                  </div>
+                  
+                  <div className="p-6 space-y-6">
+                    {/* Effect Categories - Better visual separation */}
+                    {['resolution', 'mortality', 'referral', 'care-seeking', 'queue'].map(category => {
+                      const categoryEffects = intervention.effects.filter(e => e.category === category);
+                      if (categoryEffects.length === 0) return null;
+                      
+                      const categoryInfo: Record<string, { name: string; icon: string; classes: string; headerClasses: string }> = {
+                        resolution: { 
+                          name: 'Resolution Improvements', 
+                          icon: '✓', 
+                          classes: 'border-green-200 dark:border-green-800/30 bg-green-50/30 dark:bg-green-900/10',
+                          headerClasses: 'text-green-900 dark:text-green-100'
+                        },
+                        mortality: { 
+                          name: 'Mortality Reductions', 
+                          icon: '💀', 
+                          classes: 'border-red-200 dark:border-red-800/30 bg-red-50/30 dark:bg-red-900/10',
+                          headerClasses: 'text-red-900 dark:text-red-100'
+                        }, 
+                        referral: { 
+                          name: 'Referral Optimization', 
+                          icon: '↗️', 
+                          classes: 'border-blue-200 dark:border-blue-800/30 bg-blue-50/30 dark:bg-blue-900/10',
+                          headerClasses: 'text-blue-900 dark:text-blue-100'
+                        },
+                        'care-seeking': { 
+                          name: 'Care-Seeking Changes', 
+                          icon: '🏥', 
+                          classes: 'border-purple-200 dark:border-purple-800/30 bg-purple-50/30 dark:bg-purple-900/10',
+                          headerClasses: 'text-purple-900 dark:text-purple-100'
+                        },
+                        queue: { 
+                          name: 'Queue Management', 
+                          icon: '⏳', 
+                          classes: 'border-amber-200 dark:border-amber-800/30 bg-amber-50/30 dark:bg-amber-900/10',
+                          headerClasses: 'text-amber-900 dark:text-amber-100'
+                        }
+                      };
+                      
+                      const catInfo = categoryInfo[category];
+                      
+                      return (
+                        <div key={category} className={`rounded-lg border ${catInfo.classes} p-4`}>
+                          <h5 className={`text-base font-semibold ${catInfo.headerClasses} mb-3 flex items-center gap-2`}>
+                            <span className="text-xl">{catInfo.icon}</span>
+                            {catInfo.name}
+                          </h5>
+                          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                            {categoryEffects.map(effect => {
+                              const effectKey = `${intervention.key}_${effect.param}`;
+                              const magnitude = effectMagnitudes[effectKey] ?? 1;
+                              
+                              return (
+                                <div key={effect.param} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-mono text-sm font-bold text-gray-900 dark:text-gray-100">
+                                          {effect.param}
+                                        </span>
+                                        <InfoTooltip content={effect.description} />
+                                      </div>
+                                      <p className="text-sm text-gray-600 dark:text-gray-400 leading-tight">
+                                        {effect.description}
+                                      </p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500 dark:text-gray-500">×</span>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          max="5"
+                                          step="0.1"
+                                          value={magnitude.toFixed(1)}
+                                          onChange={(e) => setEffectMagnitudes({
+                                            ...effectMagnitudes,
+                                            [effectKey]: parseFloat(e.target.value) || 1
+                                          })}
+                                          className="w-14 px-2 py-1 text-sm font-medium text-center border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                        />
+                                      </div>
+                                      <div className="text-right">
+                                        <div className="text-xs text-gray-500 dark:text-gray-500">Result:</div>
+                                        <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                          {getAdjustedEffect(effect.effect, magnitude)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Key Benefits - More compact */}
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                      <h5 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Key Benefits
+                      </h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {intervention.keyBenefits.map((benefit, i) => (
+                          <div key={i} className="flex items-start text-xs text-gray-600 dark:text-gray-400">
+                            <span className="mr-2 text-indigo-500">•</span>
+                            <span>{benefit}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+        
+        {/* Quick Actions */}
+        <div className="sticky bottom-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              <strong>{Object.values(aiInterventions).filter(v => v).length}</strong> interventions configured
+            </div>
+            <button
+              onClick={() => runSimulation()}
+              className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium"
+            >
+              Run Simulation with These Settings
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderUptakeTab = () => (
+    <div className="space-y-6">
+      <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4">
+        <h4 className="font-semibold text-amber-900 dark:text-amber-100 mb-2">AI Uptake Configuration</h4>
+        <p className="text-sm text-amber-700 dark:text-amber-300">
+          Not everyone will use AI tools immediately. Set realistic uptake rates based on infrastructure, 
+          digital literacy, and trust levels in your target population.
+        </p>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Individual Tool Uptake</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {Object.entries(aiUptakeParams).filter(([key]) => 
+            !['globalUptake', 'urbanMultiplier', 'ruralMultiplier'].includes(key)
+          ).map(([key, value]) => {
+            const intervention = interventionInfo.find(i => i.key === key);
+            if (!intervention) return null;
             
             return (
-              <div key={`cost-${key}`} className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-2">
-                  {getInterventionName(intervention)}
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex items-center gap-1 mb-1">
-                      <label className="text-sm text-gray-700 dark:text-gray-300">
-                        Fixed Cost (USD)
-                      </label>
-                      <InfoTooltip 
-                        content={getParameterRationale(`${intervention}_fixed`)}
-                      />
+              <div key={key} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-gray-800 dark:text-gray-200">{intervention.name}</h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">{intervention.careLevel}</p>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      <span className="font-medium">Factors:</span> 
+                      {key === 'selfCareAI' && ' Smartphone penetration, digital literacy, data costs'}
+                      {key === 'triageAI' && ' Trust in AI, language support, cultural acceptance'}
+                      {key === 'chwAI' && ' CHW training, device availability, network coverage'}
+                      {key === 'diagnosticAI' && ' Equipment availability, staff training, electricity'}
+                      {key === 'bedManagementAI' && ' Hospital IT infrastructure, change management'}
+                      {key === 'hospitalDecisionAI' && ' Clinical buy-in, EHR integration, governance'}
                     </div>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1000"
-                      value={aiCostParams[intervention].fixed}
-                      onChange={(e) => handleCostChange(intervention, 'fixed', Number(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white text-sm"
-                    />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-1 mb-1">
-                      <label className="text-sm text-gray-700 dark:text-gray-300">
-                        Variable Cost (USD per patient)
-                      </label>
-                      <InfoTooltip 
-                        content={getParameterRationale(`${intervention}_variable`)}
-                      />
-                    </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <input
                       type="number"
                       min="0"
-                      step="0.1"
-                      value={aiCostParams[intervention].variable}
-                      onChange={(e) => handleCostChange(intervention, 'variable', Number(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white text-sm"
+                      max="100"
+                      step="5"
+                      value={(value * 100).toFixed(0)}
+                      onChange={(e) => setAiUptakeParams({
+                        ...aiUptakeParams,
+                        [key]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) / 100
+                      })}
+                      className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white text-center"
                     />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">%</span>
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
-      </div>
-    );
-  };
-  
-  // Add a helper function to get the intervention name
-  const getInterventionName = (key: keyof AIInterventions): string => {
-    // Map intervention keys to their display names
-    const nameMap: Record<keyof AIInterventions, string> = {
-      triageAI: 'AI Health Advisor',
-      chwAI: 'CHW Decision Support AI', 
-      diagnosticAI: 'Diagnostic AI (L1/L2)',
-      bedManagementAI: 'Bed Management AI',
-      hospitalDecisionAI: 'Hospital Decision Support AI',
-      selfCareAI: 'AI Self-Care Platform'
-    };
-    return nameMap[key] || key;
-  };
-  
-  // Add a button to toggle cost settings visibility in the appropriate section of your render function
-  const renderCostSettingsButton = () => {
-    const anyInterventionActive = Object.values(aiInterventions).some(Boolean);
-    if (!anyInterventionActive) return null;
-    
-    return (
-      <div className="mt-4">
-        <button
-          onClick={() => setShowCostSettings(!showCostSettings)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded-lg transition-colors"
-        >
-          <span>Configure AI Costs</span>
-          <svg 
-            className={`w-4 h-4 transition-transform ${showCostSettings ? 'rotate-180' : ''}`} 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-      </div>
-    );
-  };
 
-  const renderTimeToScaleSettings = () => {
-    if (!showTimeToScaleSettings) return null;
-
-    const formatTimeToScale = (value: number): string => {
-      if (value >= 0.85) return "1-3 months";
-      if (value >= 0.75) return "3-6 months";
-      if (value >= 0.65) return "6-9 months";
-      if (value >= 0.55) return "9-12 months";
-      if (value >= 0.5) return "1 year";
-      if (value >= 0.25) return "2 years";
-      return "3+ years";
-    };
-
-    return (
-      <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-        <h4 className="text-md font-semibold text-gray-800 dark:text-white mb-3">
-          Time-to-Scale Configuration
-        </h4>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Configure how quickly each AI intervention can be deployed and scaled. 
-          Higher values = faster deployment (0 = 3+ years, 1 = immediate).
-        </p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Object.entries(timeToScaleParams).map(([intervention, value]) => (
-            <div key={intervention} className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {getInterventionName(intervention as keyof AIInterventions)}
-                </label>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {formatTimeToScale(value)}
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={value}
-                  onChange={(e) => handleTimeToScaleChange(
-                    intervention as keyof AIInterventions, 
-                    parseFloat(e.target.value)
-                  )}
-                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-600"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={value.toFixed(2)}
-                  onChange={(e) => handleTimeToScaleChange(
-                    intervention as keyof AIInterventions, 
-                    parseFloat(e.target.value) || 0
-                  )}
-                  className="w-16 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
-                />
+        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Location Modifiers</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-3">Urban Areas</h4>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex-1">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Uptake Multiplier</span>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    Higher in cities due to better connectivity and digital literacy
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0.5"
+                    max="2.0"
+                    step="0.1"
+                    value={aiUptakeParams.urbanMultiplier.toFixed(1)}
+                    onChange={(e) => setAiUptakeParams({
+                      ...aiUptakeParams,
+                      urbanMultiplier: Math.max(0.5, Math.min(2.0, parseFloat(e.target.value) || 1.0))
+                    })}
+                    className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white text-center"
+                  />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">×</span>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-        
-        <div className="mt-4 flex justify-end space-x-2">
-          <button
-            onClick={() => {
-              // Reset to default values
-              setTimeToScaleParams({
-                triageAI: 0.75,
-                chwAI: 0.50,
-                diagnosticAI: 0.60,
-                bedManagementAI: 0.40,
-                hospitalDecisionAI: 0.40,
-                selfCareAI: 0.75
-              });
-            }}
-            className="px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 rounded"
-          >
-            Reset to Defaults
-          </button>
+            
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-3">Rural Areas</h4>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex-1">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Uptake Multiplier</span>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    Lower in rural areas due to connectivity and infrastructure challenges
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0.1"
+                    max="1.0"
+                    step="0.1"
+                    value={aiUptakeParams.ruralMultiplier.toFixed(1)}
+                    onChange={(e) => setAiUptakeParams({
+                      ...aiUptakeParams,
+                      ruralMultiplier: Math.max(0.1, Math.min(1.0, parseFloat(e.target.value) || 0.7))
+                    })}
+                    className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white text-center"
+                  />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">×</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
 
-  const renderTimeToScaleSettingsButton = () => {
-    return (
-      <div className="mt-4">
-        <button
-          onClick={() => setShowTimeToScaleSettings(!showTimeToScaleSettings)}
-          className="flex items-center gap-2 px-4 py-2 bg-green-50 hover:bg-green-100 dark:bg-green-900 dark:hover:bg-green-800 text-green-700 dark:text-green-300 rounded-lg transition-colors"
-        >
-          <span>Configure Time-to-Scale</span>
-          <svg 
-            className={`w-4 h-4 transition-transform ${showTimeToScaleSettings ? 'rotate-180' : ''}`} 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
+  const renderCostsTab = () => (
+    <div className="space-y-6">
+      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+        <h4 className="font-semibold text-green-900 dark:text-green-100 mb-2">AI Implementation Costs</h4>
+        <p className="text-sm text-green-700 dark:text-green-300">
+          Configure fixed (one-time) and variable (per-patient) costs for each AI intervention. 
+          Costs vary significantly based on local context, vendor, and implementation approach.
+        </p>
       </div>
-    );
+
+      {/* Total Cost Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+          <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Fixed Cost</h4>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">${totalFixedCost.toLocaleString()}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500">One-time implementation</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+          <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400">Variable Cost per Patient</h4>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">${totalVariableCost.toFixed(2)}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500">Ongoing operational cost</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+          <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Interventions</h4>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{activeInterventionCount}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500">Out of 6 available</p>
+        </div>
+      </div>
+
+      {/* Cost Configuration */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Configure Costs by Intervention</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {interventionInfo.map(intervention => {
+            const isActive = aiInterventions[intervention.key];
+            const costs = aiCostParams[intervention.key];
+            
+            return (
+              <div 
+                key={intervention.key} 
+                className={`border rounded-lg p-4 ${
+                  isActive 
+                    ? 'border-green-400 bg-green-50 dark:bg-green-900/20' 
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="font-medium text-gray-800 dark:text-gray-200">{intervention.name}</h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">{intervention.careLevel}</p>
+                  </div>
+                  <div className={`px-2 py-1 rounded text-xs font-medium ${
+                    isActive 
+                      ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' 
+                      : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                  }`}>
+                    {isActive ? 'Active' : 'Inactive'}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Fixed Cost (USD)
+                      <InfoTooltip content="One-time costs: software licenses, training, equipment, integration" />
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      value={costs.fixed}
+                      onChange={(e) => setAiCostParams({
+                        ...aiCostParams,
+                        [intervention.key]: {
+                          ...costs,
+                          fixed: parseInt(e.target.value) || 0
+                        }
+                      })}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Variable (USD/pt)
+                      <InfoTooltip content="Per-use costs: API calls, compute, bandwidth, consumables" />
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={costs.variable}
+                      onChange={(e) => setAiCostParams({
+                        ...aiCostParams,
+                        [intervention.key]: {
+                          ...costs,
+                          variable: parseFloat(e.target.value) || 0
+                        }
+                      })}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Cost guidance */}
+                <div className="text-xs text-gray-600 dark:text-gray-400">
+                  <span className="font-medium">Typical:</span>
+                  {intervention.key === 'selfCareAI' && ' $5k-50k fixed, $0.10-1.00/pt'}
+                  {intervention.key === 'triageAI' && ' $10k-100k fixed, $0.50-2.00/pt'}
+                  {intervention.key === 'chwAI' && ' $20k-200k fixed, $0.20-1.00/pt'}
+                  {intervention.key === 'diagnosticAI' && ' $50k-500k fixed, $1.00-5.00/pt'}
+                  {intervention.key === 'bedManagementAI' && ' $30k-300k fixed, $0.50-2.00/pt'}
+                  {intervention.key === 'hospitalDecisionAI' && ' $100k-1M fixed, $2.00-10.00/pt'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Time to Scale */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Implementation Timeline</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          How quickly can each intervention be deployed? (0 = 3+ years, 1 = immediate)
+        </p>
+        <div className="space-y-4">
+          {Object.entries(timeToScaleParams).map(([key, value]) => {
+            const intervention = interventionInfo.find(i => i.key === key);
+            if (!intervention) return null;
+            
+            const timeLabel = value >= 0.85 ? "1-3 months" :
+                            value >= 0.75 ? "3-6 months" :
+                            value >= 0.65 ? "6-9 months" :
+                            value >= 0.55 ? "9-12 months" :
+                            value >= 0.5 ? "1 year" :
+                            value >= 0.25 ? "2 years" : "3+ years";
+            
+            return (
+              <div key={key} className="py-3 px-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {intervention.name}
+                  </span>
+                  <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                    {timeLabel}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500 dark:text-gray-500">Slow</span>
+                  <div className="flex-1 relative">
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={value}
+                      onChange={(e) => setTimeToScaleParams({
+                        ...timeToScaleParams,
+                        [key]: parseFloat(e.target.value)
+                      })}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 
+                                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
+                                 [&::-webkit-slider-thumb]:bg-indigo-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer
+                                 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-indigo-600 
+                                 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
+                    />
+                    <div 
+                      className="absolute top-0 left-0 h-2 bg-indigo-600 rounded-l-lg pointer-events-none"
+                      style={{ width: `${value * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500 dark:text-gray-500">Fast</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+
+  // Helper function to adjust effects based on magnitude
+  const getAdjustedEffect = (baseEffect: string, magnitude: number): string => {
+    if (magnitude === 0) return "None";
+    
+    if (baseEffect.startsWith('+')) {
+      const value = parseFloat(baseEffect.substring(1));
+      return `+${(value * magnitude).toFixed(2)}`;
+    } else if (baseEffect.startsWith('×')) {
+      const value = parseFloat(baseEffect.substring(1));
+      if (value < 1) {
+        const adjusted = 1 - ((1 - value) * magnitude);
+        return `×${adjusted.toFixed(2)}`;
+      } else {
+        const adjusted = 1 + ((value - 1) * magnitude);
+        return `×${adjusted.toFixed(2)}`;
+      }
+    } else {
+      // For raw numbers (queue effects)
+      const value = parseFloat(baseEffect);
+      return (value * magnitude).toFixed(2);
+    }
   };
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white">AI Interventions</h3>
             <InfoTooltip 
-              content="Select AI tools to deploy in your healthcare system. Each intervention modifies specific parameters (like resolution rates and mortality) based on evidence from AI pilot studies. Use magnitude sliders to adjust the strength of effects. Default baseline parameters are set in the Parameters tab."
+              content="Configure AI tools for your healthcare system. Each tool improves specific outcomes based on evidence from real-world pilots. Start with the Overview tab to select interventions, then fine-tune in other tabs."
             />
           </div>
-          <div className="flex flex-wrap gap-2 justify-end">
-            <button
-              onClick={exportConfig}
-              className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm"
-            >
-              Export JSON
-            </button>
-            <label className="btn bg-purple-50 hover:bg-purple-100 text-purple-600 text-sm cursor-pointer">
-              Import JSON
-              <input
-                type="file"
-                accept=".json"
-                className="hidden"
-                onChange={importConfig}
-                ref={fileInputRef}
-              />
-            </label>
-            {hasCustomMagnitudes && (
-              <button
-                onClick={resetAllEffectMagnitudes}
-                className="btn bg-blue-50 hover:bg-blue-100 text-blue-600 text-sm"
-              >
-                Reset All Magnitudes
-              </button>
-            )}
-            {hasActiveInterventions && (
-              <button
-                onClick={() => {
-                  setAIInterventions({
-                    triageAI: false,
-                    chwAI: false,
-                    diagnosticAI: false,
-                    bedManagementAI: false,
-                    hospitalDecisionAI: false,
-                    selfCareAI: false
-                  });
-                  setLocalSelectedScenario(null);
-                  setSelectedPreset(null);
-                }}
-                className="btn bg-red-50 hover:bg-red-100 text-red-600 text-sm"
-              >
-                Clear All
-              </button>
-            )}
-          </div>
-        </div>
-        
-        <div className="mb-6 bg-blue-50 dark:bg-blue-900 rounded-md">
-          <div 
-            className="p-4 flex justify-between items-center cursor-pointer" 
-            onClick={() => setShowParameterEffects(!showParameterEffects)}
+          <button
+            onClick={() => runSimulation()}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors text-sm font-semibold"
+            disabled={!hasActiveInterventions}
           >
-            <h4 className="text-md font-medium text-blue-800 dark:text-blue-300">Understanding Parameter Effects</h4>
-            <button className="text-blue-700 dark:text-blue-400">
-              {showParameterEffects ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              )}
-            </button>
-          </div>
-          
-          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showParameterEffects ? 'max-h-96' : 'max-h-0'}`}>
-            <div className="p-4 pt-0">
-              <p className="text-sm text-blue-700 dark:text-blue-400 mb-2">
-                Each AI intervention modifies specific model parameters that affect how patients move through the healthcare system:
-              </p>
-              <ul className="text-sm text-blue-700 dark:text-blue-400 list-disc pl-5 space-y-1">
-                <li><strong>μ (mu)</strong>: Recovery/resolution rates at different levels of care (higher is better)</li>
-                <li><strong>δ (delta)</strong>: Mortality rates at different levels of care (lower is better)</li>
-                <li><strong>ρ (rho)</strong>: Referral rates between care levels (optimized based on need)</li>
-                <li><strong>φ (phi)</strong>: Initial care-seeking behavior parameters (higher formal care entry is better)</li>
-                <li><strong>σ (sigma)</strong>: Transition rates between care pathways (faster transitions to appropriate care is better)</li>
-              </ul>
-              <p className="text-sm text-blue-700 dark:text-blue-400 mt-2">
-                Subscripts indicate care level: I=informal, 0=CHW, 1=primary care, 2=district hospital, 3=tertiary hospital
-              </p>
-            </div>
-          </div>
+            Run Simulation
+          </button>
         </div>
-      </div>
-      
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Individual AI Tools</h3>
-          <InfoTooltip 
-            content="Check the boxes to enable AI interventions. Each tool shows its default parameter effects and magnitude sliders to customize strength. Effects are calculated as: baseline parameter (from Parameters tab) + or × AI effect × magnitude. Values are based on WHO guidelines and recent AI pilot studies in Kenya, Nigeria, India, and Bangladesh."
-          />
-        </div>
-        
-        {/* Multi-disease mode: Disease selection dropdown */}
-        {selectedDiseases.length > 1 && (
-          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                </svg>
-                <div>
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                    Multi-disease mode: Select disease to view AI effects
-                  </p>
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
-                    Viewing disease-specific AI intervention effects for comparison
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                  Viewing:
-                </label>
-                <select
-                  value={viewingDisease}
-                  onChange={(e) => setViewingDisease(e.target.value)}
-                  className="form-select text-sm bg-white dark:bg-gray-700 border-blue-300 dark:border-blue-600 text-blue-900 dark:text-blue-100"
-                >
-                  {selectedDiseases.map(disease => (
-                    <option key={disease} value={disease}>
-                      {disease.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {viewingDisease && diseaseSpecificAIEffects[viewingDisease] && (
-          <div className="mb-4 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">
-                  Disease-specific AI effects are active for <strong>{viewingDisease.replace(/_/g, ' ')}</strong>
-                </p>
-                {diseaseAIRationales[viewingDisease] && (
-                  <p className="text-xs text-purple-700 dark:text-purple-300 leading-relaxed">
-                    <strong>Why effects differ:</strong> {diseaseAIRationales[viewingDisease]}
-                  </p>
-                )}
-                <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
-                  Effects marked with purple badges and values differ from default based on disease-specific evidence.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {interventionInfo.map((intervention) => {
-          const isActive = aiInterventions[intervention.key];
-          
-          return (
-            <div 
-              key={intervention.key.toString()}
-              className={`border rounded-md transition-colors ${
-                isActive 
-                  ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900' 
-                  : 'border-gray-200 dark:border-gray-700'
+        {/* Tab Navigation */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: 'overview', label: 'Overview', icon: '🏠' },
+            { id: 'details', label: 'Effect Details', icon: '🔧' },
+            { id: 'uptake', label: 'Uptake Rates', icon: '📊' },
+            { id: 'costs', label: 'Costs & Timeline', icon: '💰' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-medium'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
-              <div className="p-3">
-                <div className="flex items-start justify-between mb-2">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isActive}
-                      onChange={() => handleInterventionToggle(intervention.key)}
-                      className="mr-2"
-                    />
-                    <span className={`font-medium ${
-                      isActive ? 'text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'
-                    }`}>
-                      {intervention.name}
-                    </span>
-                  </label>
-                  {isActive && (
-                    <button
-                      onClick={() => resetEffectMagnitudes(intervention.key)}
-                      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                    >
-                      Reset to Default
-                    </button>
-                  )}
-                </div>
-                
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                  {intervention.description}
-                </p>
-                
-                <div className="text-xs border-t pt-2 border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center gap-1 mb-1">
-                    <p className={`font-medium ${
-                      isActive ? 'text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-400'
-                    }`}>
-                      Parameter Effects:
-                    </p>
-                    <InfoTooltip 
-                      content="These show the baseline effects this AI intervention has on model parameters. The magnitude sliders below multiply these base effects (0 = no effect, 1 = default effect, 5 = maximum 5x effect). Default values use systematic baseline approach: 15% CHW resolution improvement, 20% diagnostic improvement, ±20% referral optimization with disease-specific clinical modifiers."
-                    />
-                  </div>
-                  <ul className={`space-y-2 ${isActive ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500 dark:text-gray-500'}`}>
-                    {intervention.effects.map((effect, i) => {
-                      const diseaseEffect = getDiseaseSpecificEffect(intervention.key, effect.param);
-                      const isDiseaseSpecific = diseaseEffect.isCustom;
-                      
-                      return (
-                        <li key={i} className="border-b border-gray-100 dark:border-gray-700 pb-1">
-                          <div className="flex justify-between items-center mb-1">
-                            <div className="flex items-center gap-1">
-                              <span className="font-medium">{effect.param}</span>
-                              {isDiseaseSpecific && (
-                                <span className="inline-flex items-center gap-1">
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100">
-                                    {viewingDisease?.replace(/_/g, ' ')}
-                                  </span>
-                                  <InfoTooltip 
-                                    content={getDiseaseDifferenceExplanation(intervention.key, effect.param, viewingDisease, effect.effect, diseaseEffect.value)}
-                                  />
-                                </span>
-                              )}
-                            </div>
-                            <span className={`font-mono px-1.5 py-0.5 rounded ${
-                              isDiseaseSpecific ? 'bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200' :
-                              (isActive ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' : 
-                                        'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400')
-                            }`}>{isActive ? getEffectValue(intervention.key, effect.param, effect.effect) : (isDiseaseSpecific ? diseaseEffect.value : effect.effect)}</span>
-                          </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{effect.description}</p>
-                        
-                        {isActive && (
-                          <div className="mt-2">
-                            <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                              <span>No effect</span>
-                              <div className="flex items-center gap-1">
-                                <span>Default</span>
-                                <InfoTooltip 
-                                  content={`Effect magnitude: 0 = disabled, 1 = default effect (${effect.effect}), 5 = maximum 5x strength. The effect is ${effect.effect.startsWith('+') ? 'added to' : 'multiplied with'} the baseline parameter from the Parameters tab. Resolution rates (μ) use absolute percentage point increases. Mortality/referral rates (δ,ρ) use relative percentage changes.`}
-                                />
-                              </div>
-                              <span>Stronger</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="0"
-                              max="5"
-                              step="0.1"
-                              value={effectMagnitudes[`${intervention.key}_${effect.param}`] !== undefined ? 
-                                effectMagnitudes[`${intervention.key}_${effect.param}`] : 1}
-                              onChange={(e) => handleEffectMagnitudeChange(
-                                intervention.key, 
-                                effect.param, 
-                                parseFloat(e.target.value)
-                              )}
-                              className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                            />
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+              <span className="mr-2">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
-      
-      {/* Always show cost summary when interventions are active */}
-      {Object.values(aiInterventions).some(Boolean) && !showCostSettings && (
-        <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between items-center text-sm">
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Total Fixed Cost: </span>
-              <span className="font-semibold text-gray-900 dark:text-white">
-                ${Object.entries(aiInterventions)
-                  .filter(([_, isEnabled]) => isEnabled)
-                  .reduce((sum, [key]) => sum + aiCostParams[key as keyof AIInterventions].fixed, 0)
-                  .toLocaleString()}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Variable Cost: </span>
-              <span className="font-semibold text-gray-900 dark:text-white">
-                ${Object.entries(aiInterventions)
-                  .filter(([_, isEnabled]) => isEnabled)
-                  .reduce((sum, [key]) => sum + aiCostParams[key as keyof AIInterventions].variable, 0)
-                  .toFixed(2)}/patient
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {renderCostSettingsButton()}
-      {renderCostSettings()}
-      {renderTimeToScaleSettingsButton()}
-      {renderTimeToScaleSettings()}
+
+      {/* Tab Content */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        {renderContent()}
+      </div>
     </div>
   );
 };
 
-export default AIInterventionManager; 
+export default AIInterventionManager;

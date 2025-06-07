@@ -634,7 +634,34 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
         .attr("stroke-width", "2px")
         .attr("paint-order", "stroke")
         .attr("pointer-events", "none")
-        .text(d => d.scenario.name.length > 20 ? d.scenario.name.substring(0, 20) + '...' : d.scenario.name);
+        .text(d => {
+          // Special handling for "Test Each AI" scenarios
+          const name = d.scenario.name;
+          
+          // Check if this is a "Test Each AI" scenario
+          if (name.includes(' - ') && (name.includes('AI') || name.includes('Baseline'))) {
+            // Extract just the AI tool name part
+            const parts = name.split(' - ');
+            const aiToolPart = parts[0]; // e.g., "AI Health Advisor" or "Baseline (No AI)"
+            
+            // Use very short abbreviations for AI tools
+            const abbreviated = aiToolPart
+              .replace('AI Health Advisor', 'Self-Care')
+              .replace('Diagnostic AI (L1/L2)', 'Diag')
+              .replace('Diagnostic AI', 'Diag')
+              .replace('Bed Management AI', 'Bed')
+              .replace('Hospital Decision Support', 'Hospital')
+              .replace('CHW Decision Support', 'CHW')
+              .replace('AI Self-Care Platform', 'Self-Care')
+              .replace('Baseline (No AI)', 'Base')
+              .replace('Triage AI', 'Triage');
+            
+            return abbreviated;
+          }
+          
+          // For other scenarios, use shorter truncation
+          return name.length > 15 ? name.substring(0, 12) + '...' : name;
+        });
     }
     
     // Create tooltip

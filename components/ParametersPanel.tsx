@@ -15,7 +15,6 @@ import {
   userOverriddenCongestionAtom,
   calculatedCongestionAtom,
   effectiveCongestionAtom,
-  aiUptakeParametersAtom,
   useCountrySpecificModelAtom,
   selectedCountryAtom,
   isUrbanSettingAtom,
@@ -39,10 +38,10 @@ const parameterGroups = [
     icon: '🦠',
     collapsed: false,
     params: [
-      { key: 'lambda', label: 'Incidence Rate (λ)', unit: 'per year', description: 'Annual disease episodes per person. Higher values mean more people get sick each year.' },
-      { key: 'disabilityWeight', label: 'Disability Weight', unit: '0-1', description: 'Disease severity for DALY calculations. 0 = perfect health, 1 = death equivalent.' },
-      { key: 'meanAgeOfInfection', label: 'Mean Age', unit: 'years', description: 'Average age when people contract this disease. Used for calculating years of life lost.' },
-      { key: 'muU', label: 'Untreated Recovery (μU)', unit: 'per week', description: 'Weekly probability of spontaneous recovery without any treatment.' },
+      { key: 'lambda', label: 'Incidence Rate (λ)', unit: 'per year', description: 'Annual disease episodes per person. Higher values mean more people get sick each year.', hasRationale: true },
+      { key: 'disabilityWeight', label: 'Disability Weight', unit: '0-1', description: 'Disease severity for DALY calculations. 0 = perfect health, 1 = death equivalent.', hasRationale: true },
+      { key: 'meanAgeOfInfection', label: 'Mean Age', unit: 'years', description: 'Average age when people contract this disease. Used for calculating years of life lost.', hasRationale: true },
+      { key: 'muU', label: 'Untreated Recovery (μU)', unit: 'per week', description: 'Weekly probability of spontaneous recovery without any treatment.', hasRationale: true },
     ],
     isDiseaseSpecific: true,
   },
@@ -119,6 +118,19 @@ const parameterGroups = [
     isHealthSystemSpecific: true,
   },
   {
+    title: 'Queue Dynamics',
+    icon: '⏳',
+    collapsed: true,
+    params: [
+      { key: 'queueAbandonmentRate', label: 'Queue Abandonment', unit: 'per week', description: 'Weekly rate at which people leave queues without receiving care. Higher values mean people give up waiting more quickly.' },
+      { key: 'queueBypassRate', label: 'Queue Bypass', unit: 'per week', description: 'Weekly rate at which people in queues seek alternative care (e.g., private clinics). Represents access to parallel care systems.' },
+      { key: 'queueClearanceRate', label: 'Queue Clearance', unit: 'fraction/week', description: 'Fraction of queue cleared each week. Higher values mean faster queue processing.' },
+      { key: 'queueSelfResolveRate', label: 'Self-Resolution in Queue', unit: 'per week', description: 'Weekly rate at which people recover naturally while waiting in queue. Depends on disease severity.' },
+    ],
+    isHealthSystemSpecific: true,
+    isDiseaseSpecific: true,
+  },
+  {
     title: 'Disease-Specific Capacity',
     icon: '📊',
     collapsed: true,
@@ -129,6 +141,16 @@ const parameterGroups = [
     ],
     isDiseaseSpecific: true,
   },
+  {
+    title: 'Economic Analysis',
+    icon: '💵',
+    collapsed: true,
+    params: [
+      { key: 'discountRate', label: 'Discount Rate', unit: '% per year', description: 'Annual discount rate for future costs and benefits. Standard health economics values are 3-5%.' },
+      { key: 'yearsOfLifeLost', label: 'Years of Life Lost', unit: 'years', description: 'Base years of life lost per death. Modified by patient age.' },
+    ],
+    isHealthSystemSpecific: true,
+  },
 ];
 
 // Component for individual parameter input
@@ -138,8 +160,13 @@ const ParameterInput: React.FC<{
   onChange: (value: string) => void;
   showPercentage?: boolean;
   disabled?: boolean;
-}> = ({ param, value, onChange, showPercentage = false, disabled = false }) => {
+  diseaseOverride?: string;
+}> = ({ param, value, onChange, showPercentage = false, disabled = false, diseaseOverride }) => {
   const displayValue = showPercentage ? (value * 100).toFixed(1) : formatDecimal(value, 4);
+  const [showRationale, setShowRationale] = useState(false);
+  
+  // Get rationale if available
+  const rationale = param.hasRationale ? getParameterRationale(param.key, diseaseOverride) : null;
   
   return (
     <div className="flex items-center justify-between py-2 hover:bg-gray-50 dark:hover:bg-gray-700 px-2 rounded">
@@ -148,6 +175,15 @@ const ParameterInput: React.FC<{
           {param.label}
         </label>
         <InfoTooltip content={param.description} />
+        {rationale && (
+          <button
+            onClick={() => setShowRationale(!showRationale)}
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
+            title="View detailed rationale"
+          >
+            📖
+          </button>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -162,6 +198,17 @@ const ParameterInput: React.FC<{
           {param.unit}
         </span>
       </div>
+      {showRationale && rationale && (
+        <div className="absolute z-10 mt-8 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-w-md">
+          <p className="text-xs text-gray-600 dark:text-gray-300">{rationale}</p>
+          <button
+            onClick={() => setShowRationale(false)}
+            className="mt-2 text-xs text-indigo-600 dark:text-indigo-400"
+          >
+            Close
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -180,7 +227,6 @@ const ParametersPanel: React.FC = () => {
   const [userOverriddenCongestion, setUserOverriddenCongestion] = useAtom(userOverriddenCongestionAtom);
   const [calculatedCongestion] = useAtom(calculatedCongestionAtom);
   const [effectiveCongestion] = useAtom(effectiveCongestionAtom);
-  const [aiUptakeParams, setAiUptakeParams] = useAtom(aiUptakeParametersAtom);
   const [useCountrySpecific] = useAtom(useCountrySpecificModelAtom);
   const [selectedCountry] = useAtom(selectedCountryAtom);
   const [isUrban] = useAtom(isUrbanSettingAtom);
@@ -252,6 +298,9 @@ const ParametersPanel: React.FC = () => {
       // Handle percentage inputs
       if (['phi0', 'informalCareRatio'].includes(lastKey)) {
         current[lastKey] = numValue / 100;
+      } else if (lastKey === 'discountRate') {
+        // Discount rate is entered as percentage but stored as decimal
+        current[lastKey] = numValue / 100;
       } else {
         current[lastKey] = numValue;
       }
@@ -288,6 +337,9 @@ const ParametersPanel: React.FC = () => {
       
       // Handle percentage inputs
       if (['phi0', 'informalCareRatio'].includes(lastKey)) {
+        current[lastKey] = numValue / 100;
+      } else if (lastKey === 'discountRate') {
+        // Discount rate is entered as percentage but stored as decimal
         current[lastKey] = numValue / 100;
       } else {
         current[lastKey] = numValue;
@@ -503,7 +555,7 @@ const ParametersPanel: React.FC = () => {
             {!isCollapsed && (
               <div className="px-4 pb-4 space-y-1">
                 {group.params.map((param) => {
-                  const isPercentage = ['phi0', 'informalCareRatio'].includes(param.key);
+                  const isPercentage = ['phi0', 'informalCareRatio', 'discountRate'].includes(param.key);
                   const isSystemCongestion = param.key === 'systemCongestion';
                   
                   return (
@@ -523,65 +575,51 @@ const ParametersPanel: React.FC = () => {
         );
       })}
       
-      {/* AI Uptake Settings */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <button
-          onClick={() => toggleSection('AI Uptake')}
-          className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-lg">🤖</span>
-            <h4 className="text-md font-semibold text-gray-800 dark:text-white">
-              AI Uptake Rates
-            </h4>
-            <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded">
-              Optional
-            </span>
-          </div>
-          <svg
-            className={`w-5 h-5 text-gray-500 transition-transform ${collapsedSections.has('AI Uptake') ? '' : 'rotate-180'}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+      {/* Country-Specific Multipliers */}
+      {useCountrySpecific && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+          <button
+            onClick={() => toggleSection('Country Multipliers')}
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        
-        {!collapsedSections.has('AI Uptake') && (
-          <div className="px-4 pb-4">
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-              Adjust how many people actually use each AI intervention (0-100%)
-            </p>
-            <div className="space-y-2">
-              {Object.entries(aiUptakeParams).filter(([key]) => 
-                !['globalUptake', 'urbanMultiplier', 'ruralMultiplier'].includes(key)
-              ).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between py-1">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {key.replace('AI', ' AI')}
-                  </span>
-                  <input
-                    type="number"
-                    value={(value * 100).toFixed(0)}
-                    onChange={(e) => {
-                      const newValue = Math.max(0, Math.min(100, Number(e.target.value))) / 100;
-                      setAiUptakeParams({
-                        ...aiUptakeParams,
-                        [key]: newValue
-                      });
-                    }}
-                    className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md"
-                    step="5"
-                    min="0"
-                    max="100"
-                  />
-                </div>
-              ))}
+            <div className="flex items-center gap-3">
+              <span className="text-lg">🌍</span>
+              <h4 className="text-md font-semibold text-gray-800 dark:text-white">
+                Country-Specific Adjustments
+              </h4>
+              <span className="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">
+                {selectedCountry}
+              </span>
             </div>
-          </div>
-        )}
-      </div>
+            <svg
+              className={`w-5 h-5 text-gray-500 transition-transform ${collapsedSections.has('Country Multipliers') ? '' : 'rotate-180'}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          {!collapsedSections.has('Country Multipliers') && (
+            <div className="px-4 pb-4">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                These multipliers adjust base parameters for {selectedCountry}'s specific context
+              </p>
+              <div className="space-y-2">
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>Incidence: ×{derivedParams.lambda && baseParams.lambda ? (derivedParams.lambda / baseParams.lambda).toFixed(2) : '1.00'}</div>
+                    <div>Mortality: ×{derivedParams.deltaU && baseParams.deltaU ? (derivedParams.deltaU / baseParams.deltaU).toFixed(2) : '1.00'}</div>
+                    <div>Care-seeking: ×{derivedParams.phi0 && baseParams.phi0 ? (derivedParams.phi0 / baseParams.phi0).toFixed(2) : '1.00'}</div>
+                    <div>Location: {isUrban ? 'Urban' : 'Rural'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

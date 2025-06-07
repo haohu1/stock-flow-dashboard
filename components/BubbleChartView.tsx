@@ -665,10 +665,36 @@ const BubbleChartView: React.FC = () => {
     
     // Add text label directly in the center
     bubbleLabels.append("text")
-      .text((d: any) => d.name)
+      .text((d: any) => {
+        const name = d.name;
+        
+        // Special handling for "Test Each AI" scenarios
+        if (name.includes(' - ') && (name.includes('AI') || name.includes('Baseline'))) {
+          // Extract just the AI tool name part
+          const parts = name.split(' - ');
+          const aiToolPart = parts[0]; // e.g., "AI Health Advisor" or "Baseline (No AI)"
+          
+          // Use very short abbreviations for AI tools
+          const abbreviated = aiToolPart
+            .replace('AI Health Advisor', 'Self-Care')
+            .replace('Diagnostic AI (L1/L2)', 'Diag')
+            .replace('Diagnostic AI', 'Diag')
+            .replace('Bed Management AI', 'Bed')
+            .replace('Hospital Decision Support', 'Hospital')
+            .replace('CHW Decision Support', 'CHW')
+            .replace('AI Self-Care Platform', 'Self-Care')
+            .replace('Baseline (No AI)', 'Base')
+            .replace('Triage AI', 'Triage');
+          
+          return abbreviated;
+        }
+        
+        // For other scenarios, use shorter truncation
+        return name.length > 15 ? name.substring(0, 12) + '...' : name;
+      })
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "middle") // Center vertically
-      .attr("font-size", (d: any) => Math.max(9, Math.min(12, d.r / 4))) // Responsive font size based on bubble size
+      .attr("font-size", (d: any) => Math.max(8, Math.min(10, d.r / 3.5))) // Smaller font size
       .attr("font-weight", "700")
       .attr("fill", "#333") // Dark text
       .attr("stroke", "white") // White text outline for better contrast on dark backgrounds

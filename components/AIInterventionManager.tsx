@@ -578,20 +578,6 @@ const AIInterventionManager: React.FC = () => {
           );
         })}
         
-        {/* Quick Actions */}
-        <div className="sticky bottom-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              <strong>{Object.values(aiInterventions).filter(v => v).length}</strong> interventions configured
-            </div>
-            <button
-              onClick={() => runSimulation()}
-              className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium"
-            >
-              Run Simulation with These Settings
-            </button>
-          </div>
-        </div>
       </div>
     );
   };

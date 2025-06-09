@@ -11,7 +11,7 @@ import {
   selectedDiseasesAtom,
   aiUptakeParametersAtom
 } from '../lib/store';
-import { AIInterventions, AIUptakeParameters } from '../models/stockAndFlowModel';
+import { AIInterventions, AIUptakeParameters, diseaseSpecificAIEffects, diseaseAIRationales } from '../models/stockAndFlowModel';
 import InfoTooltip from './InfoTooltip';
 
 // Define types for AI intervention configurations
@@ -175,13 +175,26 @@ const AIInterventionManager: React.FC = () => {
   const [aiCostParams, setAiCostParams] = useAtom(aiCostParametersAtom);
   const [timeToScaleParams, setTimeToScaleParams] = useAtom(aiTimeToScaleParametersAtom);
   const [aiUptakeParams, setAiUptakeParams] = useAtom(aiUptakeParametersAtom);
+  const [selectedDisease] = useAtom(selectedDiseaseAtom);
+  const [selectedDiseases] = useAtom(selectedDiseasesAtom);
   
   // UI state
   const [activeTab, setActiveTab] = useState<'overview' | 'details' | 'uptake' | 'costs'>('overview');
+  const [displayedDisease, setDisplayedDisease] = useState<string | null>(null);
   
   // Helper functions
   const hasActiveInterventions = Object.values(aiInterventions).some(v => v);
   const activeInterventionCount = Object.values(aiInterventions).filter(v => v).length;
+  
+  // Initialize displayed disease when selectedDiseases changes
+  React.useEffect(() => {
+    if (selectedDiseases.length > 0 && !selectedDiseases.includes(displayedDisease || '')) {
+      setDisplayedDisease(selectedDiseases[0]);
+    }
+  }, [selectedDiseases, displayedDisease]);
+  
+  // Use displayedDisease for showing disease-specific effects, fallback to selectedDisease for single selection
+  const effectiveDisease = displayedDisease || selectedDisease;
   
   const handleInterventionToggle = (intervention: keyof AIInterventions) => {
     setAIInterventions({
@@ -189,6 +202,57 @@ const AIInterventionManager: React.FC = () => {
       [intervention]: !aiInterventions[intervention]
     });
     setSelectedPreset(null);
+  };
+
+  // Helper function to get disease-specific effect multiplier
+  const getDiseaseSpecificMultiplier = (interventionKey: string, effectParam: string): number | null => {
+    if (!effectiveDisease || !diseaseSpecificAIEffects[effectiveDisease]) return null;
+    
+    const diseaseEffects = diseaseSpecificAIEffects[effectiveDisease];
+    const interventionEffects = diseaseEffects[interventionKey as keyof typeof diseaseEffects];
+    
+    if (!interventionEffects) return null;
+    
+    // Map parameter names to disease-specific effect keys
+    const paramMapping: {[key: string]: string} = {
+      // Resolution parameters
+      'μ₀': 'mu0Effect',
+      'μ₁': 'mu1Effect',
+      'μ₂': 'mu2Effect',
+      'μ₃': 'mu3Effect',
+      'μI': 'muIEffect',
+      // Mortality parameters
+      'δ₀': 'delta0Effect',
+      'δ₁': 'delta1Effect',
+      'δ₂': 'delta2Effect',
+      'δ₃': 'delta3Effect',
+      'δI': 'deltaIEffect',
+      // Referral parameters
+      'ρ₀': 'rho0Effect',
+      'ρ₁': 'rho1Effect',
+      'ρ₂': 'rho2Effect',
+      // Care-seeking parameters
+      'φ₀': 'phi0Effect',
+      'σI': 'sigmaIEffect',
+      // Queue management parameters
+      'visitReduction': 'visitReductionEffect',
+      'directRoutingImprovement': 'routingImprovementEffect',
+      'queuePreventionRate': 'queuePreventionRate',
+      'smartRoutingRate': 'smartRoutingRate',
+      'resolutionBoost': 'resolutionBoostEffect',
+      'referralOptimization': 'referralOptimizationEffect',
+      'pointOfCareResolution': 'pointOfCareResolutionEffect',
+      'referralPrecision': 'referralPrecisionEffect',
+      'lengthOfStayReduction': 'lengthOfStayReductionEffect',
+      'dischargeOptimization': 'dischargeOptimizationEffect',
+      'treatmentEfficiency': 'treatmentEfficiencyEffect',
+      'resourceUtilization': 'resourceUtilizationEffect'
+    };
+    
+    const effectKey = paramMapping[effectParam];
+    if (!effectKey) return null;
+    
+    return interventionEffects[effectKey as keyof typeof interventionEffects] as number || null;
   };
 
 
@@ -440,6 +504,44 @@ const AIInterventionManager: React.FC = () => {
           </div>
         </div>
 
+        {/* Disease-specific effects section */}
+        {(effectiveDisease && diseaseSpecificAIEffects[effectiveDisease]) && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-6 mb-6">
+            <div className="flex items-start justify-between mb-3">
+              <h4 className="font-semibold text-amber-900 dark:text-amber-100 text-lg flex items-center gap-2">
+                <span className="text-2xl">🔬</span>
+                Disease-Specific AI Effects
+              </h4>
+              {selectedDiseases.length > 1 && (
+                <select
+                  value={effectiveDisease}
+                  onChange={(e) => setDisplayedDisease(e.target.value)}
+                  className="px-3 py-1 text-sm border border-amber-300 dark:border-amber-700 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-transparent dark:bg-amber-800 dark:text-amber-100"
+                >
+                  {selectedDiseases.map(disease => (
+                    <option key={disease} value={disease}>
+                      {disease.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {selectedDiseases.length === 1 && (
+                <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                  {effectiveDisease.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-amber-700 dark:text-amber-300 mb-4">
+              {diseaseAIRationales[effectiveDisease]}
+            </p>
+            <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-800/30 rounded p-3">
+              <strong>Note:</strong> For {effectiveDisease.replace(/_/g, ' ')}, AI interventions have disease-specific 
+              effects that replace the base effects shown below. These disease-specific values reflect how well 
+              the AI technology performs for this particular disease's characteristics and treatment protocols.
+            </div>
+          </div>
+        )}
+
         {/* Group interventions by care level */}
         {['Home & Community', 'Entry Point', 'Community (L0)', 'Primary & District (L1/L2)', 'Hospitals (L2/L3)'].map(level => {
           const levelInterventions = interventionInfo.filter(i => i.careLevel === level && aiInterventions[i.key]);
@@ -510,6 +612,7 @@ const AIInterventionManager: React.FC = () => {
                             {categoryEffects.map(effect => {
                               const effectKey = `${intervention.key}_${effect.param}`;
                               const magnitude = effectMagnitudes[effectKey] ?? 1;
+                              const diseaseMultiplier = getDiseaseSpecificMultiplier(intervention.key, effect.param);
                               
                               return (
                                 <div key={effect.param} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
@@ -524,6 +627,22 @@ const AIInterventionManager: React.FC = () => {
                                       <p className="text-sm text-gray-600 dark:text-gray-400 leading-tight">
                                         {effect.description}
                                       </p>
+                                      {diseaseMultiplier !== null && (
+                                        <div className="mt-2 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-1 rounded inline-block">
+                                          <strong>Disease-specific effect:</strong> {
+                                            // For multiplicative effects (×), show the disease-specific multiplier
+                                            effect.effect.startsWith('×') 
+                                              ? `×${diseaseMultiplier.toFixed(2)}` 
+                                              // For additive effects (+), show as percentage if < 1, otherwise as-is
+                                              : diseaseMultiplier < 1 
+                                                ? `+${(diseaseMultiplier * 100).toFixed(0)}%`
+                                                : `${diseaseMultiplier.toFixed(2)}`
+                                          }
+                                          <span className="ml-1 text-amber-600 dark:text-amber-400">
+                                            (for {effectiveDisease.replace(/_/g, ' ')})
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
                                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                                       <div className="flex items-center gap-2">
@@ -542,10 +661,26 @@ const AIInterventionManager: React.FC = () => {
                                         />
                                       </div>
                                       <div className="text-right">
-                                        <div className="text-xs text-gray-500 dark:text-gray-500">Result:</div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-500">Base Result:</div>
                                         <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
                                           {getAdjustedEffect(effect.effect, magnitude)}
                                         </div>
+                                        {diseaseMultiplier !== null && (
+                                          <>
+                                            <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">Disease Result:</div>
+                                            <div className="text-sm font-bold text-amber-700 dark:text-amber-300">
+                                              {
+                                                // For multiplicative effects, apply magnitude to disease-specific value
+                                                effect.effect.startsWith('×') 
+                                                  ? `×${(diseaseMultiplier * magnitude).toFixed(2)}`
+                                                  // For additive effects, apply magnitude to disease-specific value
+                                                  : diseaseMultiplier < 1
+                                                    ? `+${(diseaseMultiplier * magnitude * 100).toFixed(0)}%`
+                                                    : `${(diseaseMultiplier * magnitude).toFixed(2)}`
+                                              }
+                                            </div>
+                                          </>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
@@ -888,7 +1023,13 @@ const AIInterventionManager: React.FC = () => {
     
     if (baseEffect.startsWith('+')) {
       const value = parseFloat(baseEffect.substring(1));
-      return `+${(value * magnitude).toFixed(2)}`;
+      const adjustedValue = value * magnitude;
+      // Display as percentage if the value is less than 1
+      if (value < 1) {
+        return `+${(adjustedValue * 100).toFixed(0)}%`;
+      } else {
+        return `+${adjustedValue.toFixed(2)}`;
+      }
     } else if (baseEffect.startsWith('×')) {
       const value = parseFloat(baseEffect.substring(1));
       if (value < 1) {
@@ -901,7 +1042,13 @@ const AIInterventionManager: React.FC = () => {
     } else {
       // For raw numbers (queue effects)
       const value = parseFloat(baseEffect);
-      return (value * magnitude).toFixed(2);
+      const adjustedValue = value * magnitude;
+      // Display as percentage if appropriate
+      if (value <= 1) {
+        return `${(adjustedValue * 100).toFixed(0)}%`;
+      } else {
+        return adjustedValue.toFixed(2);
+      }
     }
   };
 

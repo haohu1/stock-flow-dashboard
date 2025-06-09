@@ -646,13 +646,13 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
             
             // Use very short abbreviations for AI tools
             const abbreviated = aiToolPart
-              .replace('AI Health Advisor', 'Self-Care')
+              .replace('AI Health Advisor', 'SC-Advisor')
               .replace('Diagnostic AI (L1/L2)', 'Diag')
               .replace('Diagnostic AI', 'Diag')
               .replace('Bed Management AI', 'Bed')
               .replace('Hospital Decision Support', 'Hospital')
               .replace('CHW Decision Support', 'CHW')
-              .replace('AI Self-Care Platform', 'Self-Care')
+              .replace('AI Self-Care Platform', 'SC-Platform')
               .replace('Baseline (No AI)', 'Base')
               .replace('Triage AI', 'Triage');
             

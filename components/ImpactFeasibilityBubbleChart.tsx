@@ -348,13 +348,13 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     
     if (dataMax < impactThreshold * 0.5) {
       // Data is well below threshold - focus on the data range
-      maxImpact = dataMax * 1.2; // 20% padding above max data point
+      maxImpact = dataMax * 1.3; // 30% padding above max data point
     } else if (dataMax < impactThreshold * 1.5) {
-      // Data is near threshold - show threshold clearly
-      maxImpact = impactThreshold * 1.3; // Show threshold with 30% padding
+      // Data is near threshold - show threshold clearly with more room
+      maxImpact = Math.max(impactThreshold * 1.5, dataMax * 1.25); // Show threshold with 50% padding or 25% above data
     } else {
-      // Data exceeds threshold significantly - scale to data
-      maxImpact = dataMax * 1.1; // 10% padding for larger values
+      // Data exceeds threshold significantly - scale to data with more breathing room
+      maxImpact = dataMax * 1.2; // 20% padding for larger values
     }
     
     // Add padding for negative values
@@ -367,6 +367,11 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       maxImpact = 20;
     } else if (yAxisMetric === 'percent-deaths' && maxImpact < 5) {
       maxImpact = 5;
+    }
+    
+    // For percent deaths, ensure we always have room above 10% threshold
+    if (yAxisMetric === 'percent-deaths' && maxImpact < 15) {
+      maxImpact = 15; // Always show up to 15% for better visualization
     }
     
     const yScale = d3.scaleLinear()

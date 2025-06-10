@@ -70,6 +70,39 @@ These represent the probability that a patient will be referred to a higher leve
 * Higher referral rates to specialized care
 * Significant level-of-care dependencies
 
+## Clinical Rationale for Mortality Rates
+
+### Key Principles
+1. **Monotonic Decrease**: Mortality must decrease or remain stable with higher levels of care
+2. **Prescription Drug Access**: Informal care cannot provide prescription medications
+3. **Level-Appropriate Interventions**: Each level adds specific capabilities
+4. **Evidence-Based**: Rates aligned with WHO data and published literature
+
+### Common Mortality Patterns by Disease Type
+
+#### Conditions Requiring Prescription Medications (CHF, TB, HIV)
+- **Minimal benefit from informal care** (5-10% reduction at most)
+- **Dramatic improvement with proper medications** (50-80% reduction)
+- **Examples**: CHF needs ACE inhibitors, TB needs antibiotics, HIV needs ART
+
+#### Acute Infections (Pneumonia, Malaria)
+- **Moderate benefit from supportive care** (10-20% reduction)
+- **Major improvement with antibiotics/antimalarials** (70-90% reduction)
+- **Hospital care adds oxygen, IV medications, monitoring**
+
+#### Self-Limiting or Manageable Conditions (Diarrhea, URTI)
+- **Good benefit from home care** (20-40% reduction for diarrhea with fluids)
+- **ORS for diarrhea is highly effective** (90%+ reduction)
+- **URTI has very low baseline mortality**
+
+### Validating Mortality Rates
+
+When reviewing mortality parameters:
+1. **Check progression**: Does mortality decrease at each higher level?
+2. **Consider interventions**: What specific treatments are available at each level?
+3. **Review magnitude**: A 10x reduction between levels is usually too extreme
+4. **Think weekly**: These are weekly rates - 1% weekly = ~40% annual mortality
+
 ## Tips for Validating Parameters
 
 When reviewing these parameters, consider:

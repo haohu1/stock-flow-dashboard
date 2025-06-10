@@ -308,56 +308,50 @@ const Dashboard: React.FC = () => {
         {/* Welcome information */}
         <div className="text-left">
           <div className="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg border border-blue-200 dark:border-blue-700 max-w-2xl">
-            <h3 className="text-lg font-medium text-blue-800 dark:text-blue-200 mb-2">How to use this dashboard</h3>
-            <ol className="list-decimal list-inside text-left text-gray-700 dark:text-gray-300 space-y-2">
-              <li className="font-medium">Configure your health system:
-                <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                  <li>Select health system strength (e.g., Moderate Urban, Weak Rural)</li>
-                  <li>Choose primary disease (e.g., Malaria, TB, Pneumonia)</li>
-                  <li>Set population size and congestion level</li>
-                  <li>Optionally select multiple diseases for comparison</li>
+            <h3 className="text-lg font-medium text-blue-800 dark:text-blue-200 mb-2">Getting Started</h3>
+            <ol className="list-decimal list-inside text-left text-gray-700 dark:text-gray-300 space-y-3">
+              <li className="font-medium">📍 Configure your setting:
+                <ul className="list-disc list-inside ml-4 mt-1 font-normal space-y-1">
+                  <li>Choose a <strong>country</strong> or use generic model (sidebar)</li>
+                  <li>Select <strong>urban/rural</strong> setting if using country model</li>
+                  <li>Pick a <strong>disease</strong> to model (9 diseases available)</li>
+                  <li>Adjust <strong>population size</strong> and <strong>system congestion</strong></li>
                 </ul>
               </li>
-              <li className="font-medium">Run baseline scenario:
-                <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                  <li>Keep all AI interventions off</li>
-                  <li>Click "Run Simulation"</li>
-                  <li>Click "Set as Baseline" to save for comparison</li>
+              <li className="font-medium">🤖 Test AI interventions (two ways):
+                <ul className="list-disc list-inside ml-4 mt-1 font-normal space-y-1">
+                  <li><strong>Quick method:</strong> Click <strong>"Test Each AI"</strong> to automatically compare all AI tools</li>
+                  <li><strong>Manual method:</strong> 
+                    <ul className="list-circle list-inside ml-4 mt-1">
+                      <li>First run with all AI OFF → "Set as Baseline"</li>
+                      <li>Then toggle specific AI tools → "Run Simulation"</li>
+                    </ul>
+                  </li>
+                  <li>Compare deaths averted, DALYs saved, costs, and ICER</li>
                 </ul>
               </li>
-              <li className="font-medium">Test AI interventions:
-                <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                  <li>Toggle one or more AI interventions</li>
-                  <li>Run simulation to see impact</li>
-                  <li>Compare deaths, DALYs, costs, and ICER vs baseline</li>
+              <li className="font-medium">📊 Analyze results:
+                <ul className="list-disc list-inside ml-4 mt-1 font-normal space-y-1">
+                  <li><strong>Dashboard:</strong> Key metrics and patient flow charts</li>
+                  <li><strong>Scenarios:</strong> Save and compare different configurations</li>
+                  <li><strong>AI Interventions:</strong> Configure costs, uptake rates, and effects</li>
+                  <li><strong>Sensitivity:</strong> Test parameter uncertainty ranges</li>
+                  <li><strong>Clinical Guide:</strong> Evidence-based parameter rationale</li>
+                  <li><strong>Bubble Charts:</strong> Visualize impact vs feasibility (requires 2+ saved scenarios)</li>
                 </ul>
               </li>
-              <li className="font-medium">Analyze results:
-                <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                  <li>View patient flow animation and queue buildup</li>
-                  <li>Check bubble charts for impact vs feasibility</li>
-                  <li>Save scenarios for comparison</li>
-                  <li>Use Sensitivity tab to test parameter uncertainty</li>
-                  <li>Use "Generate AI Comparison" button in sidebar for quick multi-disease analysis</li>
-                </ul>
-              </li>
-              <li className="font-medium">Explore documentation:
-                <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                  <li>Model Equations tab: Mathematical framework</li>
-                  <li>Parameter Guide tab: Clinical context</li>
-                  <li>Parameters tab: Adjust custom values</li>
-                </ul>
-              </li>
-              <li className="font-medium">Compare multiple diseases:
-                <ul className="list-disc list-inside ml-4 mt-1 font-normal">
-                  <li>Select multiple diseases in the sidebar</li>
-                  <li>Run simulation to see comparative results</li>
+              <li className="font-medium">🔄 Advanced features:
+                <ul className="list-disc list-inside ml-4 mt-1 font-normal space-y-1">
+                  <li><strong>Multi-disease mode:</strong> Select multiple diseases to model together</li>
+                  <li><strong>Country comparison:</strong> Switch between countries to see differences</li>
+                  <li><strong>Custom parameters:</strong> Fine-tune any model parameter in Parameters tab</li>
+                  <li><strong>Export scenarios:</strong> Save configurations for future analysis</li>
                 </ul>
               </li>
             </ol>
             <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-800 rounded">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">Important:</p>
-              <p className="text-sm text-yellow-700 dark:text-yellow-300">Always run a baseline first, then test AI interventions to calculate ICER values correctly.</p>
+              <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">💡 Pro tip:</p>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300">Start with one disease and one AI intervention to understand the impact, then explore combinations and multiple diseases.</p>
             </div>
           </div>
         </div>

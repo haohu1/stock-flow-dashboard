@@ -1,0 +1,67 @@
+Mortality Rates Update Summary
+==============================
+
+CONGESTIVE HEART FAILURE:
+  deltaU: 0.09
+  deltaI: 0.08
+  delta0: 0.04
+  delta1: 0.025
+  delta2: 0.015
+  delta3: 0.01
+
+TUBERCULOSIS:
+  deltaU: 0.004
+  deltaI: 0.0035
+  delta0: 0.0025
+  delta1: 0.002
+  delta2: 0.0015
+  delta3: 0.001
+
+CHILDHOOD PNEUMONIA:
+  deltaU: 0.05
+  deltaI: 0.045
+  delta0: 0.02
+  delta1: 0.015
+  delta2: 0.01
+  delta3: 0.008
+
+MALARIA:
+  deltaU: 0.03
+  deltaI: 0.025
+  delta0: 0.005
+  delta1: 0.003
+  delta2: 0.002
+  delta3: 0.0015
+
+DIARRHEA:
+  deltaU: 0.025
+  deltaI: 0.02
+  delta0: 0.003
+  delta1: 0.002
+  delta2: 0.0015
+  delta3: 0.001
+
+HIV MANAGEMENT CHRONIC:
+  deltaU: 0.007
+  deltaI: 0.0065
+  delta0: 0.004
+  delta1: 0.002
+  delta2: 0.0015
+  delta3: 0.001
+
+UPPER RESPIRATORY TRACT INFECTION:
+  deltaU: 0.00002
+  deltaI: 0.00001
+  delta0: 0.00001
+  delta1: 0.00001
+  delta2: 0.00001
+  delta3: 0.00001
+
+FEVER:
+  deltaU: 0.015
+  deltaI: 0.012
+  delta0: 0.008
+  delta1: 0.005
+  delta2: 0.003
+  delta3: 0.002
+

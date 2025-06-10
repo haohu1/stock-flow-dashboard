@@ -612,11 +612,11 @@ exports.diseaseProfiles = {
         mu1: 0.35, // moderate resolution at primary care with medications (35% per week)
         mu2: 0.55, // good resolution at district hospital (55% per week)
         mu3: 0.75, // high resolution at tertiary hospital with advanced care (75% per week)
-        deltaI: 0.06, // high mortality risk if inadequately treated at home (6% per week)
+        deltaI: 0.08, // high mortality risk if inadequately treated at home (6% per week)
         deltaU: 0.09, // very high mortality risk if completely untreated (9% per week)
-        delta0: 0.05, // high mortality risk at CHW level (5% per week)
-        delta1: 0.03, // moderate mortality risk at primary care (3% per week)
-        delta2: 0.02, // lower mortality risk at district hospital (2% per week)
+        delta0: 0.04, // high mortality risk at CHW level (5% per week)
+        delta1: 0.025, // moderate mortality risk at primary care (3% per week)
+        delta2: 0.015, // lower mortality risk at district hospital (2% per week)
         delta3: 0.01, // low mortality risk at tertiary hospital (1% per week)
         rho0: 0.70, // high referral from CHW to primary (70%)
         rho1: 0.55, // substantial referral from primary to district (55%)
@@ -643,9 +643,9 @@ exports.diseaseProfiles = {
         deltaI: 0.0035, // untreated/informal care TB mortality (0.35% per week) - higher in South Africa
         deltaU: 0.004, // completely untreated TB mortality (0.4% per week) - higher in South Africa
         delta0: 0.0025, // mortality at CHW level (0.25% per week, with DOTS support)
-        delta1: 0.0015, // mortality on treatment at primary care (0.15% per week)
-        delta2: 0.001, // mortality on treatment at district hospital (0.1% per week)
-        delta3: 0.0008, // mortality for complex/MDR-TB at tertiary (0.08% per week)
+        delta1: 0.002, // mortality on treatment at primary care (0.15% per week)
+        delta2: 0.0015, // mortality on treatment at district hospital (0.1% per week)
+        delta3: 0.001, // mortality for complex/MDR-TB at tertiary (0.08% per week)
         rho0: 0.85, // high referral CHW to primary for diagnosis/treatment (85%)
         rho1: 0.45, // moderate referral primary to district for complications/MDR suspicion (45%)
         rho2: 0.30, // referral district to tertiary for specialized MDR/complex care (30%)
@@ -668,12 +668,12 @@ exports.diseaseProfiles = {
         mu1: 0.80, // primary care with antibiotics for non-severe (80% per week)
         mu2: 0.85, // district hospital with oxygen and IV antibiotics (85% per week)
         mu3: 0.90, // tertiary care with ventilatory support if needed (90% per week)
-        deltaI: 0.035, // mortality with informal care (3.5% per week)
+        deltaI: 0.045, // mortality with informal care (3.5% per week)
         deltaU: 0.05, // mortality if completely untreated (5% per week)
-        delta0: 0.01, // mortality under CHW care (covers misclassification/delay for severe) (1% per week)
-        delta1: 0.005, // mortality under primary care for appropriately treated non-severe (0.5% per week)
-        delta2: 0.008, // mortality with oxygen and proper antibiotics (0.8% per week)
-        delta3: 0.005, // low mortality with full respiratory support (0.5% per week)
+        delta0: 0.02, // mortality under CHW care (covers misclassification/delay for severe) (1% per week)
+        delta1: 0.015, // mortality under primary care for appropriately treated non-severe (0.5% per week)
+        delta2: 0.01, // mortality with oxygen and proper antibiotics (0.8% per week)
+        delta3: 0.008, // low mortality with full respiratory support (0.5% per week)
         rho0: 0.60, // CHW referral to primary for danger signs/non-response (60%)
         rho1: 0.30, // primary care referral to district for severe cases (30%)
         rho2: 0.20, // district referral to tertiary for highly complex cases (20%)
@@ -696,12 +696,12 @@ exports.diseaseProfiles = {
         mu1: 0.80, // Primary care with ACTs and better monitoring (80% weekly resolution)
         mu2: 0.90, // District hospital with IV artesunate for severe malaria (90% weekly resolution)
         mu3: 0.95, // Tertiary care with ICU support for complicated malaria (95% weekly resolution)
-        deltaI: 0.075, // Mortality with informal care (7.5% weekly - comparable to untreated)
-        deltaU: 0.075, // Mortality if completely untreated (7.5% weekly, ~5%-10% range)
-        delta0: 0.001, // Mortality under CHW care (0.1% weekly - includes some misdiagnosis/late referral)
-        delta1: 0.001, // Mortality under primary care (0.1% weekly - similar to CHW)
-        delta2: 0.01, // Mortality with proper severe malaria treatment (1% weekly - AQUAMAT trial)
-        delta3: 0.005, // Low mortality at tertiary with full ICU support (0.5% weekly)
+        deltaI: 0.025, // Mortality with informal care (7.5% weekly - comparable to untreated)
+        deltaU: 0.03, // Mortality if completely untreated (7.5% weekly, ~5%-10% range)
+        delta0: 0.005, // Mortality under CHW care (0.1% weekly - includes some misdiagnosis/late referral)
+        delta1: 0.003, // Mortality under primary care (0.1% weekly - similar to CHW)
+        delta2: 0.002, // Mortality with proper severe malaria treatment (1% weekly - AQUAMAT trial)
+        delta3: 0.0015, // Low mortality at tertiary with full ICU support (0.5% weekly)
         rho0: 0.25, // CHW referral to primary (danger signs/severe cases) - lower than previous estimate
         rho1: 0.20, // Primary care referral to district (severe malaria) - lower than previous estimate
         rho2: 0.10, // District to tertiary referral (very complicated cases) - lower rate as suggested
@@ -724,12 +724,12 @@ exports.diseaseProfiles = {
         mu1: 0.70, // primary care (basic investigation, empiric treatment) (70% per week)
         mu2: 0.80, // district hospital (further investigation) (80% per week)
         mu3: 0.90, // tertiary hospital (extensive investigation) (90% per week)
-        deltaI: 0.008, // low mortality for general fevers, but some are serious (0.8% per week)
+        deltaI: 0.012, // low mortality for general fevers, but some are serious (0.8% per week)
         deltaU: 0.015, // higher if completely untreated (1.5% per week)
-        delta0: 0.005, // mortality at CHW level (0.5% per week)
-        delta1: 0.003, // mortality at primary care (0.3% per week)
-        delta2: 0.002, // mortality at district hospital (0.2% per week)
-        delta3: 0.001, // mortality at tertiary (0.1% per week)
+        delta0: 0.008, // mortality at CHW level (0.5% per week)
+        delta1: 0.005, // mortality at primary care (0.3% per week)
+        delta2: 0.003, // mortality at district hospital (0.2% per week)
+        delta3: 0.002, // mortality at tertiary (0.1% per week)
         rho0: 0.30, // CHW referral to primary (persistent/severe fever) (30%)
         rho1: 0.20, // primary care referral to district (unclear diagnosis, non-response) (20%)
         rho2: 0.10, // district referral to tertiary (complex cases) (10%)
@@ -752,12 +752,12 @@ exports.diseaseProfiles = {
         mu1: 0.90, // primary care with ORS/Zinc, antibiotics if dysentery (90% per week)
         mu2: 0.80, // district hospital for severe dehydration/complications (recovery longer) (80% per week)
         mu3: 0.85, // tertiary care for very severe/refractory cases (85% per week)
-        deltaI: 0.015, // mortality with informal care (risk of dehydration) (1.5% per week)
+        deltaI: 0.02, // mortality with informal care (risk of dehydration) (1.5% per week)
         deltaU: 0.025, // mortality if completely untreated (severe dehydration) (2.5% per week)
-        delta0: 0.002, // mortality under CHW care (ORS failures, delayed referral for severe) (0.2% per week)
-        delta1: 0.001, // mortality under primary care (well-managed non-severe) (0.1% per week)
-        delta2: 0.01, // mortality for severe dehydration/complications at district (1% per week)
-        delta3: 0.005, // mortality for very severe cases at tertiary (0.5% per week)
+        delta0: 0.003, // mortality under CHW care (ORS failures, delayed referral for severe) (0.2% per week)
+        delta1: 0.002, // mortality under primary care (well-managed non-severe) (0.1% per week)
+        delta2: 0.0015, // mortality for severe dehydration/complications at district (1% per week)
+        delta3: 0.001, // mortality for very severe cases at tertiary (0.5% per week)
         rho0: 0.50, // CHW referral to primary (danger signs, dehydration, persistent) (50%)
         rho1: 0.30, // primary care referral to district (severe dehydration, not responding) (30%)
         rho2: 0.10, // district referral to tertiary (highly complex cases) (10%)
@@ -808,12 +808,12 @@ exports.diseaseProfiles = {
         mu1: 0.10, // primary care initiating ART, counseling, monitoring (10% weekly to stable initial phase)
         mu2: 0.12, // district hospital for complex starts or managing side effects (12% weekly to stable)
         mu3: 0.15, // tertiary for very complex cases, salvage regimens (15% weekly to stable)
-        deltaI: 0.002, // mortality if diagnosed but not linked (0.2% weekly, ~10-year survival)
-        deltaU: 0.002, // untreated mortality (0.2% weekly, ~10-year survival)
-        delta0: 0.0015, // mortality during CHW linkage/support (0.15% weekly)
-        delta1: 0.0001, // very low mortality on effective ART at primary care (0.01% weekly)
-        delta2: 0.0005, // slightly higher for complex cases at district level (0.05% weekly)
-        delta3: 0.02, // high mortality for advanced disease at tertiary (2% weekly)
+        deltaI: 0.0065, // mortality if diagnosed but not linked (0.2% weekly, ~10-year survival)
+        deltaU: 0.007, // untreated mortality (0.2% weekly, ~10-year survival)
+        delta0: 0.004, // mortality during CHW linkage/support (0.15% weekly)
+        delta1: 0.002, // very low mortality on effective ART at primary care (0.01% weekly)
+        delta2: 0.0015, // slightly higher for complex cases at district level (0.05% weekly)
+        delta3: 0.001, // high mortality for advanced disease at tertiary (2% weekly)
         rho0: 0.90, // high CHW referral for ART initiation (90%)
         rho1: 0.18, // low primary referral if stable, higher if complications (18%)
         rho2: 0.5, // moderate secondary to tertiary referral (50%)
@@ -1580,20 +1580,20 @@ const getDefaultParameters = () => ({
     informalCareRatio: 0.20,
     // Resolution and death probabilities
     muI: 0.30,
-    deltaI: 0.02,
-    deltaU: 0.01,
+    deltaI: 0.012,
+    deltaU: 0.015,
     muU: 0.05, // Default: 5% weekly chance of spontaneous resolution for untreated patients
     mu0: 0.50,
-    delta0: 0.03,
+    delta0: 0.008,
     rho0: 0.75,
     mu1: 0.60,
-    delta1: 0.02,
+    delta1: 0.005,
     rho1: 0.25,
     mu2: 0.70,
-    delta2: 0.05,
+    delta2: 0.003,
     rho2: 0.15,
     mu3: 0.80,
-    delta3: 0.08,
+    delta3: 0.002,
     // AI effectiveness parameters - conservative estimates
     selfCareAIEffectMuI: 0.08, // 8% improvement in resolution from self-care AI (reduced from 15%)
     selfCareAIEffectDeltaI: 0.85, // 15% reduction in mortality from self-care AI (reduced from 30%)

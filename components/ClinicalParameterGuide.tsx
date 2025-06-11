@@ -280,6 +280,39 @@ const diseaseData: Record<string, DiseaseData> = {
       "30% infectious, 30% inflammatory, 20% malignancy, 20% misc/undiagnosed",
       "Diagnostic yield increases with systematic approach"
     ]
+  },
+  hypertension: {
+    name: "Hypertension",
+    description: "Chronic elevation of blood pressure requiring lifelong management",
+    keyCharacteristics: [
+      "Affects adults (mean age 45)",
+      "Major risk factor for stroke, heart disease, kidney disease",
+      "Often asymptomatic until complications develop",
+      "Highly amenable to self-care monitoring"
+    ],
+    treatmentNeeds: "ACE inhibitors/ARBs, diuretics, CCBs, beta-blockers, lifestyle modification, BP monitoring",
+    mortalityRates: {
+      untreated: { value: 0.0015, rationale: "Low weekly rate but accumulates - untreated HTN has 10-20% 10-year CV mortality" },
+      informal: { value: 0.0008, rationale: "Traditional remedies provide minimal BP control" },
+      chw: { value: 0.0004, rationale: "Basic antihypertensives and BP monitoring reduce risk by 70%" },
+      primary: { value: 0.0002, rationale: "Combination therapy achieves target BP in most patients" },
+      district: { value: 0.0003, rationale: "Manages resistant HTN and complications" },
+      tertiary: { value: 0.0005, rationale: "Complex cases, secondary HTN workup" }
+    },
+    resolutionRates: {
+      untreated: { value: 0.05, rationale: "Minimal control without medication" },
+      informal: { value: 0.15, rationale: "Lifestyle changes provide modest benefit" },
+      chw: { value: 0.40, rationale: "Single agent therapy + monitoring achieves control in 40%" },
+      primary: { value: 0.65, rationale: "Combination therapy achieves target BP in 65%" },
+      district: { value: 0.75, rationale: "Specialist optimization for resistant cases" },
+      tertiary: { value: 0.85, rationale: "Comprehensive management of complex HTN" }
+    },
+    evidenceBase: [
+      "SPRINT trial: intensive BP control reduces CV events by 25%",
+      "Home BP monitoring improves control rates by 30-40%",
+      "Each 10mmHg reduction reduces stroke risk by 35%, CHD by 20%",
+      "80% undiagnosed or poorly controlled in many LMICs"
+    ]
   }
 };
 
@@ -298,12 +331,20 @@ const ClinicalParameterGuide: React.FC = () => {
   // Formatting helpers
   const formatPercentage = (value: number | undefined) => {
     if (value === undefined) return 'Not set';
-    return `${(value * 100).toFixed(1)}%`;
+    const percent = value * 100;
+    // Use more decimal places for very small values
+    if (percent < 0.1) return `${percent.toFixed(3)}%`;
+    if (percent < 1) return `${percent.toFixed(2)}%`;
+    return `${percent.toFixed(1)}%`;
   };
 
   const formatRate = (value: number | undefined) => {
     if (value === undefined) return 'Not set';
-    return `${(value * 100).toFixed(2)}%`;
+    const percent = value * 100;
+    // Use more decimal places for very small values
+    if (percent < 0.1) return `${percent.toFixed(3)}%`;
+    if (percent < 1) return `${percent.toFixed(2)}%`;
+    return `${percent.toFixed(1)}%`;
   };
 
   const formatIncidence = (value: number) => {

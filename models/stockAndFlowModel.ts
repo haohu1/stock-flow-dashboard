@@ -1126,6 +1126,34 @@ export const diseaseProfiles = {
     queueAbandonmentRate: 0.01, // 1% - Extremely sick patients, won't leave
     queueBypassRate: 0.01,    // 1% - Too sick, need urgent formal care
     queueClearanceRate: 0.15, // 15% - Complex diagnosis and treatment
+  },
+  hypertension: { // Essential hypertension - chronic management focus
+    lambda: 0.07,             // 7% annual incidence in adults (70,000 per million)
+    disabilityWeight: 0.117,  // moderate disability from uncontrolled BP
+    meanAgeOfInfection: 45,   // typically diagnosed in middle age
+    muI: 0.15,                // some control with lifestyle/traditional remedies (15% per week)
+    muU: 0.05,                // minimal control without any intervention (5% per week)
+    mu0: 0.40,                // CHW BP monitoring, lifestyle counseling, basic meds (40% per week)
+    mu1: 0.65,                // primary care with antihypertensives, monitoring (65% per week)
+    mu2: 0.75,                // district hospital for complicated hypertension (75% per week)
+    mu3: 0.85,                // tertiary care for resistant hypertension (85% per week)
+    deltaI: 0.0008,           // low weekly mortality but accumulates over time (0.08% per week)
+    deltaU: 0.0015,           // higher mortality if completely uncontrolled (0.15% per week)
+    delta0: 0.0004,           // mortality with CHW monitoring/basic treatment (0.04% per week)
+    delta1: 0.0002,           // very low mortality with good BP control (0.02% per week)
+    delta2: 0.0003,           // mortality for complicated cases (0.03% per week)
+    delta3: 0.0005,           // mortality for severe/resistant cases (0.05% per week)
+    rho0: 0.25,               // CHW referral for uncontrolled BP (25%)
+    rho1: 0.15,               // primary referral for complications (15%)
+    rho2: 0.10,               // district referral for specialized care (10%)
+    // Capacity and competition parameters
+    capacityShare: 0.12,      // Hypertension uses ~12% of health system capacity (very common)
+    competitionSensitivity: 0.8, // Less affected by congestion (scheduled chronic care)
+    clinicalPriority: 0.5,    // Moderate priority (chronic condition)
+    // Queue-specific parameters
+    queueAbandonmentRate: 0.10, // 10% - May feel fine, skip appointments
+    queueBypassRate: 0.15,    // 15% - Traditional remedies common
+    queueClearanceRate: 0.35, // 35% - Standard chronic care visits
   }
 };
 
@@ -1341,7 +1369,9 @@ export const diseaseAIRationales: {[disease: string]: string} = {
   
   fever: "Variable complexity disease benefits from AI differential diagnosis. Diagnostic AI improves resolution by 12-15% through better cause identification. CHW AI assists initial assessment (+8% resolution). Moderate referral optimization (15% reduction) as some fevers need escalation. Self-care helps with monitoring.",
   
-  hiv_opportunistic: "Complex disease with mixed outcomes. CHW AI helps with simple OIs and prophylaxis (+8% resolution) but increases referrals by 35% for complex cases. Diagnostic AI achieves highest impact (+30% resolution) through better OI identification. Hospital AI manages severe cases with 10% mortality reduction."
+  hiv_opportunistic: "Complex disease with mixed outcomes. CHW AI helps with simple OIs and prophylaxis (+8% resolution) but increases referrals by 35% for complex cases. Diagnostic AI achieves highest impact (+30% resolution) through better OI identification. Hospital AI manages severe cases with 10% mortality reduction.",
+  
+  hypertension: "Critical distinction: Generic AI chatbot (triage AI) has minimal impact (3% improvement) without BP monitoring devices or medication access - it's just advice. In contrast, comprehensive self-care AI platform with home BP monitors, medication delivery, and adherence tracking achieves 40% better control. The transformative impact comes from actual tools and medications, not just digital advice. CHW AI (+35%) and diagnostic AI (+30%) also require BP measurement devices to be effective."
 };
 
 // Disease-specific AI effects
@@ -1637,6 +1667,55 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       resourceUtilization: 0.27,     // 27% improvement (0.30 * 0.9)
       delta2Effect: 0.82,            // 18% mortality reduction (high impact)
       delta3Effect: 0.77             // 23% mortality reduction
+    }
+  },
+  
+  // Hypertension - excellent for self-care with BP monitoring and medication adherence
+  hypertension: {
+    selfCareAI: {
+      muIEffect: 0.40,      // 40% increase - home BP monitoring, medication reminders, lifestyle coaching
+      deltaIEffect: 0.85,   // 15% mortality reduction - early detection of complications
+      phi0Effect: 0.25,     // 25% increase in care seeking - alerts for dangerous BP readings
+      sigmaIEffect: 1.35,   // 35% faster transition - immediate alerts for hypertensive crisis
+      visitReductionEffect: 0.30,  // 30% visit reduction - home monitoring replaces routine checks
+      smartRoutingRate: 0.40,      // 40% better routing - severity-based triage
+      queuePreventionRate: 0.35,   // 35% queue prevention - home management for stable patients
+      routingImprovementEffect: 0.35 // 35% routing improvement - direct to appropriate level
+    },
+    triageAI: {
+      phi0Effect: 0.03,     // 3% increase - minimal impact, just generic advice without BP data
+      sigmaIEffect: 1.05,   // 5% faster transition - limited urgency detection without BP readings
+      queuePreventionRate: 0.05,  // 5% prevention - cannot assess BP, so limited triage ability
+      smartRoutingRate: 0.08      // 8% routing - no BP data means poor routing decisions
+    },
+    chwAI: {
+      mu0Effect: 0.35,      // 35% increase - BP monitoring, medication titration protocols
+      delta0Effect: 0.82,   // 18% mortality reduction - early intervention
+      rho0Effect: 0.65,     // 35% referral reduction - manage stable patients locally
+      resolutionBoost: 0.30,      // 30% additional resolution - medication optimization
+      referralOptimization: 0.40  // 40% reduction in unnecessary referrals
+    },
+    diagnosticAI: {
+      mu1Effect: 0.30,      // 30% increase - automated BP analysis, risk stratification
+      delta1Effect: 0.80,   // 20% mortality reduction - prevent complications
+      rho1Effect: 0.70,     // 30% referral reduction - confident management
+      mu2Effect: 0.25,      // 25% increase at L2 - complicated hypertension
+      delta2Effect: 0.82,   // 18% mortality reduction at L2
+      rho2Effect: 0.80,     // 20% reduction in L2 referrals
+      pointOfCareResolution: 0.35,  // 35% additional resolution - optimize treatment
+      referralPrecision: 0.40       // 40% better referral decisions
+    },
+    bedManagementAI: {
+      mu2Effect: 0.20,               // 20% increase - hypertensive crisis management
+      mu3Effect: 0.20,               // 20% increase at tertiary
+      lengthOfStayReduction: 0.25,   // 25% reduction - stabilize faster
+      dischargeOptimization: 0.30    // 30% faster discharge
+    },
+    hospitalDecisionAI: {
+      delta2Effect: 0.85,   // 15% mortality reduction - crisis protocols
+      delta3Effect: 0.82,   // 18% mortality reduction - complex cases
+      treatmentEfficiency: 0.35,   // 35% faster stabilization
+      resourceUtilization: 0.30    // 30% better bed use
     }
   },
   

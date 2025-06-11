@@ -122,7 +122,8 @@ export const countryDiseaseBurdens: Record<string, Record<string, DiseaseBurdenM
     hiv_opportunistic: { country: 'Nigeria', disease: 'hiv_opportunistic', incidenceMultiplier: 0.6, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.7, notes: 'Lower HIV burden but weaker health system' },
     fever: { country: 'Nigeria', disease: 'fever', incidenceMultiplier: 1.4, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.6, notes: 'High burden of febrile illnesses' },
     urti: { country: 'Nigeria', disease: 'urti', incidenceMultiplier: 1.3, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.7, notes: 'Common but often self-treated' },
-    congestive_heart_failure: { country: 'Nigeria', disease: 'congestive_heart_failure', incidenceMultiplier: 1.2, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.6, notes: 'Growing NCD burden, limited cardiac care' }
+    congestive_heart_failure: { country: 'Nigeria', disease: 'congestive_heart_failure', incidenceMultiplier: 1.2, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.6, notes: 'Growing NCD burden, limited cardiac care' },
+    hypertension: { country: 'Nigeria', disease: 'hypertension', incidenceMultiplier: 1.4, mortalityMultiplier: 1.5, careSeekingMultiplier: 0.5, notes: 'Very high prevalence (38%), low awareness and treatment rates' }
   },
   kenya: {
     tuberculosis: { country: 'Kenya', disease: 'tuberculosis', incidenceMultiplier: 1.5, mortalityMultiplier: 1.4, careSeekingMultiplier: 0.85, notes: 'High TB burden, strong TB program' },
@@ -133,7 +134,8 @@ export const countryDiseaseBurdens: Record<string, Record<string, DiseaseBurdenM
     hiv_opportunistic: { country: 'Kenya', disease: 'hiv_opportunistic', incidenceMultiplier: 2.0, mortalityMultiplier: 1.6, careSeekingMultiplier: 0.85, notes: 'High HIV-TB co-infection' },
     fever: { country: 'Kenya', disease: 'fever', incidenceMultiplier: 1.2, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.8, notes: 'Better health seeking behavior' },
     urti: { country: 'Kenya', disease: 'urti', incidenceMultiplier: 1.1, mortalityMultiplier: 1.0, careSeekingMultiplier: 0.85, notes: 'Good primary care access' },
-    congestive_heart_failure: { country: 'Kenya', disease: 'congestive_heart_failure', incidenceMultiplier: 1.3, mortalityMultiplier: 1.2, careSeekingMultiplier: 0.7, notes: 'Limited cardiac services' }
+    congestive_heart_failure: { country: 'Kenya', disease: 'congestive_heart_failure', incidenceMultiplier: 1.3, mortalityMultiplier: 1.2, careSeekingMultiplier: 0.7, notes: 'Limited cardiac services' },
+    hypertension: { country: 'Kenya', disease: 'hypertension', incidenceMultiplier: 1.3, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.6, notes: 'High prevalence (24%), improving but still low treatment coverage' }
   },
   south_africa: {
     tuberculosis: { country: 'South Africa', disease: 'tuberculosis', incidenceMultiplier: 2.2, mortalityMultiplier: 1.8, careSeekingMultiplier: 0.9, notes: 'Highest TB burden globally (400+ per 100k), extensive drug resistance, strong detection but high mortality' },
@@ -144,7 +146,8 @@ export const countryDiseaseBurdens: Record<string, Record<string, DiseaseBurdenM
     malaria: { country: 'South Africa', disease: 'malaria', incidenceMultiplier: 0.3, mortalityMultiplier: 0.8, careSeekingMultiplier: 0.95, notes: 'Low malaria burden, mainly in northern provinces (Limpopo, Mpumalanga, KwaZulu-Natal)' },
     congestive_heart_failure: { country: 'South Africa', disease: 'congestive_heart_failure', incidenceMultiplier: 1.8, mortalityMultiplier: 1.4, careSeekingMultiplier: 0.8, notes: 'High NCDs burden due to epidemiological transition and urbanization' },
     urti: { country: 'South Africa', disease: 'urti', incidenceMultiplier: 1.1, mortalityMultiplier: 1.0, careSeekingMultiplier: 0.9, notes: 'Moderate burden, good healthcare access in urban areas' },
-    fever: { country: 'South Africa', disease: 'fever', incidenceMultiplier: 1.2, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.85, notes: 'Higher complexity due to HIV/TB co-infections requiring careful evaluation' }
+    fever: { country: 'South Africa', disease: 'fever', incidenceMultiplier: 1.2, mortalityMultiplier: 1.1, careSeekingMultiplier: 0.85, notes: 'Higher complexity due to HIV/TB co-infections requiring careful evaluation' },
+    hypertension: { country: 'South Africa', disease: 'hypertension', incidenceMultiplier: 1.5, mortalityMultiplier: 1.4, careSeekingMultiplier: 0.7, notes: 'Very high prevalence (46%), better care access but still suboptimal control' }
   },
   rwanda: {
     tuberculosis: { country: 'Rwanda', disease: 'tuberculosis', incidenceMultiplier: 0.7, mortalityMultiplier: 0.8, careSeekingMultiplier: 0.95, notes: 'Good TB program with high case detection rate due to CHW network' },
@@ -156,6 +159,7 @@ export const countryDiseaseBurdens: Record<string, Record<string, DiseaseBurdenM
     fever: { country: 'Rwanda', disease: 'fever', incidenceMultiplier: 1.1, mortalityMultiplier: 0.9, careSeekingMultiplier: 0.9, notes: 'High health facility use for febrile illness' },
     urti: { country: 'Rwanda', disease: 'urti', incidenceMultiplier: 1.0, mortalityMultiplier: 0.8, careSeekingMultiplier: 0.85, notes: 'Common but CHWs manage most cases' },
     congestive_heart_failure: { country: 'Rwanda', disease: 'congestive_heart_failure', incidenceMultiplier: 0.9, mortalityMultiplier: 1.3, careSeekingMultiplier: 0.8, notes: 'Growing NCD burden but limited specialized care' },
+    hypertension: { country: 'Rwanda', disease: 'hypertension', incidenceMultiplier: 1.1, mortalityMultiplier: 1.2, careSeekingMultiplier: 0.85, notes: 'Moderate prevalence (15%), good CHW network for BP screening' }
   },
   test_country: {
     // All diseases have perfect care seeking (1.0) and normal burden
@@ -167,7 +171,8 @@ export const countryDiseaseBurdens: Record<string, Record<string, DiseaseBurdenM
     hiv_opportunistic: { country: 'test_country', disease: 'hiv_opportunistic', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
     fever: { country: 'test_country', disease: 'fever', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
     urti: { country: 'test_country', disease: 'urti', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
-    congestive_heart_failure: { country: 'test_country', disease: 'congestive_heart_failure', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' }
+    congestive_heart_failure: { country: 'test_country', disease: 'congestive_heart_failure', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' },
+    hypertension: { country: 'test_country', disease: 'hypertension', incidenceMultiplier: 1.0, mortalityMultiplier: 1.0, careSeekingMultiplier: 1.0, notes: 'Perfect care seeking' }
   }
 };
 
@@ -244,6 +249,15 @@ export const diseaseSeverityData: Record<string, DiseaseSeverity> = {
     aiTriageImpact: 'High',
     aiSelfCareImpact: 'Very Low',
     clinicalCharacteristics: 'Complex cardiac condition requiring specialized care, regular monitoring, and medication management. Self-care limited to symptom monitoring and medication adherence.'
+  },
+  hypertension: {
+    disease: 'hypertension',
+    severityCategory: 'Moderate',
+    acuityLevel: 'Chronic',
+    selfCareAmenable: 'Very High',
+    aiTriageImpact: 'High',
+    aiSelfCareImpact: 'Very High',
+    clinicalCharacteristics: 'Chronic condition requiring regular monitoring and medication. Self-care AI enables home BP monitoring, medication reminders, lifestyle coaching, and early detection of complications.'
   }
 };
 

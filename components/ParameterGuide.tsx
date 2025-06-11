@@ -22,7 +22,11 @@ const ParameterGuide: React.FC = () => {
   // Formatting helpers
   const formatPercentage = (value: number | undefined) => {
     if (value === undefined) return 'Not set';
-    return `${(value * 100).toFixed(1)}%`;
+    const percent = value * 100;
+    // Use more decimal places for very small values
+    if (percent < 0.1) return `${percent.toFixed(3)}%`;
+    if (percent < 1) return `${percent.toFixed(2)}%`;
+    return `${percent.toFixed(1)}%`;
   };
 
   const formatRate = (value: number | undefined) => {

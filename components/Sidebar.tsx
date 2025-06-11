@@ -109,6 +109,7 @@ const Sidebar: React.FC = () => {
       
       // Chronic Conditions
       { id: 'hiv_management_chronic', name: 'HIV Management (Chronic)', group: 'Chronic Conditions', checked: selectedDiseases.includes('hiv_management_chronic') },
+      { id: 'hypertension', name: 'Hypertension', group: 'Chronic Conditions', checked: selectedDiseases.includes('hypertension') },
       
       // Non-Communicable (Benchmark)
       { id: 'congestive_heart_failure', name: 'Congestive Heart Failure', group: 'Non-Communicable (Benchmark)', checked: selectedDiseases.includes('congestive_heart_failure') },

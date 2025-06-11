@@ -192,6 +192,38 @@ export const healthSystemRationales: Record<string, ParameterRationale[]> = {
       rationale: '60% untreated reflects breakdown of health systems. Even when ill, people may be unable to reach care due to active conflict, checkpoints, or destroyed facilities.',
       sources: ['Syria/Yemen health access studies', 'Humanitarian needs assessments']
     }
+  ],
+  hypertension: [
+    {
+      key: 'lambda',
+      rationale: '7% annual incidence (70,000 per million) reflects new diagnoses in adults. While prevalence is 30-40% in many LMICs, annual incidence captures those entering the care cascade.',
+      sources: ['Global Burden of Disease 2019', 'WHO HEARTS Initiative data']
+    },
+    {
+      key: 'muI',
+      rationale: '15% weekly resolution in informal care represents partial BP control through lifestyle changes and traditional remedies. Limited compared to medication-based treatment.',
+      sources: ['Lifestyle intervention trials', 'Traditional medicine effectiveness studies']
+    },
+    {
+      key: 'mu0',
+      rationale: '40% weekly resolution at CHW level reflects basic antihypertensive therapy (e.g., hydrochlorothiazide) with BP monitoring. CHWs can manage uncomplicated hypertension effectively.',
+      sources: ['Ghana CHPS program', 'AMPATH Kenya hypertension program']
+    },
+    {
+      key: 'mu1',
+      rationale: '65% weekly resolution at primary care represents combination therapy achieving target BP. Most patients require 2-3 medications for adequate control.',
+      sources: ['SPRINT trial', 'LMIC hypertension control programs']
+    },
+    {
+      key: 'deltaI',
+      rationale: '0.08% weekly mortality (4% annually) for poorly controlled hypertension reflects cardiovascular event risk. Low weekly rate but accumulates significantly over time.',
+      sources: ['Framingham risk equations', 'LMIC cardiovascular mortality data']
+    },
+    {
+      key: 'selfCareAI',
+      rationale: 'Home BP monitoring with AI achieves 40% resolution improvement through medication adherence, lifestyle coaching, and early detection of dangerous readings. Transforms chronic disease management.',
+      sources: ['Digital therapeutics trials', 'Rwanda Babylon Health pilot', 'mHealth BP studies']
+    }
   ]
 };
 

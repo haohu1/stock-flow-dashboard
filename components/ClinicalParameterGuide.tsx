@@ -190,13 +190,13 @@ const diseaseData: Record<string, DiseaseData> = {
   },
   hiv_management_chronic: {
     name: "HIV Management (Chronic)",
-    description: "Lifelong management of HIV infection",
+    description: "Lifelong management of HIV with self-managed treatment platform",
     keyCharacteristics: [
-      "Requires daily ART adherence",
-      "Risk of opportunistic infections",
-      "Regular monitoring essential"
+      "At-home PrEP/ART delivery and monitoring",
+      "AI-powered clinical decision support and triage",
+      "Remote adherence tracking and harm flag detection"
     ],
-    treatmentNeeds: "Antiretroviral therapy (ART), OI prophylaxis, CD4/viral load monitoring",
+    treatmentNeeds: "Home-delivered ART/PrEP, AI diagnostics, virtual consultations, automated lab monitoring",
     mortalityRates: {
       untreated: { value: 0.007, rationale: "~35% 5-year mortality without ART" },
       informal: { value: 0.0065, rationale: "No access to ART" },

@@ -27,7 +27,7 @@ const getCountryBaselineKey = (countryCode: string, isUrban: boolean): string =>
 };
 
 // Enhanced baseline key that includes all relevant parameters
-const getEnhancedBaselineKey = (
+export const getEnhancedBaselineKey = (
   countryCode: string, 
   isUrban: boolean, 
   selectedDiseases: string[], 
@@ -660,12 +660,24 @@ export const runSimulationAtom = atom(
       
       // Calculate ICER if we have a baseline
       const baselineMap = get(baselineResultsMapAtom);
-      const diseaseBaseline = baselineMap[disease];
+      const countryCode = get(selectedCountryAtom);
+      const isUrban = get(isUrbanSettingAtom);
+      const useCountrySpecific = get(useCountrySpecificModelAtom);
+      const congestion = get(baseParametersAtom).systemCongestion || 0;
+      const scenarioMode = get(multiDiseaseScenarioModeAtom);
+      
+      // Generate the same enhanced key used when storing baselines
+      const countryKey = useCountrySpecific 
+        ? getEnhancedBaselineKey(countryCode, isUrban, selectedDiseases, congestion, scenarioMode)
+        : `generic_${selectedDiseases.sort().join('-')}_cong${Math.round(congestion * 100)}_${scenarioMode}`;
+      
+      const countryBaselines = baselineMap[countryKey];
+      const diseaseBaseline = countryBaselines ? countryBaselines[disease] : null;
       const primaryBaseline = get(baselineResultsAtom);
       
       if (diseaseBaseline) {
         // Use disease-specific baseline if available
-        console.log(`  Calculating ICER for ${disease} using its own baseline`);
+        console.log(`  Calculating ICER for ${disease} using its own baseline from key: ${countryKey}`);
         const icer = calculateICER(results, diseaseBaseline);
         set(simulationResultsAtom, { ...results, icer });
       } else if (primaryBaseline) {
@@ -699,12 +711,22 @@ export const setBaselineAtom = atom(
     const countryCode = get(selectedCountryAtom);
     const isUrban = get(isUrbanSettingAtom);
     const useCountrySpecific = get(useCountrySpecificModelAtom);
+    const congestion = get(baseParametersAtom).systemCongestion || 0;
+    const scenarioMode = get(multiDiseaseScenarioModeAtom);
     
-    // Generate country-specific key
-    const countryKey = useCountrySpecific ? getCountryBaselineKey(countryCode, isUrban) : 'generic';
+    // Generate enhanced key that includes congestion and other parameters
+    const countryKey = useCountrySpecific 
+      ? getEnhancedBaselineKey(countryCode, isUrban, selectedDiseases, congestion, scenarioMode)
+      : `generic_${selectedDiseases.sort().join('-')}_cong${Math.round(congestion * 100)}_${scenarioMode}`;
     
-    console.log(`Setting baseline for country key: ${countryKey}, diseases:`, selectedDiseases);
+    console.log(`Setting baseline for enhanced key: ${countryKey}, diseases:`, selectedDiseases);
     console.log("Current results map has keys:", Object.keys(resultsMap));
+    console.log("Baseline storage details:", {
+      congestion: congestion,
+      scenarioMode: scenarioMode,
+      countryKey: countryKey,
+      existingKeys: Object.keys(get(baselineResultsMapAtom))
+    });
     
     if (results) {
       // Set the baseline using the primary disease's results
@@ -1190,6 +1212,7 @@ export const loadScenarioAtom = atom(
     
     if (scenario) {
       const isImported = scenario.id.startsWith('imported-');
+      let updatedScenario: Scenario | undefined;
       console.log(`DETAILED DEBUG - Loading scenario${isImported ? ' [IMPORTED]' : ''}:`, {
         id: scenario.id, 
         name: scenario.name,
@@ -1245,6 +1268,7 @@ export const loadScenarioAtom = atom(
         const disease = scenario.parameters.disease || 'Unknown';
         
         // 1. Ensure the scenario has baselineResults if it doesn't already
+        updatedScenario = scenario;
         if (!scenario.baselineResults && scenario.results) {
           console.log(`Creating missing baselineResults for ${scenario.name} using current results`);
           // If no baseline exists, we create one using the current results 
@@ -1260,12 +1284,18 @@ export const loadScenarioAtom = atom(
             baselineCopy.dalys *= 1.2; // 20% more DALYs in baseline
           }
           
-          scenario.baselineResults = baselineCopy;
+          // Create a new scenario object instead of mutating
+          updatedScenario = { ...scenario, baselineResults: baselineCopy };
+          
+          // Update the scenarios array with the new scenario
+          const updatedScenarios = scenarios.map(s => s.id === scenarioId ? updatedScenario : s);
+          set(scenariosAtom, updatedScenarios);
+          
           console.log(`Created baseline with DALYs: ${baselineCopy.dalys}, Deaths: ${baselineCopy.cumulativeDeaths}`);
         }
         
         // 2. Set up the global baseline state
-        if (scenario.baselineResults) {
+        if (updatedScenario.baselineResults) {
           // Create or update the global baselineMap
           const existingBaselineMap = get(baselineResultsMapAtom);
           const updatedBaselineMap = { ...existingBaselineMap };
@@ -1273,12 +1303,12 @@ export const loadScenarioAtom = atom(
           // Add this scenario's baseline for its disease
           if (!updatedBaselineMap[disease] || isImported) {
             console.log(`Setting baseline for ${disease} in global baselineMap`);
-            updatedBaselineMap[disease] = JSON.parse(JSON.stringify(scenario.baselineResults));
+            updatedBaselineMap[disease] = JSON.parse(JSON.stringify(updatedScenario.baselineResults));
             
             // Make sure weeklyStates is properly copied
-            if (scenario.baselineResults.weeklyStates) {
+            if (updatedScenario.baselineResults.weeklyStates) {
               updatedBaselineMap[disease]!.weeklyStates = 
-                scenario.baselineResults.weeklyStates.map(state => ({...state}));
+                updatedScenario.baselineResults.weeklyStates.map(state => ({...state}));
             }
           }
           
@@ -1290,32 +1320,51 @@ export const loadScenarioAtom = atom(
           const mainBaseline = get(baselineResultsAtom);
           if (!mainBaseline) {
             console.log(`Setting main baseline from ${disease} baseline`);
-            set(baselineResultsAtom, JSON.parse(JSON.stringify(scenario.baselineResults)));
+            set(baselineResultsAtom, JSON.parse(JSON.stringify(updatedScenario.baselineResults)));
           }
           
           // 3. Update ICER values based on the correct baseline
-          if (scenario.results) {
+          if (updatedScenario.results) {
             const diseaseBaseline = updatedBaselineMap[disease];
             if (diseaseBaseline) {
-              const newIcer = calculateICER(scenario.results, diseaseBaseline);
+              const newIcer = calculateICER(updatedScenario.results, diseaseBaseline);
               console.log(`Recalculated ICER using new baseline: ${newIcer}`);
               
-              // Update the scenario's ICER
-              scenario.results.icer = newIcer;
+              // Create updated results with new ICER
+              const updatedResults = { ...updatedScenario.results, icer: newIcer };
               
               // Also update in diseaseResultsMap if it exists
-              if (scenario.diseaseResultsMap && scenario.diseaseResultsMap[disease]) {
-                scenario.diseaseResultsMap[disease]!.icer = newIcer;
+              let updatedDiseaseResultsMap = updatedScenario.diseaseResultsMap;
+              if (updatedDiseaseResultsMap && updatedDiseaseResultsMap[disease]) {
+                updatedDiseaseResultsMap = {
+                  ...updatedDiseaseResultsMap,
+                  [disease]: { ...updatedDiseaseResultsMap[disease]!, icer: newIcer }
+                };
               }
+              
+              // Create a new scenario object with updated results
+              updatedScenario = { 
+                ...updatedScenario, 
+                results: updatedResults,
+                diseaseResultsMap: updatedDiseaseResultsMap
+              };
+              
+              // Update the scenarios array
+              const scenarios = get(scenariosAtom);
+              const updatedScenarios = scenarios.map(s => s.id === scenarioId ? updatedScenario : s);
+              set(scenariosAtom, updatedScenarios);
             }
           }
         }
       }
       
+      // Use updatedScenario for all operations
+      const currentScenario = updatedScenario || scenario;
+      
       // Directly inspect the contents of the scenario's diseaseResultsMap
-      if (scenario.diseaseResultsMap) {
+      if (currentScenario.diseaseResultsMap) {
         console.log('Raw scenario.diseaseResultsMap structure:');
-        Object.entries(scenario.diseaseResultsMap).forEach(([disease, diseaseResults]) => {
+        Object.entries(currentScenario.diseaseResultsMap).forEach(([disease, diseaseResults]) => {
           console.log(`  ${disease}: ${diseaseResults ? 
             `deaths=${diseaseResults.cumulativeDeaths}, dalys=${diseaseResults.dalys}, icer=${diseaseResults.icer}` 
             : 'null'}`);
@@ -1324,67 +1373,78 @@ export const loadScenarioAtom = atom(
       
       // IMPORTANT LOGIC FIX: If we have selectedDiseases but no diseaseResultsMap,
       // create a results map using the primary result
-      if (scenario.selectedDiseases && 
-          scenario.selectedDiseases.length > 1 && 
-          (!scenario.diseaseResultsMap || Object.keys(scenario.diseaseResultsMap).length <= 1) &&
-          scenario.results) {
+      if (currentScenario.selectedDiseases && 
+          currentScenario.selectedDiseases.length > 1 && 
+          (!currentScenario.diseaseResultsMap || Object.keys(currentScenario.diseaseResultsMap).length <= 1) &&
+          currentScenario.results) {
         console.log('IMPORTANT: Found multi-disease scenario with missing results map. Reconstructing from primary results.');
         
         // Create a new diseaseResultsMap for the scenario
         const reconstructedMap: Record<string, SimulationResults | null> = {};
         
-        scenario.selectedDiseases.forEach(disease => {
-          if (scenario.results) {
+        currentScenario.selectedDiseases.forEach(disease => {
+          if (currentScenario.results) {
             // Create deep copies of the main result for each disease
-            const resultCopy = JSON.parse(JSON.stringify(scenario.results));
+            const resultCopy = JSON.parse(JSON.stringify(currentScenario.results));
             // Add weeklyStates separately to avoid circular references
-            resultCopy.weeklyStates = scenario.results.weeklyStates.map(state => ({...state}));
+            resultCopy.weeklyStates = currentScenario.results.weeklyStates.map(state => ({...state}));
             reconstructedMap[disease] = resultCopy;
           }
         });
         
         console.log('Reconstructed results map with keys:', Object.keys(reconstructedMap));
-        // Add the reconstructed map to the scenario object (this doesn't save it permanently)
-        scenario.diseaseResultsMap = reconstructedMap;
+        // Create a new scenario object with the reconstructed map
+        const scenarioWithMap = { ...currentScenario, diseaseResultsMap: reconstructedMap };
+        
+        // Update the scenarios array
+        const scenarios = get(scenariosAtom);
+        const updatedScenarios = scenarios.map(s => s.id === scenarioId ? scenarioWithMap : s);
+        set(scenariosAtom, updatedScenarios);
+        
+        // Use this updated scenario for the rest of the function
+        updatedScenario = scenarioWithMap;
       }
       
-      set(baseParametersAtom, scenario.parameters);
-      set(aiInterventionsAtom, scenario.aiInterventions);
+      // Use the final updated scenario or fallback to original
+      const finalScenario = updatedScenario || scenario;
+      
+      set(baseParametersAtom, finalScenario.parameters);
+      set(aiInterventionsAtom, finalScenario.aiInterventions);
       // Load effect magnitudes if they exist in the scenario, otherwise use empty object
-      set(effectMagnitudesAtom, scenario.effectMagnitudes || {});
+      set(effectMagnitudesAtom, finalScenario.effectMagnitudes || {});
       // Load time-to-scale parameters if they exist in the scenario
-      if (scenario.timeToScaleParams) {
-        set(aiTimeToScaleParametersAtom, scenario.timeToScaleParams);
+      if (finalScenario.timeToScaleParams) {
+        set(aiTimeToScaleParametersAtom, finalScenario.timeToScaleParams);
       }
-      set(simulationResultsAtom, scenario.results);
+      set(simulationResultsAtom, finalScenario.results);
       set(selectedScenarioIdAtom, scenarioId);
       
       // Load disease selections if available
-      if (scenario.selectedDiseases && scenario.selectedDiseases.length > 0) {
-        console.log('Setting selected diseases:', scenario.selectedDiseases);
+      if (finalScenario.selectedDiseases && finalScenario.selectedDiseases.length > 0) {
+        console.log('Setting selected diseases:', finalScenario.selectedDiseases);
         
         // Ensure the diseases array has real content
-        if (scenario.selectedDiseases.some(d => d && d.trim() !== '')) {
-          set(selectedDiseasesAtom, scenario.selectedDiseases);
-          set(selectedDiseaseAtom, scenario.selectedDiseases[0]);
+        if (finalScenario.selectedDiseases.some(d => d && d.trim() !== '')) {
+          set(selectedDiseasesAtom, finalScenario.selectedDiseases);
+          set(selectedDiseaseAtom, finalScenario.selectedDiseases[0]);
         } else {
           // Fallback to the single disease from parameters if available
           console.log('Empty selectedDiseases array, falling back to parameters.disease');
-          const fallbackDisease = scenario.parameters.disease || 'childhood_pneumonia';
+          const fallbackDisease = finalScenario.parameters.disease || 'childhood_pneumonia';
           set(selectedDiseasesAtom, [fallbackDisease]);
           set(selectedDiseaseAtom, fallbackDisease);
         }
-      } else if (scenario.parameters.disease) {
-        console.log('No multi-disease selection, using primary disease:', scenario.parameters.disease);
-        set(selectedDiseaseAtom, scenario.parameters.disease);
-        set(selectedDiseasesAtom, [scenario.parameters.disease]);
+      } else if (finalScenario.parameters.disease) {
+        console.log('No multi-disease selection, using primary disease:', finalScenario.parameters.disease);
+        set(selectedDiseaseAtom, finalScenario.parameters.disease);
+        set(selectedDiseasesAtom, [finalScenario.parameters.disease]);
       }
       
       // Load multi-disease results if available
-      if (scenario.diseaseResultsMap && Object.keys(scenario.diseaseResultsMap).length > 0) {
-        console.log('Setting disease results map with keys:', Object.keys(scenario.diseaseResultsMap));
+      if (finalScenario.diseaseResultsMap && Object.keys(finalScenario.diseaseResultsMap).length > 0) {
+        console.log('Setting disease results map with keys:', Object.keys(finalScenario.diseaseResultsMap));
         console.log('Disease results map ICER values:', 
-          Object.entries(scenario.diseaseResultsMap)
+          Object.entries(finalScenario.diseaseResultsMap)
             .map(([disease, results]) => `${disease}: ICER=${results?.icer}`)
         );
             
@@ -1392,7 +1452,7 @@ export const loadScenarioAtom = atom(
         const deepCopyMap: Record<string, SimulationResults | null> = {};
         
         // Manually copy each disease's results with proper handling of complex properties
-        Object.entries(scenario.diseaseResultsMap).forEach(([disease, results]) => {
+        Object.entries(finalScenario.diseaseResultsMap).forEach(([disease, results]) => {
           if (!results) {
             deepCopyMap[disease] = null;
             return;
@@ -1423,11 +1483,11 @@ export const loadScenarioAtom = atom(
         if (Object.keys(deepCopyMap).length > 1) {
           console.log('Multi-disease view should be available with', Object.keys(deepCopyMap).length, 'diseases');
         }
-      } else if (scenario.results) {
+      } else if (finalScenario.results) {
         // Backward compatibility - create a results map with just the primary disease
-        const diseasesToUse = scenario.selectedDiseases && scenario.selectedDiseases.length > 0 
-          ? scenario.selectedDiseases 
-          : [scenario.parameters.disease || get(selectedDiseaseAtom)];
+        const diseasesToUse = finalScenario.selectedDiseases && finalScenario.selectedDiseases.length > 0 
+          ? finalScenario.selectedDiseases 
+          : [finalScenario.parameters.disease || get(selectedDiseaseAtom)];
           
         console.log('No multi-disease results, creating results map with diseases:', diseasesToUse);
         
@@ -1436,10 +1496,10 @@ export const loadScenarioAtom = atom(
         
         diseasesToUse.forEach(disease => {
           // Create a proper deep copy of the single result for each disease
-          if (scenario.results) {
+          if (finalScenario.results) {
             newResultsMap[disease] = {
-              ...JSON.parse(JSON.stringify(scenario.results)),
-              weeklyStates: scenario.results.weeklyStates.map(state => ({...state}))
+              ...JSON.parse(JSON.stringify(finalScenario.results)),
+              weeklyStates: finalScenario.results.weeklyStates.map(state => ({...state}))
             };
           }
         });
@@ -1449,10 +1509,10 @@ export const loadScenarioAtom = atom(
       }
       
       // Load baseline if it exists in the scenario
-      if (scenario.baselineResults) {
+      if (finalScenario.baselineResults) {
         const baselineCopy = {
-          ...JSON.parse(JSON.stringify(scenario.baselineResults)),
-          weeklyStates: scenario.baselineResults.weeklyStates.map(state => ({...state}))
+          ...JSON.parse(JSON.stringify(finalScenario.baselineResults)),
+          weeklyStates: finalScenario.baselineResults.weeklyStates.map(state => ({...state}))
         };
         set(baselineResultsAtom, baselineCopy);
       } else {

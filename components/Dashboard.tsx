@@ -17,7 +17,10 @@ import {
   selectedCountryAtom,
   isUrbanSettingAtom,
   useCountrySpecificModelAtom,
-  Scenario
+  Scenario,
+  getEnhancedBaselineKey,
+  multiDiseaseScenarioModeAtom,
+  baseParametersAtom
 } from '../lib/store';
 import SimulationChart from './SimulationChart';
 import CumulativeOutcomesChart from './CumulativeOutcomesChart';
@@ -30,27 +33,36 @@ import { SimulationResults } from '../models/stockAndFlowModel';
 const getCountrySpecificBaseline = (
   baselineMap: Record<string, Record<string, any>>, 
   disease: string, 
-  countryCode?: string, 
-  isUrban?: boolean
+  countryCode: string | undefined,
+  isUrban: boolean | undefined,
+  selectedDiseases: string[],
+  congestion: number,
+  scenarioMode: string
 ) => {
-  // Try country-specific baseline first
+  // Try enhanced baseline key first (includes congestion)
   if (countryCode && isUrban !== undefined) {
-    const countryKey = `${countryCode}_${isUrban ? 'urban' : 'rural'}`;
-    if (baselineMap[countryKey] && baselineMap[countryKey][disease]) {
-      return baselineMap[countryKey][disease];
+    const enhancedKey = getEnhancedBaselineKey(countryCode, isUrban, selectedDiseases, congestion, scenarioMode);
+    if (baselineMap[enhancedKey] && baselineMap[enhancedKey][disease]) {
+      return baselineMap[enhancedKey][disease];
     }
   }
   
-  // Fall back to generic baseline
+  // Try generic enhanced key
+  const genericEnhancedKey = `generic_${selectedDiseases.sort().join('-')}_cong${Math.round(congestion * 100)}_${scenarioMode}`;
+  if (baselineMap[genericEnhancedKey] && baselineMap[genericEnhancedKey][disease]) {
+    return baselineMap[genericEnhancedKey][disease];
+  }
+  
+  // Fall back to simple keys for backward compatibility
+  if (countryCode && isUrban !== undefined) {
+    const simpleKey = `${countryCode}_${isUrban ? 'urban' : 'rural'}`;
+    if (baselineMap[simpleKey] && baselineMap[simpleKey][disease]) {
+      return baselineMap[simpleKey][disease];
+    }
+  }
+  
   if (baselineMap['generic'] && baselineMap['generic'][disease]) {
     return baselineMap['generic'][disease];
-  }
-  
-  // Last resort: search all country baselines for this disease
-  for (const countryData of Object.values(baselineMap)) {
-    if (countryData && countryData[disease]) {
-      return countryData[disease];
-    }
   }
   
   return null;
@@ -73,6 +85,8 @@ const Dashboard: React.FC = () => {
   const [selectedCountry] = useAtom(selectedCountryAtom);
   const [isUrban] = useAtom(isUrbanSettingAtom);
   const [useCountrySpecific] = useAtom(useCountrySpecificModelAtom);
+  const [scenarioMode] = useAtom(multiDiseaseScenarioModeAtom);
+  const [baseParams] = useAtom(baseParametersAtom);
   const [scenariosExpanded, setScenariosExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'comparison'>('overview');
 
@@ -371,12 +385,16 @@ const Dashboard: React.FC = () => {
   const calculateMetricsForDisease = (disease: string, diseaseResults: SimulationResults | null) => {
     if (!diseaseResults) return { deathsAverted: 0, dalysAverted: 0, icer: undefined };
     
-    // Use country-specific baseline lookup
+    // Use enhanced baseline lookup with congestion
+    const congestion = baseParams.systemCongestion || 0;
     let diseaseBaseline = getCountrySpecificBaseline(
       baselineMap, 
       disease, 
       useCountrySpecific ? selectedCountry : undefined, 
-      useCountrySpecific ? isUrban : undefined
+      useCountrySpecific ? isUrban : undefined,
+      selectedDiseases,
+      congestion,
+      scenarioMode
     );
     
     // Fall back to primary baseline if country-specific not found

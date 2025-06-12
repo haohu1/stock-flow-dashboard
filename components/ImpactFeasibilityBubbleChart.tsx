@@ -3,35 +3,67 @@ import { useAtom } from 'jotai';
 import { scenariosAtom, Scenario, updateScenarioAtom, aiTimeToScaleParametersAtom } from '../lib/store';
 import { formatNumber, estimateTimeToScale } from '../lib/utils';
 import * as d3 from 'd3';
-import { baselineResultsMapAtom } from '../lib/store';
+import { baselineResultsMapAtom, getEnhancedBaselineKey, multiDiseaseScenarioModeAtom } from '../lib/store';
 
 // Helper function to get country-specific baseline
 const getCountrySpecificBaseline = (
   baselineMap: Record<string, Record<string, any>>, 
   disease: string, 
-  countryCode?: string, 
-  isUrban?: boolean
+  scenario: any,
+  scenarioMode: string
 ) => {
-  // Try country-specific baseline first
+  // PRIORITY 1: Use scenario's own stored baseline if available
+  // This ensures scenarios created by "Test Each AI" maintain their original baselines
+  if (scenario.baselineResults) {
+    console.log('ImpactFeasibility using scenario stored baseline:', {
+      scenarioName: scenario.name,
+      hasBaseline: true
+    });
+    return scenario.baselineResults;
+  }
+  
+  const countryCode = scenario.countryCode;
+  const isUrban = scenario.isUrban;
+  const congestion = scenario.parameters?.systemCongestion || 0;
+  const selectedDiseases = scenario.selectedDiseases || [scenario.parameters?.disease || disease];
+  
+  // Try enhanced baseline key first (includes congestion)
   if (countryCode && isUrban !== undefined) {
-    const countryKey = `${countryCode}_${isUrban ? 'urban' : 'rural'}`;
-    if (baselineMap[countryKey] && baselineMap[countryKey][disease]) {
-      return baselineMap[countryKey][disease];
+    const enhancedKey = getEnhancedBaselineKey(countryCode, isUrban, selectedDiseases, congestion, scenarioMode);
+    console.log('ImpactFeasibility baseline lookup:', {
+      scenarioName: scenario.name,
+      enhancedKey,
+      congestion,
+      foundBaseline: !!(baselineMap[enhancedKey] && baselineMap[enhancedKey][disease])
+    });
+    if (baselineMap[enhancedKey] && baselineMap[enhancedKey][disease]) {
+      return baselineMap[enhancedKey][disease];
     }
   }
   
-  // Fall back to generic baseline
+  // Try generic enhanced key
+  const genericEnhancedKey = `generic_${selectedDiseases.sort().join('-')}_cong${Math.round(congestion * 100)}_${scenarioMode}`;
+  if (baselineMap[genericEnhancedKey] && baselineMap[genericEnhancedKey][disease]) {
+    return baselineMap[genericEnhancedKey][disease];
+  }
+  
+  // Fall back to simple keys for backward compatibility
+  if (countryCode && isUrban !== undefined) {
+    const simpleKey = `${countryCode}_${isUrban ? 'urban' : 'rural'}`;
+    if (baselineMap[simpleKey] && baselineMap[simpleKey][disease]) {
+      return baselineMap[simpleKey][disease];
+    }
+  }
+  
   if (baselineMap['generic'] && baselineMap['generic'][disease]) {
     return baselineMap['generic'][disease];
   }
   
-  // Last resort: search all country baselines for this disease
-  for (const countryData of Object.values(baselineMap)) {
-    if (countryData && countryData[disease]) {
-      return countryData[disease];
-    }
-  }
-  
+  // If no baseline found, log warning
+  console.log('ImpactFeasibility no baseline found:', {
+    scenarioName: scenario.name,
+    availableKeys: Object.keys(baselineMap)
+  });
   return null;
 };
 
@@ -59,6 +91,7 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
   const [scenarios] = useAtom(scenariosAtom);
   const [baselineMap] = useAtom(baselineResultsMapAtom);
   const [timeToScaleParams] = useAtom(aiTimeToScaleParametersAtom);
+  const [scenarioMode] = useAtom(multiDiseaseScenarioModeAtom);
   const [yAxisMetric, setYAxisMetric] = useState<'dalys' | 'percent-deaths'>('percent-deaths');
   const [selectedDiseases, setSelectedDiseases] = useState<Set<string>>(new Set());
   const [availableDiseases, setAvailableDiseases] = useState<string[]>([]);
@@ -128,18 +161,13 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     
     const disease = scenario.parameters.disease || 'Unknown';
     
-    // Use country-specific baseline lookup
+    // Use enhanced baseline lookup with congestion
     let diseaseBaseline = getCountrySpecificBaseline(
       baselineMap, 
       disease, 
-      scenario.countryCode, 
-      scenario.isUrban
+      scenario,
+      scenarioMode
     );
-    
-    // Fall back to scenario's own baseline if country-specific not found
-    if (!diseaseBaseline) {
-      diseaseBaseline = scenario.baselineResults;
-    }
     
     if (!diseaseBaseline) return null;
     
@@ -386,9 +414,9 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
         const baseline = getCountrySpecificBaseline(
           baselineMap, 
           d.scenario.parameters.disease || 'Unknown', 
-          d.scenario.countryCode, 
-          d.scenario.isUrban
-        ) || d.scenario.baselineResults;
+          d.scenario,
+          scenarioMode
+        );
         if (!baseline || baseline.cumulativeDeaths === undefined) return 1;
         return Math.abs(baseline.cumulativeDeaths - d.scenario.results.cumulativeDeaths);
       }),
@@ -595,9 +623,9 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
         const baseline = getCountrySpecificBaseline(
           baselineMap, 
           d.scenario.parameters.disease || 'Unknown', 
-          d.scenario.countryCode, 
-          d.scenario.isUrban
-        ) || d.scenario.baselineResults;
+          d.scenario,
+          scenarioMode
+        );
         if (!baseline || baseline.cumulativeDeaths === undefined) return sizeScale(1);
         const deathsAverted = Math.abs(baseline.cumulativeDeaths - d.scenario.results.cumulativeDeaths);
         return sizeScale(deathsAverted);
@@ -625,9 +653,9 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
           const baseline = getCountrySpecificBaseline(
             baselineMap, 
             d.scenario.parameters.disease || 'Unknown', 
-            d.scenario.countryCode, 
-            d.scenario.isUrban
-          ) || d.scenario.baselineResults;
+            d.scenario,
+            scenarioMode
+          );
           if (!baseline || baseline.cumulativeDeaths === undefined) return 10;
           const deathsAverted = Math.abs(baseline.cumulativeDeaths - d.scenario.results.cumulativeDeaths);
           const bubbleRadius = sizeScale(deathsAverted);
@@ -752,9 +780,9 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
                     const baseline = getCountrySpecificBaseline(
                       baselineMap, 
                       data.scenario.parameters.disease || 'Unknown', 
-                      data.scenario.countryCode, 
-                      data.scenario.isUrban
-                    ) || data.scenario.baselineResults;
+                      data.scenario,
+                      scenarioMode
+                    );
                     
                     console.log('Deaths averted calculation:', {
                       scenario: data.scenario.name,
@@ -781,9 +809,9 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
                     const baseline = getCountrySpecificBaseline(
                       baselineMap, 
                       data.scenario.parameters.disease || 'Unknown', 
-                      data.scenario.countryCode, 
-                      data.scenario.isUrban
-                    ) || data.scenario.baselineResults;
+                      data.scenario,
+                      scenarioMode
+                    );
                     if (!baseline || !data.scenario.results) return 'N/A';
                     
                     const dalysAverted = baseline.dalys - data.scenario.results.dalys;

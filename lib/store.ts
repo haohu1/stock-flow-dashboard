@@ -1029,10 +1029,52 @@ export const addScenarioAtom = atom(
               ...JSON.parse(JSON.stringify(resultsMap[diseaseName])),
               weeklyStates: resultsMap[diseaseName].weeklyStates.map(state => ({...state}))
             } : null,
-            baselineResults: baseline ? { 
-              ...JSON.parse(JSON.stringify(baseline)),
-              weeklyStates: baseline.weeklyStates.map(state => ({...state}))
-            } : null,
+            // Store disease-specific baseline instead of aggregated baseline
+            baselineResults: (() => {
+              // Get the baseline map
+              const baselineMap = get(baselineResultsMapAtom);
+              const congestion = params.systemCongestion || 0;
+              
+              // When creating individual disease scenarios from multi-disease selection,
+              // the baseline was stored with ALL diseases in the key, not individual diseases
+              // So we need to use the full selectedDiseases array to find the baseline
+              const baselineKey = useCountrySpecific 
+                ? getEnhancedBaselineKey(countryCode, isUrban, selectedDiseases, congestion, scenarioMode)
+                : `generic_${selectedDiseases.sort().join('-')}_cong${Math.round(congestion * 100)}_${scenarioMode}`;
+              
+              // Try to get disease-specific baseline from the multi-disease baseline storage
+              const diseaseBaseline = baselineMap[baselineKey]?.[diseaseName];
+              
+              if (diseaseBaseline) {
+                console.log(`Using disease-specific baseline for ${diseaseName} from multi-disease key ${baselineKey}`);
+                return {
+                  ...JSON.parse(JSON.stringify(diseaseBaseline)),
+                  weeklyStates: diseaseBaseline.weeklyStates.map(state => ({...state}))
+                };
+              }
+              
+              // Try with single disease key as fallback (for backward compatibility)
+              const singleDiseaseKey = useCountrySpecific 
+                ? getEnhancedBaselineKey(countryCode, isUrban, [diseaseName], congestion, scenarioMode)
+                : `generic_${[diseaseName].sort().join('-')}_cong${Math.round(congestion * 100)}_${scenarioMode}`;
+              
+              const singleDiseaseBaseline = baselineMap[singleDiseaseKey]?.[diseaseName];
+              
+              if (singleDiseaseBaseline) {
+                console.log(`Using disease-specific baseline for ${diseaseName} from single-disease key ${singleDiseaseKey}`);
+                return {
+                  ...JSON.parse(JSON.stringify(singleDiseaseBaseline)),
+                  weeklyStates: singleDiseaseBaseline.weeklyStates.map(state => ({...state}))
+                };
+              }
+              
+              // Fallback to aggregated baseline if disease-specific not found
+              console.log(`No disease-specific baseline found for ${diseaseName}, using aggregated baseline`);
+              return baseline ? { 
+                ...JSON.parse(JSON.stringify(baseline)),
+                weeklyStates: baseline.weeklyStates.map(state => ({...state}))
+              } : null;
+            })(),
             // Store just this disease
             selectedDiseases: [diseaseName],
             diseaseResultsMap: diseaseResultsCopy,

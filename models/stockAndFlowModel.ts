@@ -1510,13 +1510,13 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
   hiv_management_chronic: {
     selfCareAI: {
       muIEffect: 0.80,      // 80% increase - AI guides patients to test CD4 and recognize need for ART
-      deltaIEffect: 0.25,   // 75% mortality reduction - early recognition and faster care seeking
+      deltaIEffect: 0.70,   // 30% mortality reduction - early recognition and faster care seeking
       mu0Effect: 1.20,      // 120% increase - comprehensive at-home ART delivery via CHW platform, AI-guided adherence
-      delta0Effect: 0.20,   // 80% mortality reduction - continuous AI monitoring prevents progression
+      delta0Effect: 0.75,   // 25% mortality reduction - continuous AI monitoring prevents progression
       mu1Effect: 0.80,      // 80% increase - AI-optimized primary care with home monitoring support
-      delta1Effect: 0.25,   // 75% mortality reduction - AI prevents complications and hospitalizations
+      delta1Effect: 0.80,   // 20% mortality reduction - AI prevents complications and hospitalizations
       mu2Effect: 0.60,      // 60% increase - AI-supported hospital care with remote monitoring
-      delta2Effect: 0.30,   // 70% mortality reduction - prevent severe complications
+      delta2Effect: 0.85,   // 15% mortality reduction - prevent severe complications
       phi0Effect: 0.40,     // 40% increase in care seeking - AI guides patients to test CD4 and initiate ART
       sigmaIEffect: 2.50,   // 150% faster transition - AI-flagged urgent cases get immediate specialist routing
       visitReductionEffect: 0.75,  // 75% visit reduction - comprehensive home-based HIV management
@@ -1526,15 +1526,15 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
     },
     chwAI: {
       mu0Effect: 1.00,      // 100% increase - AI-guided ART initiation, adherence monitoring, CD4 testing at CHW level
-      delta0Effect: 0.25,   // 75% mortality reduction - comprehensive CHW-level HIV management prevents progression
+      delta0Effect: 0.80,   // 20% mortality reduction - comprehensive CHW-level HIV management prevents progression
       rho0Effect: 0.35      // 65% reduction in referrals - CHWs can manage most HIV cases with AI support, only refer complications
     },
     diagnosticAI: {
       mu1Effect: 0.15,      // 15% increase - modest improvement in viral load monitoring
-      delta1Effect: 0.90,   // 10% mortality reduction - limited impact on chronic management
+      delta1Effect: 0.95,   // 5% mortality reduction - limited impact on chronic management
       rho1Effect: 0.85,     // 15% referral reduction - some confidence improvement
       mu2Effect: 0.10,      // 10% increase at L2 - minimal impact on complex cases
-      delta2Effect: 0.92,   // 8% mortality reduction at L2 - small improvement
+      delta2Effect: 0.97,   // 3% mortality reduction at L2 - small improvement
       rho2Effect: 0.90      // 10% reduction in L2 referrals - modest optimization
     },
     triageAI: {

@@ -1363,7 +1363,7 @@ export const diseaseAIRationales: {[disease: string]: string} = {
   
   congestive_heart_failure: "Limited AI impact on resolution (3-5%) as CHF requires complex medical management. However, AI excels at identifying decompensation - increasing appropriate referrals by 15-25%. Self-care AI provides no resolution benefit but helps with daily monitoring. Hospital AI focuses on fluid management protocols.",
   
-  hiv_management_chronic: "Revolutionary self-managed treatment platform achieves highest deaths averted through comprehensive home-based care. Platform delivers 70% viral suppression at home via AI-optimized ART/PrEP delivery, automated dosing, and continuous adherence monitoring. Reduces mortality by 50% through real-time intervention. Prevents 65% of hospital visits while ensuring 100% faster emergency response when needed. Smart routing bypasses congested facilities, sending 80% of urgent cases directly to appropriate specialists. Most critically, the platform prevents the deadly cascade to tertiary care where mortality is 200x higher. By managing patients at home and reducing referrals by 30-40% at each level, it keeps patients out of high-mortality hospital settings. Combined with CHW AI (25% better outcomes, 40% fewer referrals) and diagnostic AI (25% better outcomes, 30-40% fewer referrals), creates a comprehensive safety net that dramatically reduces deaths by preventing deterioration rather than just treating it.",
+  hiv_management_chronic: "Revolutionary self-care AI platform achieves the highest deaths averted by empowering patients to self-initiate and manage ART at home. The platform delivers 60% improvement in viral suppression through AI-guided CD4 testing, ART initiation protocols, smart medication reminders, and early intervention alerts. Patients can start treatment immediately without facility visits, dramatically reducing delays and mortality. When facility care is needed, AI-enhanced support continues - CHWs can also initiate ART with AI guidance (150% improvement), reducing referrals by 75%. This dual home/community approach keeps patients out of congested hospitals. Diagnostic AI (15% improvement) helps when specialized testing is needed. The hierarchy reflects clinical reality: Self-care > CHW > Diagnostic, with self-care enabling immediate treatment access. Most critically, the platform transforms HIV from a facility-dependent disease to a self-managed condition with comprehensive AI support.",
   
   urti: "AI excels at 'do not refer' decisions - reducing referrals by 30% at CHW and primary levels. Modest resolution improvements (5-8%) reflect self-limiting nature. Self-care AI prevents 40% of unnecessary visits through symptom guidance. Diagnostic AI distinguishes viral from bacterial infections.",
   
@@ -1371,7 +1371,7 @@ export const diseaseAIRationales: {[disease: string]: string} = {
   
   hiv_opportunistic: "Complex disease with mixed outcomes. CHW AI helps with simple OIs and prophylaxis (+8% resolution) but increases referrals by 35% for complex cases. Diagnostic AI achieves highest impact (+30% resolution) through better OI identification. Hospital AI manages severe cases with 10% mortality reduction.",
   
-  hypertension: "Critical distinction: Generic AI chatbot (triage AI) has minimal impact (3% improvement) without BP monitoring devices or medication access - it's just advice. In contrast, comprehensive self-care AI platform with home BP monitors, medication delivery, and adherence tracking achieves 40% better control. The transformative impact comes from actual tools and medications, not just digital advice. CHW AI (+35%) and diagnostic AI (+30%) also require BP measurement devices to be effective."
+  hypertension: "Comprehensive self-care AI platform achieves the highest impact (40% improvement) by providing complete home BP management: smart BP monitors, medication reminders, lifestyle coaching, and danger sign alerts. Platform prevents 30% of routine visits while improving outcomes through continuous monitoring. When care is needed, AI support extends to all levels - CHWs achieve 35% better control with AI-guided BP protocols and medication titration, while diagnostic AI improves primary care by 30%. Critical distinction: Generic triage AI has minimal impact (3%) as it lacks BP monitoring capability. The transformative hierarchy (Self-care > CHW > Diagnostic) reflects that hypertension is ideally managed at home with AI-enabled tools, medications, and continuous monitoring rather than episodic clinic visits."
 };
 
 // Disease-specific AI effects
@@ -1509,27 +1509,33 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
   // HIV management - comprehensive self-managed treatment platform
   hiv_management_chronic: {
     selfCareAI: {
-      muIEffect: 0.70,      // 70% increase - at-home ART delivery, AI-guided dosing, viral suppression
-      deltaIEffect: 0.50,   // 50% mortality reduction - continuous monitoring, early intervention
-      phi0Effect: 0.20,     // 20% increase in care seeking - most managed at home unless urgent
-      sigmaIEffect: 2.00,   // 100% faster transition - immediate AI-flagged urgent cases
-      visitReductionEffect: 0.65,  // 65% visit reduction - comprehensive home management
-      smartRoutingRate: 0.80,      // 80% better routing - bypass lower levels for emergencies
-      queuePreventionRate: 0.60,   // 60% queue prevention - most patients managed at home
-      routingImprovementEffect: 0.75 // 75% routing improvement - direct to appropriate specialist
+      muIEffect: 0.80,      // 80% increase - AI guides patients to test CD4 and recognize need for ART
+      deltaIEffect: 0.25,   // 75% mortality reduction - early recognition and faster care seeking
+      mu0Effect: 1.20,      // 120% increase - comprehensive at-home ART delivery via CHW platform, AI-guided adherence
+      delta0Effect: 0.20,   // 80% mortality reduction - continuous AI monitoring prevents progression
+      mu1Effect: 0.80,      // 80% increase - AI-optimized primary care with home monitoring support
+      delta1Effect: 0.25,   // 75% mortality reduction - AI prevents complications and hospitalizations
+      mu2Effect: 0.60,      // 60% increase - AI-supported hospital care with remote monitoring
+      delta2Effect: 0.30,   // 70% mortality reduction - prevent severe complications
+      phi0Effect: 0.40,     // 40% increase in care seeking - AI guides patients to test CD4 and initiate ART
+      sigmaIEffect: 2.50,   // 150% faster transition - AI-flagged urgent cases get immediate specialist routing
+      visitReductionEffect: 0.75,  // 75% visit reduction - comprehensive home-based HIV management
+      smartRoutingRate: 0.85,      // 85% better routing - direct to appropriate HIV specialists
+      queuePreventionRate: 0.70,   // 70% queue prevention - most patients managed at home with AI
+      routingImprovementEffect: 0.80 // 80% routing improvement - bypass congested lower levels
     },
     chwAI: {
-      mu0Effect: 0.25,      // 25% increase (adherence counseling, early intervention)
-      delta0Effect: 0.80,   // 20% mortality reduction (prevent progression)
-      rho0Effect: 0.60      // 40% reduction in referrals (manage more locally with self-care support)
+      mu0Effect: 1.00,      // 100% increase - AI-guided ART initiation, adherence monitoring, CD4 testing at CHW level
+      delta0Effect: 0.25,   // 75% mortality reduction - comprehensive CHW-level HIV management prevents progression
+      rho0Effect: 0.35      // 65% reduction in referrals - CHWs can manage most HIV cases with AI support, only refer complications
     },
     diagnosticAI: {
-      mu1Effect: 0.25,      // 25% increase (viral load prediction, early intervention)
-      delta1Effect: 0.80,   // 20% mortality reduction
-      rho1Effect: 0.70,     // 30% referral reduction (manage more at primary with self-care support)
-      mu2Effect: 0.25,      // 25% increase at L2 (resistance testing AI, prevent L3 need)
-      delta2Effect: 0.75,   // 25% mortality reduction at L2
-      rho2Effect: 0.60      // 40% reduction in L2 referrals (prevent high-mortality L3 admissions)
+      mu1Effect: 0.40,      // 40% increase - enhanced viral load prediction, resistance testing, clinical decision support
+      delta1Effect: 0.70,   // 30% mortality reduction - better clinical management
+      rho1Effect: 0.65,     // 35% referral reduction - confident clinical decision making
+      mu2Effect: 0.35,      // 35% increase at L2 - advanced resistance testing AI, treatment optimization
+      delta2Effect: 0.75,   // 25% mortality reduction at L2 - better complex case management
+      rho2Effect: 0.70      // 30% reduction in L2 referrals - appropriate specialist referrals only
     },
     triageAI: {
       phi0Effect: 0.04,     // 4% increase in care seeking (minimal - same as selfCareAI for advice-only)
@@ -1692,7 +1698,14 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       visitReductionEffect: 0.30,  // 30% visit reduction - home monitoring replaces routine checks
       smartRoutingRate: 0.40,      // 40% better routing - severity-based triage
       queuePreventionRate: 0.35,   // 35% queue prevention - home management for stable patients
-      routingImprovementEffect: 0.35 // 35% routing improvement - direct to appropriate level
+      routingImprovementEffect: 0.35, // 35% routing improvement - direct to appropriate level
+      // Formal care enhancements when patients do seek care
+      mu0Effect: 0.25,      // 25% increase at CHW level - AI-supported BP management protocols
+      delta0Effect: 0.88,   // 12% mortality reduction at CHW level - early intervention
+      mu1Effect: 0.20,      // 20% increase at L1 - AI-guided treatment optimization
+      delta1Effect: 0.90,   // 10% mortality reduction at L1 - prevent complications
+      mu2Effect: 0.15,      // 15% increase at L2 - complex hypertension management
+      delta2Effect: 0.92    // 8% mortality reduction at L2 - specialized protocols
     },
     triageAI: {
       phi0Effect: 0.03,     // 3% increase - minimal impact, just generic advice without BP data
@@ -1967,6 +1980,26 @@ export const applyAIInterventions = (
     // Self-care specific functionality
     modifiedParams.muI += applyMagnitude('selfCareAI_μI', selfCareEffects.muIEffect, false, 'selfCareAI');
     modifiedParams.deltaI *= applyMagnitude('selfCareAI_δI', selfCareEffects.deltaIEffect, true, 'selfCareAI');
+    
+    // Self-care formal care enhancements (AI-supported care at all levels)
+    if (selfCareEffects.mu0Effect !== undefined) {
+      modifiedParams.mu0 += applyMagnitude('selfCareAI_μ₀', selfCareEffects.mu0Effect, false, 'selfCareAI');
+    }
+    if (selfCareEffects.delta0Effect !== undefined) {
+      modifiedParams.delta0 *= applyMagnitude('selfCareAI_δ₀', selfCareEffects.delta0Effect, true, 'selfCareAI');
+    }
+    if (selfCareEffects.mu1Effect !== undefined) {
+      modifiedParams.mu1 += applyMagnitude('selfCareAI_μ₁', selfCareEffects.mu1Effect, false, 'selfCareAI');
+    }
+    if (selfCareEffects.delta1Effect !== undefined) {
+      modifiedParams.delta1 *= applyMagnitude('selfCareAI_δ₁', selfCareEffects.delta1Effect, true, 'selfCareAI');
+    }
+    if (selfCareEffects.mu2Effect !== undefined) {
+      modifiedParams.mu2 += applyMagnitude('selfCareAI_μ₂', selfCareEffects.mu2Effect, false, 'selfCareAI');
+    }
+    if (selfCareEffects.delta2Effect !== undefined) {
+      modifiedParams.delta2 *= applyMagnitude('selfCareAI_δ₂', selfCareEffects.delta2Effect, true, 'selfCareAI');
+    }
     
     // Store visit reduction and routing effects to be applied after parameter capping
     selfCareVisitReductionEffect = selfCareEffects.visitReductionEffect;

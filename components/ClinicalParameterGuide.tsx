@@ -190,28 +190,28 @@ const diseaseData: Record<string, DiseaseData> = {
   },
   hiv_management_chronic: {
     name: "HIV Management (Chronic)",
-    description: "Lifelong management of HIV with self-managed treatment platform",
+    description: "Lifelong management of HIV with antiretroviral therapy",
     keyCharacteristics: [
-      "At-home PrEP/ART delivery and monitoring",
-      "AI-powered clinical decision support and triage",
-      "Remote adherence tracking and harm flag detection"
+      "Chronic condition requiring lifelong ART",
+      "No spontaneous viral suppression without treatment",
+      "Treatment stabilizes but does not cure"
     ],
-    treatmentNeeds: "Home-delivered ART/PrEP, AI diagnostics, virtual consultations, automated lab monitoring",
+    treatmentNeeds: "ART initiation and monitoring, adherence support, viral load testing, opportunistic infection prophylaxis",
     mortalityRates: {
-      untreated: { value: 0.007, rationale: "~35% 5-year mortality without ART" },
-      informal: { value: 0.0065, rationale: "No access to ART" },
-      chw: { value: 0.004, rationale: "Adherence support, basic prophylaxis" },
-      primary: { value: 0.002, rationale: "First-line ART reduces mortality 80%" },
-      district: { value: 0.0015, rationale: "Second-line ART for failures" },
-      tertiary: { value: 0.001, rationale: "Third-line ART, OI management" }
+      untreated: { value: 0.002, rationale: "0.2% weekly (~10-year survival without ART)" },
+      informal: { value: 0.002, rationale: "No access to ART, same as untreated" },
+      chw: { value: 0.0015, rationale: "0.15% weekly during linkage to care" },
+      primary: { value: 0.0001, rationale: "0.01% weekly on effective ART" },
+      district: { value: 0.0005, rationale: "0.05% weekly for complex cases" },
+      tertiary: { value: 0.02, rationale: "2% weekly for advanced disease/complications" }
     },
     resolutionRates: {
-      untreated: { value: 0.001, rationale: "No cure without ART" },
-      informal: { value: 0.001, rationale: "HIV is chronic without treatment" },
-      chw: { value: 0.001, rationale: "CHW cannot provide ART directly" },
-      primary: { value: 0.10, rationale: "Viral suppression, not cure" },
-      district: { value: 0.12, rationale: "Managing treatment failures" },
-      tertiary: { value: 0.15, rationale: "Complex regimens for resistance" }
+      untreated: { value: 0, rationale: "No spontaneous viral suppression" },
+      informal: { value: 0, rationale: "No viral suppression without ART" },
+      chw: { value: 0.05, rationale: "5% weekly progress to stable with adherence support" },
+      primary: { value: 0.10, rationale: "10% weekly to stable on ART (initial phase)" },
+      district: { value: 0.12, rationale: "12% weekly for complex cases" },
+      tertiary: { value: 0.15, rationale: "15% weekly for salvage regimens" }
     },
     evidenceBase: [
       "Palella et al. (1998): ART reduces mortality by 80-90%",

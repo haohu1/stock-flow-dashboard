@@ -711,8 +711,16 @@ export const setBaselineAtom = atom(
     const countryCode = get(selectedCountryAtom);
     const isUrban = get(isUrbanSettingAtom);
     const useCountrySpecific = get(useCountrySpecificModelAtom);
-    const congestion = get(baseParametersAtom).systemCongestion || 0;
+    const congestion = get(effectiveCongestionAtom);
     const scenarioMode = get(multiDiseaseScenarioModeAtom);
+    
+    console.log(`🏗️ setBaselineAtom called:`, {
+      hasResults: !!results,
+      resultsMapKeys: Object.keys(resultsMap),
+      selectedDiseases,
+      scenarioMode,
+      effectiveCongestion: congestion
+    });
     
     // Generate enhanced key that includes congestion and other parameters
     const countryKey = useCountrySpecific 
@@ -732,6 +740,11 @@ export const setBaselineAtom = atom(
       // Set the baseline using the primary disease's results
       set(baselineResultsAtom, results);
       
+      console.log("BASELINE SET:", {
+        aggregatedDeaths: results.cumulativeDeaths,
+        aggregatedDalys: results.dalys
+      });
+      
       // When a baseline is set, recalculate all ICERs for the current result set
       if (Object.keys(resultsMap).length > 1) {
         console.log("Setting per-disease baselines and recalculating ICERs");
@@ -747,6 +760,10 @@ export const setBaselineAtom = atom(
               ...JSON.parse(JSON.stringify(diseaseResults)),
               weeklyStates: diseaseResults.weeklyStates.map(state => ({...state}))
             };
+            console.log(`BASELINE SET for ${disease}:`, {
+              deaths: diseaseResults.cumulativeDeaths,
+              dalys: diseaseResults.dalys
+            });
           }
         });
         
@@ -761,7 +778,12 @@ export const setBaselineAtom = atom(
         };
         set(baselineResultsMapAtom, updatedBaselineMap);
         
-        console.log(`Stored baselines for ${countryKey}:`, Object.keys(diseaseBaselineMap));
+        console.log(`BASELINE STORAGE DEBUG:`, {
+          countryKey,
+          storedDiseases: Object.keys(diseaseBaselineMap),
+          fullMapKeys: Object.keys(updatedBaselineMap),
+          mapForThisKey: Object.keys(updatedBaselineMap[countryKey] || {})
+        });
       } else {
         console.log("Using single disease baseline for:", selectedDiseases[0]);
         // For single disease, store in country-specific map
@@ -796,6 +818,7 @@ export interface Scenario {
   timeToScaleParams?: AITimeToScaleParameters; // Add time-to-scale parameters
   // Add multi-disease support
   selectedDiseases?: string[];
+  originalSelectedDiseases?: string[]; // For individual disease scenarios from multi-disease test
   diseaseResultsMap?: Record<string, SimulationResults | null>;
   // Add bubble chart type tracking
   bubbleChartType?: 'ipm' | 'impact-feasibility';
@@ -843,6 +866,15 @@ export const addScenarioAtom = atom(
     console.log('DETAILED DEBUG - Adding scenario(s) for diseases:', selectedDiseases);
     console.log('Raw resultsMap structure:', Object.keys(resultsMap));
     console.log('Selected AI scenario:', selectedAIScenario);
+    
+    // Check if this is a baseline scenario
+    const hasAnyAI = Object.values(aiInterventions).some(enabled => enabled);
+    if (!hasAnyAI) {
+      console.log('CREATING BASELINE SCENARIO - resultsMap:', Object.entries(resultsMap).map(([disease, result]) => ({
+        disease,
+        deaths: result?.cumulativeDeaths
+      })));
+    }
     
     // Determine the base scenario name
     const scenarioNumber = scenarios.length + 1;
@@ -988,6 +1020,10 @@ export const addScenarioAtom = atom(
           }
           
           console.log(`Creating individual scenario for disease: ${diseaseName}`);
+          console.log(`SCENARIO RESULTS for ${diseaseName}:`, {
+            deaths: resultsMap[diseaseName]?.cumulativeDeaths,
+            dalys: resultsMap[diseaseName]?.dalys
+          });
           
           // Create a deep copy of the single result
           const diseaseResultsCopy = (() => {
@@ -1043,10 +1079,28 @@ export const addScenarioAtom = atom(
                 : `generic_${selectedDiseases.sort().join('-')}_cong${Math.round(congestion * 100)}_${scenarioMode}`;
               
               // Try to get disease-specific baseline from the multi-disease baseline storage
+              console.log(`BASELINE LOOKUP DEBUG for ${diseaseName}:`, {
+                baselineKey,
+                availableBaselineKeys: Object.keys(baselineMap),
+                baselineMapForKey: baselineMap[baselineKey],
+                availableDiseases: baselineMap[baselineKey] ? Object.keys(baselineMap[baselineKey]) : 'KEY NOT FOUND'
+              });
               const diseaseBaseline = baselineMap[baselineKey]?.[diseaseName];
               
               if (diseaseBaseline) {
                 console.log(`Using disease-specific baseline for ${diseaseName} from multi-disease key ${baselineKey}`);
+                
+                // Check if this is a baseline scenario (no AI interventions)
+                const hasAnyAI = Object.values(aiInterventions).some(enabled => enabled);
+                if (!hasAnyAI) {
+                  console.log(`BASELINE SCENARIO DETECTED - comparing stored baseline to scenario results:`, {
+                    disease: diseaseName,
+                    baselineDeaths: diseaseBaseline.cumulativeDeaths,
+                    scenarioDeaths: resultsMap[diseaseName]?.cumulativeDeaths,
+                    difference: (diseaseBaseline.cumulativeDeaths || 0) - (resultsMap[diseaseName]?.cumulativeDeaths || 0)
+                  });
+                }
+                
                 return {
                   ...JSON.parse(JSON.stringify(diseaseBaseline)),
                   weeklyStates: diseaseBaseline.weeklyStates.map(state => ({...state}))
@@ -1075,8 +1129,9 @@ export const addScenarioAtom = atom(
                 weeklyStates: baseline.weeklyStates.map(state => ({...state}))
               } : null;
             })(),
-            // Store just this disease
+            // Store just this disease for display, but keep original selection for baseline lookup
             selectedDiseases: [diseaseName],
+            originalSelectedDiseases: [...selectedDiseases], // Store the original multi-disease selection
             diseaseResultsMap: diseaseResultsCopy,
             timeToScaleParams: timeToScaleParams,
             // Add country information

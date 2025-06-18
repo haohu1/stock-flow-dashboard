@@ -403,14 +403,52 @@ const Sidebar: React.FC = () => {
       // Wait for simulation to complete - longer wait for multi-disease
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      // Log current results before setting baseline
+      console.log('BEFORE setBaseline - current results:', {
+        aggregatedDeaths: results?.cumulativeDeaths
+      });
+      
       // Set the baseline for AI tool testing (now preserves existing baseline data)
       console.log('🏗️ Setting baseline for AI tool testing');
-      await setBaseline();
-      await new Promise(resolve => setTimeout(resolve, 200));
+      console.log('🔍 Before setBaseline - current state:', {
+        hasResults: !!results,
+        resultsCumulativeDeaths: results?.cumulativeDeaths,
+        hasBaseline: !!baseline
+      });
+      try {
+        setBaseline(); // setBaseline is not async, no await needed
+        console.log('🔍 After setBaseline called');
+        // Give a longer wait for baseline to be processed
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error('🚨 Error during setBaseline:', error);
+      }
       
       // Save baseline scenario with parameter context
-      setCustomScenarioName(`Baseline (No AI) - ${scenarioPrefix}`);
+      console.log('Creating baseline scenario with:', {
+        scenarioMode,
+        selectedDiseases,
+        resultsAvailable: !!results,
+        baselineAvailable: !!baseline
+      });
+      
+      // For individual disease mode with multiple diseases, create separate baseline scenarios
+      if (scenarioMode === 'individual' && selectedDiseases.length > 1) {
+        // Don't create an aggregated baseline scenario - let addScenario create individual ones
+        setCustomScenarioName(`Baseline (No AI)`);
+      } else {
+        // For aggregated mode or single disease, create normally
+        setCustomScenarioName(`Baseline (No AI) - ${scenarioPrefix}`);
+      }
+      
       await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Log current results right before creating scenario
+      console.log('BEFORE addScenario - current results:', {
+        aggregatedDeaths: results?.cumulativeDeaths,
+        baseline: baseline?.cumulativeDeaths
+      });
+      
       await addScenario();
       
       // Now create scenarios for each AI intervention

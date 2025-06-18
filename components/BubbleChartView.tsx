@@ -25,7 +25,8 @@ const getCountrySpecificBaseline = (
   const countryCode = scenario.countryCode;
   const isUrban = scenario.isUrban;
   const congestion = scenario.parameters?.systemCongestion || 0;
-  const selectedDiseases = scenario.selectedDiseases || [scenario.parameters?.disease || disease];
+  // Use originalSelectedDiseases if available (for individual disease scenarios from multi-disease test)
+  const selectedDiseases = (scenario as any).originalSelectedDiseases || scenario.selectedDiseases || [scenario.parameters?.disease || disease];
   
   // Try enhanced baseline key first (includes congestion)
   if (countryCode && isUrban !== undefined) {
@@ -222,9 +223,15 @@ const BubbleChartView: React.FC = () => {
     
     // Get cost-effectiveness values (ICER or cost/DALY if ICER not available)
     const getCostEffectiveness = (scenario: Scenario): number => {
-      if (!scenario.results) return 0;
-      if (scenario.results.icer) return scenario.results.icer;
-      return scenario.results.totalCost / scenario.results.dalys;
+      // Get the specific disease for this scenario
+      const disease = scenario.parameters.disease || 'Unknown';
+      
+      // For multi-disease scenarios, use disease-specific results if available
+      const scenarioResults = scenario.diseaseResultsMap?.[disease] || scenario.results;
+      
+      if (!scenarioResults) return 0;
+      if (scenarioResults.icer) return scenarioResults.icer;
+      return scenarioResults.totalCost / scenarioResults.dalys;
     };
     
     // Define scales
@@ -301,10 +308,14 @@ const BubbleChartView: React.FC = () => {
     
     // Get size values based on selected metric (representing averted DALYs/deaths)
     const getSizeValue = (scenario: Scenario): number => {
-      if (!scenario.results) return 0;
-      
       // Get the specific disease for this scenario
       const disease = scenario.parameters.disease || 'Unknown';
+      
+      // For multi-disease scenarios, use disease-specific results if available
+      const scenarioResults = scenario.diseaseResultsMap?.[disease] || scenario.results;
+      
+      if (!scenarioResults) return 0;
+      
       
       // ENHANCED BASELINE SELECTION LOGIC WITH COUNTRY-SPECIFIC SUPPORT
       let diseaseBaseline = null;
@@ -323,6 +334,18 @@ const BubbleChartView: React.FC = () => {
           ? `${scenario.countryCode}_${scenario.isUrban ? 'urban' : 'rural'}` 
           : 'generic';
         console.log(`Using baseline for ${disease} from ${countryKey} for scenario: ${scenario.name}`);
+        
+        // Extra debug for baseline scenarios
+        if (scenario.name.includes('Baseline (No AI)')) {
+          console.log('BASELINE SCENARIO COMPARISON:', {
+            scenario: scenario.name,
+            disease: disease,
+            baselineDeaths: diseaseBaseline.cumulativeDeaths,
+            scenarioDeaths: scenarioResults.cumulativeDeaths,
+            deathsAverted: diseaseBaseline.cumulativeDeaths - scenarioResults.cumulativeDeaths,
+            shouldBeZero: true
+          });
+        }
       }
       
       // If still no baseline, log warning and use a placeholder value
@@ -332,13 +355,13 @@ const BubbleChartView: React.FC = () => {
         // Return some reasonable default size to ensure visibility
         // Use a size proportional to the scenario's own results to ensure some differentiation
         return sizeMetric === 'dalys' 
-          ? Math.max(1000, scenario.results.dalys * 0.1) // ~10% of current DALYs
-          : Math.max(10, scenario.results.cumulativeDeaths * 0.1); // ~10% of current deaths
+          ? Math.max(1000, scenarioResults.dalys * 0.1) // ~10% of current DALYs
+          : Math.max(10, scenarioResults.cumulativeDeaths * 0.1); // ~10% of current deaths
       }
       
       // Calculate the averted values correctly based on the available baseline
       if (sizeMetric === 'dalys') {
-        const dalysAverted = diseaseBaseline.dalys - scenario.results.dalys;
+        const dalysAverted = diseaseBaseline.dalys - scenarioResults.dalys;
         
         // Cap extremely large values to prevent visual distortion
         if (Math.abs(dalysAverted) > 10000000) {
@@ -348,7 +371,7 @@ const BubbleChartView: React.FC = () => {
         // For averted values, higher is better, so return max of 0 or the actual value
         return Math.max(0, dalysAverted);
       } else {
-        const deathsAverted = diseaseBaseline.cumulativeDeaths - scenario.results.cumulativeDeaths;
+        const deathsAverted = diseaseBaseline.cumulativeDeaths - scenarioResults.cumulativeDeaths;
         
         // Cap extremely large values to prevent visual distortion
         if (Math.abs(deathsAverted) > 100000) {

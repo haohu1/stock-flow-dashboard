@@ -25,7 +25,8 @@ const getCountrySpecificBaseline = (
   const countryCode = scenario.countryCode;
   const isUrban = scenario.isUrban;
   const congestion = scenario.parameters?.systemCongestion || 0;
-  const selectedDiseases = scenario.selectedDiseases || [scenario.parameters?.disease || disease];
+  // Use originalSelectedDiseases if available (for individual disease scenarios from multi-disease test)
+  const selectedDiseases = scenario.originalSelectedDiseases || scenario.selectedDiseases || [scenario.parameters?.disease || disease];
   
   // Try enhanced baseline key first (includes congestion)
   if (countryCode && isUrban !== undefined) {
@@ -157,9 +158,12 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
 
   // Calculate impact metrics for each scenario
   const calculateImpactData = (scenario: Scenario): ImpactFeasibilityData | null => {
-    if (!scenario.results) return null;
-    
     const disease = scenario.parameters.disease || 'Unknown';
+    
+    // For multi-disease scenarios, use disease-specific results if available
+    const scenarioResults = scenario.diseaseResultsMap?.[disease] || scenario.results;
+    
+    if (!scenarioResults) return null;
     
     // Use enhanced baseline lookup with congestion
     let diseaseBaseline = getCountrySpecificBaseline(
@@ -172,14 +176,14 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
     if (!diseaseBaseline) return null;
     
     // Calculate DALYs averted
-    const dalysAverted = diseaseBaseline.dalys - scenario.results.dalys;
+    const dalysAverted = diseaseBaseline.dalys - scenarioResults.dalys;
     const population = scenario.parameters.population || 1000000;
     
     // Impact per 1000 population
     const impactPer1000 = (dalysAverted / population) * 1000;
     
     // Calculate percentage of deaths averted
-    const deathsAverted = diseaseBaseline.cumulativeDeaths - scenario.results.cumulativeDeaths;
+    const deathsAverted = diseaseBaseline.cumulativeDeaths - scenarioResults.cumulativeDeaths;
     const percentDeathsAverted = diseaseBaseline.cumulativeDeaths > 0 
       ? (deathsAverted / diseaseBaseline.cumulativeDeaths) * 100 
       : 0;
@@ -619,15 +623,18 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
       .attr("cy", d => yScale(d.impact))
       .attr("r", d => {
         // Always use deaths averted for bubble size, regardless of y-axis metric
-        if (!d.scenario.results) return sizeScale(1);
+        const disease = d.scenario.parameters.disease || 'Unknown';
+        const scenarioResults = d.scenario.diseaseResultsMap?.[disease] || d.scenario.results;
+        
+        if (!scenarioResults) return sizeScale(1);
         const baseline = getCountrySpecificBaseline(
           baselineMap, 
-          d.scenario.parameters.disease || 'Unknown', 
+          disease, 
           d.scenario,
           scenarioMode
         );
         if (!baseline || baseline.cumulativeDeaths === undefined) return sizeScale(1);
-        const deathsAverted = Math.abs(baseline.cumulativeDeaths - d.scenario.results.cumulativeDeaths);
+        const deathsAverted = Math.abs(baseline.cumulativeDeaths - scenarioResults.cumulativeDeaths);
         return sizeScale(deathsAverted);
       })
       .style("fill", d => getColor(d))
@@ -649,15 +656,18 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
         .attr("dominant-baseline", "middle")
         .attr("font-size", d => {
           // Calculate font size based on actual bubble size
-          if (!d.scenario.results) return 10;
+          const disease = d.scenario.parameters.disease || 'Unknown';
+          const scenarioResults = d.scenario.diseaseResultsMap?.[disease] || d.scenario.results;
+          
+          if (!scenarioResults) return 10;
           const baseline = getCountrySpecificBaseline(
             baselineMap, 
-            d.scenario.parameters.disease || 'Unknown', 
+            disease, 
             d.scenario,
             scenarioMode
           );
           if (!baseline || baseline.cumulativeDeaths === undefined) return 10;
-          const deathsAverted = Math.abs(baseline.cumulativeDeaths - d.scenario.results.cumulativeDeaths);
+          const deathsAverted = Math.abs(baseline.cumulativeDeaths - scenarioResults.cumulativeDeaths);
           const bubbleRadius = sizeScale(deathsAverted);
           return Math.max(10, Math.min(14, bubbleRadius / 3));
         })
@@ -777,24 +787,19 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
                 <td style="padding: 4px 8px 4px 0; color: #6B7280;">Deaths Averted (bubble size):</td>
                 <td style="padding: 4px 0; text-align: right; font-weight: 500;">
                   ${(() => {
+                    const disease = data.scenario.parameters.disease || 'Unknown';
+                    const scenarioResults = data.scenario.diseaseResultsMap?.[disease] || data.scenario.results;
+                    
                     const baseline = getCountrySpecificBaseline(
                       baselineMap, 
-                      data.scenario.parameters.disease || 'Unknown', 
+                      disease, 
                       data.scenario,
                       scenarioMode
                     );
                     
-                    console.log('Deaths averted calculation:', {
-                      scenario: data.scenario.name,
-                      baseline: baseline,
-                      results: data.scenario.results,
-                      baselineDeaths: baseline?.cumulativeDeaths,
-                      resultDeaths: data.scenario.results?.cumulativeDeaths
-                    });
+                    if (!baseline || !scenarioResults) return 'N/A';
                     
-                    if (!baseline || !data.scenario.results) return 'N/A';
-                    
-                    const deathsAverted = baseline.cumulativeDeaths - data.scenario.results.cumulativeDeaths;
+                    const deathsAverted = baseline.cumulativeDeaths - scenarioResults.cumulativeDeaths;
                     return deathsAverted >= 0 
                       ? formatNumber(deathsAverted)
                       : formatNumber(Math.abs(deathsAverted)) + ' additional';
@@ -806,15 +811,18 @@ const ImpactFeasibilityBubbleChart: React.FC = () => {
                 <td style="padding: 4px 8px 4px 0; color: #6B7280;">Total DALYs Averted:</td>
                 <td style="padding: 4px 0; text-align: right; font-weight: 500;">
                   ${(() => {
+                    const disease = data.scenario.parameters.disease || 'Unknown';
+                    const scenarioResults = data.scenario.diseaseResultsMap?.[disease] || data.scenario.results;
+                    
                     const baseline = getCountrySpecificBaseline(
                       baselineMap, 
-                      data.scenario.parameters.disease || 'Unknown', 
+                      disease, 
                       data.scenario,
                       scenarioMode
                     );
-                    if (!baseline || !data.scenario.results) return 'N/A';
+                    if (!baseline || !scenarioResults) return 'N/A';
                     
-                    const dalysAverted = baseline.dalys - data.scenario.results.dalys;
+                    const dalysAverted = baseline.dalys - scenarioResults.dalys;
                     return dalysAverted >= 0 
                       ? formatNumber(dalysAverted)
                       : formatNumber(Math.abs(dalysAverted)) + ' additional';

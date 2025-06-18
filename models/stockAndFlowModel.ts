@@ -1363,7 +1363,7 @@ export const diseaseAIRationales: {[disease: string]: string} = {
   
   congestive_heart_failure: "Limited AI impact on resolution (3-5%) as CHF requires complex medical management. However, AI excels at identifying decompensation - increasing appropriate referrals by 15-25%. Self-care AI provides no resolution benefit but helps with daily monitoring. Hospital AI focuses on fluid management protocols.",
   
-  hiv_management_chronic: "Self-care AI platform achieves highest impact through comprehensive home-based HIV management. Platform improves treatment initiation and adherence by 30%, reducing mortality by 10-15% through early detection and consistent monitoring. Enables faster linkage to care and reduces facility visits by 40%. CHW AI improves community-based care by 40%, reducing mortality by 12% through protocol-driven ART initiation. Diagnostic AI provides modest 15% improvement in monitoring. The hierarchy (Self-care > CHW > Diagnostic) reflects that HIV benefits most from continuous home monitoring and rapid treatment initiation. Note: High percentage impacts reflect improvements from very low baseline mortality rates in treated HIV patients.",
+  hiv_management_chronic: "Self-care AI platform achieves highest impact through comprehensive home-based HIV management. Platform improves treatment initiation and adherence by 30%, with overall mortality reduction around 30-35% through multiple pathways. Enables faster linkage to care and reduces facility visits by 40%. CHW AI provides modest 10% improvement in community protocols with limited mortality impact (~10-15%). Diagnostic AI offers minimal 5% improvement in monitoring (~5-10% mortality impact). The hierarchy (Self-care > CHW > Diagnostic) reflects that HIV benefits most from continuous home monitoring and rapid treatment initiation. Note: Percentage impacts appear high because baseline mortality in treated HIV is extremely low (0.01% weekly), so small absolute improvements show as large percentages.",
   
   urti: "AI excels at 'do not refer' decisions - reducing referrals by 30% at CHW and primary levels. Modest resolution improvements (5-8%) reflect self-limiting nature. Self-care AI prevents 40% of unnecessary visits through symptom guidance. Diagnostic AI distinguishes viral from bacterial infections.",
   
@@ -1525,17 +1525,17 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       routingImprovementEffect: 0.40 // 40% routing improvement
     },
     chwAI: {
-      mu0Effect: 0.40,      // 40% increase - CHW protocols for ART initiation
-      delta0Effect: 0.88,   // 12% mortality reduction - community management
-      rho0Effect: 0.50      // 50% reduction in referrals - manage more locally
+      mu0Effect: 0.10,      // 10% increase - modest CHW protocol improvements
+      delta0Effect: 0.95,   // 5% mortality reduction - small impact on already good outcomes
+      rho0Effect: 0.70      // 30% reduction in referrals - some local management
     },
     diagnosticAI: {
-      mu1Effect: 0.15,      // 15% increase - modest improvement in viral load monitoring
-      delta1Effect: 0.95,   // 5% mortality reduction - limited impact on chronic management
-      rho1Effect: 0.85,     // 15% referral reduction - some confidence improvement
-      mu2Effect: 0.10,      // 10% increase at L2 - minimal impact on complex cases
-      delta2Effect: 0.97,   // 3% mortality reduction at L2 - small improvement
-      rho2Effect: 0.90      // 10% reduction in L2 referrals - modest optimization
+      mu1Effect: 0.05,      // 5% increase - minimal improvement in monitoring
+      delta1Effect: 0.98,   // 2% mortality reduction - very limited impact
+      rho1Effect: 0.90,     // 10% referral reduction - slight confidence improvement
+      mu2Effect: 0.03,      // 3% increase at L2 - negligible impact
+      delta2Effect: 0.99,   // 1% mortality reduction at L2 - minimal improvement
+      rho2Effect: 0.95      // 5% reduction in L2 referrals - minimal optimization
     },
     triageAI: {
       phi0Effect: 0.04,     // 4% increase in care seeking (minimal - same as selfCareAI for advice-only)

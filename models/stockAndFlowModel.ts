@@ -1363,7 +1363,7 @@ export const diseaseAIRationales: {[disease: string]: string} = {
   
   congestive_heart_failure: "Limited AI impact on resolution (3-5%) as CHF requires complex medical management. However, AI excels at identifying decompensation - increasing appropriate referrals by 15-25%. Self-care AI provides no resolution benefit but helps with daily monitoring. Hospital AI focuses on fluid management protocols.",
   
-  hiv_management_chronic: "Self-care AI platform achieves highest impact through comprehensive home-based HIV management. Platform improves treatment initiation and adherence by 30%, with overall mortality reduction around 30-35% through multiple pathways. Enables faster linkage to care and reduces facility visits by 40%. CHW AI provides modest 10% improvement in community protocols with limited mortality impact (~10-15%). Diagnostic AI offers minimal 5% improvement in monitoring (~5-10% mortality impact). The hierarchy (Self-care > CHW > Diagnostic) reflects that HIV benefits most from continuous home monitoring and rapid treatment initiation. Note: Percentage impacts appear high because baseline mortality in treated HIV is extremely low (0.01% weekly), so small absolute improvements show as large percentages.",
+  hiv_management_chronic: "Self-care AI platform achieves highest impact through comprehensive home-based HIV management. Platform improves treatment initiation and adherence by 30%, with overall mortality reduction around 30-35% through multiple pathways. Enables faster linkage to care and reduces facility visits by 40%. CHW AI provides 15% improvement in community protocols with moderate mortality impact (~10-15%). Diagnostic AI offers minimal 3% improvement in monitoring (~5-8% mortality impact). The hierarchy (Self-care > CHW > Diagnostic) reflects that HIV benefits most from continuous home monitoring and rapid treatment initiation. Note: Percentage impacts appear high because baseline mortality in treated HIV is extremely low (0.01% weekly), so small absolute improvements show as large percentages.",
   
   urti: "AI excels at 'do not refer' decisions - reducing referrals by 30% at CHW and primary levels. Modest resolution improvements (5-8%) reflect self-limiting nature. Self-care AI prevents 40% of unnecessary visits through symptom guidance. Diagnostic AI distinguishes viral from bacterial infections.",
   
@@ -1525,15 +1525,15 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       routingImprovementEffect: 0.40 // 40% routing improvement
     },
     chwAI: {
-      mu0Effect: 0.10,      // 10% increase - modest CHW protocol improvements
-      delta0Effect: 0.95,   // 5% mortality reduction - small impact on already good outcomes
-      rho0Effect: 0.70      // 30% reduction in referrals - some local management
+      mu0Effect: 0.15,      // 15% increase - CHW protocol improvements for ART support
+      delta0Effect: 0.94,   // 6% mortality reduction - moderate community management
+      rho0Effect: 0.65      // 35% reduction in referrals - manage some locally
     },
     diagnosticAI: {
-      mu1Effect: 0.05,      // 5% increase - minimal improvement in monitoring
+      mu1Effect: 0.03,      // 3% increase - minimal improvement in monitoring
       delta1Effect: 0.98,   // 2% mortality reduction - very limited impact
-      rho1Effect: 0.90,     // 10% referral reduction - slight confidence improvement
-      mu2Effect: 0.03,      // 3% increase at L2 - negligible impact
+      rho1Effect: 0.92,     // 8% referral reduction - slight confidence improvement
+      mu2Effect: 0.02,      // 2% increase at L2 - negligible impact
       delta2Effect: 0.99,   // 1% mortality reduction at L2 - minimal improvement
       rho2Effect: 0.95      // 5% reduction in L2 referrals - minimal optimization
     },

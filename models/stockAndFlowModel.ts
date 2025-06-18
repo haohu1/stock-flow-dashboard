@@ -1363,7 +1363,7 @@ export const diseaseAIRationales: {[disease: string]: string} = {
   
   congestive_heart_failure: "Limited AI impact on resolution (3-5%) as CHF requires complex medical management. However, AI excels at identifying decompensation - increasing appropriate referrals by 15-25%. Self-care AI provides no resolution benefit but helps with daily monitoring. Hospital AI focuses on fluid management protocols.",
   
-  hiv_management_chronic: "Self-care AI platform achieves highest impact by enabling comprehensive home-based HIV management. Platform delivers 80% improvement in treatment outcomes through AI-guided CD4 testing, ART initiation protocols, and adherence support, reducing mortality by 25-30%. Patients can self-initiate ART at home, eliminating facility delays. CHW AI enables community-based ART initiation (100% improvement, 20% mortality reduction), keeping care local. Diagnostic AI provides modest improvements (15% better monitoring, 5% mortality reduction) for specialized cases. The hierarchy (Self-care > CHW > Diagnostic) reflects that HIV is best managed through continuous home monitoring and immediate treatment access rather than episodic facility visits. By transforming HIV into a self-managed condition with AI support, the platform prevents complications and reduces health system burden while improving outcomes.",
+  hiv_management_chronic: "Self-care AI platform achieves highest impact through comprehensive home-based HIV management. Platform improves treatment initiation and adherence by 30%, reducing mortality by 10-15% through early detection and consistent monitoring. Enables faster linkage to care and reduces facility visits by 40%. CHW AI improves community-based care by 40%, reducing mortality by 12% through protocol-driven ART initiation. Diagnostic AI provides modest 15% improvement in monitoring. The hierarchy (Self-care > CHW > Diagnostic) reflects that HIV benefits most from continuous home monitoring and rapid treatment initiation. Note: High percentage impacts reflect improvements from very low baseline mortality rates in treated HIV patients.",
   
   urti: "AI excels at 'do not refer' decisions - reducing referrals by 30% at CHW and primary levels. Modest resolution improvements (5-8%) reflect self-limiting nature. Self-care AI prevents 40% of unnecessary visits through symptom guidance. Diagnostic AI distinguishes viral from bacterial infections.",
   
@@ -1509,25 +1509,25 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
   // HIV management - comprehensive self-managed treatment platform
   hiv_management_chronic: {
     selfCareAI: {
-      muIEffect: 0.80,      // 80% increase - AI guides patients to test CD4 and recognize need for ART
-      deltaIEffect: 0.70,   // 30% mortality reduction - early recognition and faster care seeking
-      mu0Effect: 1.20,      // 120% increase - comprehensive at-home ART delivery via CHW platform, AI-guided adherence
-      delta0Effect: 0.75,   // 25% mortality reduction - continuous AI monitoring prevents progression
-      mu1Effect: 0.80,      // 80% increase - AI-optimized primary care with home monitoring support
-      delta1Effect: 0.80,   // 20% mortality reduction - AI prevents complications and hospitalizations
-      mu2Effect: 0.60,      // 60% increase - AI-supported hospital care with remote monitoring
-      delta2Effect: 0.85,   // 15% mortality reduction - prevent severe complications
-      phi0Effect: 0.40,     // 40% increase in care seeking - AI guides patients to test CD4 and initiate ART
-      sigmaIEffect: 2.50,   // 150% faster transition - AI-flagged urgent cases get immediate specialist routing
-      visitReductionEffect: 0.75,  // 75% visit reduction - comprehensive home-based HIV management
-      smartRoutingRate: 0.85,      // 85% better routing - direct to appropriate HIV specialists
-      queuePreventionRate: 0.70,   // 70% queue prevention - most patients managed at home with AI
-      routingImprovementEffect: 0.80 // 80% routing improvement - bypass congested lower levels
+      muIEffect: 0.30,      // 30% increase - AI guides patients to test CD4 and recognize need for ART
+      deltaIEffect: 0.85,   // 15% mortality reduction - early recognition and faster care seeking
+      mu0Effect: 0.25,      // 25% increase - AI-supported adherence when patients visit CHWs
+      delta0Effect: 0.90,   // 10% mortality reduction - better monitoring
+      mu1Effect: 0.20,      // 20% increase - AI-optimized primary care
+      delta1Effect: 0.92,   // 8% mortality reduction - prevent some complications
+      mu2Effect: 0.15,      // 15% increase - AI-supported hospital care
+      delta2Effect: 0.95,   // 5% mortality reduction - marginal improvement
+      phi0Effect: 0.25,     // 25% increase in care seeking - AI prompts for testing
+      sigmaIEffect: 1.50,   // 50% faster transition - urgent case flagging
+      visitReductionEffect: 0.40,  // 40% visit reduction - home monitoring
+      smartRoutingRate: 0.50,      // 50% better routing - appropriate care levels
+      queuePreventionRate: 0.35,   // 35% queue prevention - home management
+      routingImprovementEffect: 0.40 // 40% routing improvement
     },
     chwAI: {
-      mu0Effect: 1.00,      // 100% increase - AI-guided ART initiation, adherence monitoring, CD4 testing at CHW level
-      delta0Effect: 0.80,   // 20% mortality reduction - comprehensive CHW-level HIV management prevents progression
-      rho0Effect: 0.35      // 65% reduction in referrals - CHWs can manage most HIV cases with AI support, only refer complications
+      mu0Effect: 0.40,      // 40% increase - CHW protocols for ART initiation
+      delta0Effect: 0.88,   // 12% mortality reduction - community management
+      rho0Effect: 0.50      // 50% reduction in referrals - manage more locally
     },
     diagnosticAI: {
       mu1Effect: 0.15,      // 15% increase - modest improvement in viral load monitoring

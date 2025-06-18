@@ -1530,12 +1530,12 @@ export const diseaseSpecificAIEffects: DiseaseSpecificAIEffects = {
       rho0Effect: 0.35      // 65% reduction in referrals - CHWs can manage most HIV cases with AI support, only refer complications
     },
     diagnosticAI: {
-      mu1Effect: 0.40,      // 40% increase - enhanced viral load prediction, resistance testing, clinical decision support
-      delta1Effect: 0.70,   // 30% mortality reduction - better clinical management
-      rho1Effect: 0.65,     // 35% referral reduction - confident clinical decision making
-      mu2Effect: 0.35,      // 35% increase at L2 - advanced resistance testing AI, treatment optimization
-      delta2Effect: 0.75,   // 25% mortality reduction at L2 - better complex case management
-      rho2Effect: 0.70      // 30% reduction in L2 referrals - appropriate specialist referrals only
+      mu1Effect: 0.15,      // 15% increase - modest improvement in viral load monitoring
+      delta1Effect: 0.90,   // 10% mortality reduction - limited impact on chronic management
+      rho1Effect: 0.85,     // 15% referral reduction - some confidence improvement
+      mu2Effect: 0.10,      // 10% increase at L2 - minimal impact on complex cases
+      delta2Effect: 0.92,   // 8% mortality reduction at L2 - small improvement
+      rho2Effect: 0.90      // 10% reduction in L2 referrals - modest optimization
     },
     triageAI: {
       phi0Effect: 0.04,     // 4% increase in care seeking (minimal - same as selfCareAI for advice-only)

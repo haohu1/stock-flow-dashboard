@@ -44,10 +44,10 @@ const diseaseData: Record<string, DiseaseData> = {
     treatmentNeeds: "ACE inhibitors, beta-blockers, diuretics, regular monitoring",
     mortalityRates: {
       untreated: { value: 0.09, rationale: "Severe CHF has ~50% 1-year mortality without treatment" },
-      informal: { value: 0.08, rationale: "Minimal benefit - cannot provide ACE inhibitors or beta-blockers" },
-      chw: { value: 0.04, rationale: "Basic diuretics and decompensation monitoring" },
-      primary: { value: 0.025, rationale: "Essential medications reduce mortality by 20-30%" },
-      district: { value: 0.015, rationale: "Echocardiography, specialist care, IV diuretics" },
+      informal: { value: 0.06, rationale: "Minimal benefit - cannot provide ACE inhibitors or beta-blockers" },
+      chw: { value: 0.05, rationale: "Basic diuretics and decompensation monitoring" },
+      primary: { value: 0.03, rationale: "Essential medications reduce mortality by 20-30%" },
+      district: { value: 0.02, rationale: "Echocardiography, specialist care, IV diuretics" },
       tertiary: { value: 0.01, rationale: "ICU care, mechanical support, transplant evaluation" }
     },
     resolutionRates: {
@@ -74,12 +74,12 @@ const diseaseData: Record<string, DiseaseData> = {
     ],
     treatmentNeeds: "Combination antibiotics (RIPE), adherence monitoring, contact tracing",
     mortalityRates: {
-      untreated: { value: 0.003, rationale: "70% 10-year mortality for untreated TB" },
-      informal: { value: 0.0028, rationale: "No access to anti-TB drugs" },
+      untreated: { value: 0.004, rationale: "70% 10-year mortality for untreated TB" },
+      informal: { value: 0.0035, rationale: "No access to anti-TB drugs" },
       chw: { value: 0.0025, rationale: "DOTS programs improve adherence" },
-      primary: { value: 0.002, rationale: "Standard regimen with side effect management" },
-      district: { value: 0.0015, rationale: "MDR-TB management capability" },
-      tertiary: { value: 0.001, rationale: "XDR-TB care, surgical options" }
+      primary: { value: 0.0015, rationale: "Standard regimen with side effect management" },
+      district: { value: 0.001, rationale: "MDR-TB management capability" },
+      tertiary: { value: 0.0008, rationale: "XDR-TB care, surgical options" }
     },
     resolutionRates: {
       untreated: { value: 0.005, rationale: "Extremely low spontaneous cure rate" },
@@ -106,11 +106,11 @@ const diseaseData: Record<string, DiseaseData> = {
     treatmentNeeds: "Antibiotics (amoxicillin), oxygen for severe cases, nutritional support",
     mortalityRates: {
       untreated: { value: 0.05, rationale: "15-20% mortality for severe pneumonia" },
-      informal: { value: 0.045, rationale: "Symptomatic care only, no antibiotics" },
-      chw: { value: 0.02, rationale: "Oral amoxicillin highly effective" },
-      primary: { value: 0.015, rationale: "IV antibiotics, basic oxygen" },
-      district: { value: 0.01, rationale: "Pediatric unit, continuous oxygen" },
-      tertiary: { value: 0.008, rationale: "PICU with mechanical ventilation" }
+      informal: { value: 0.035, rationale: "Symptomatic care only, no antibiotics" },
+      chw: { value: 0.01, rationale: "Oral amoxicillin highly effective" },
+      primary: { value: 0.005, rationale: "IV antibiotics, basic oxygen" },
+      district: { value: 0.008, rationale: "Pediatric unit, continuous oxygen" },
+      tertiary: { value: 0.005, rationale: "PICU with mechanical ventilation" }
     },
     resolutionRates: {
       untreated: { value: 0.06, rationale: "Some viral pneumonia self-resolves" },
@@ -136,12 +136,12 @@ const diseaseData: Record<string, DiseaseData> = {
     ],
     treatmentNeeds: "Artemisinin-based combination therapy (ACTs), supportive care",
     mortalityRates: {
-      untreated: { value: 0.03, rationale: "15-20% mortality for severe malaria" },
-      informal: { value: 0.025, rationale: "Traditional remedies ineffective" },
-      chw: { value: 0.005, rationale: "RDTs + ACTs revolutionized treatment" },
-      primary: { value: 0.003, rationale: "Parenteral artesunate for severe" },
-      district: { value: 0.002, rationale: "ICU support, transfusion capability" },
-      tertiary: { value: 0.0015, rationale: "Dialysis for blackwater fever" }
+      untreated: { value: 0.075, rationale: "15-20% mortality for severe malaria" },
+      informal: { value: 0.075, rationale: "Traditional remedies ineffective" },
+      chw: { value: 0.001, rationale: "RDTs + ACTs revolutionized treatment" },
+      primary: { value: 0.001, rationale: "Parenteral artesunate for severe" },
+      district: { value: 0.01, rationale: "ICU support, transfusion capability" },
+      tertiary: { value: 0.005, rationale: "Dialysis for blackwater fever" }
     },
     resolutionRates: {
       untreated: { value: 0.08, rationale: "Limited natural immunity recovery" },
@@ -168,11 +168,11 @@ const diseaseData: Record<string, DiseaseData> = {
     treatmentNeeds: "Oral rehydration solution (ORS), zinc supplementation, antibiotics if bacterial",
     mortalityRates: {
       untreated: { value: 0.025, rationale: "Severe dehydration mortality" },
-      informal: { value: 0.02, rationale: "Home fluids less effective than ORS" },
-      chw: { value: 0.003, rationale: "ORS reduces mortality by 93%" },
-      primary: { value: 0.002, rationale: "IV fluids for severe dehydration" },
-      district: { value: 0.0015, rationale: "Pediatric monitoring, electrolyte management" },
-      tertiary: { value: 0.001, rationale: "ICU for shock, complications" }
+      informal: { value: 0.015, rationale: "Home fluids less effective than ORS" },
+      chw: { value: 0.002, rationale: "ORS reduces mortality by 93%" },
+      primary: { value: 0.001, rationale: "IV fluids for severe dehydration" },
+      district: { value: 0.01, rationale: "Pediatric monitoring, electrolyte management" },
+      tertiary: { value: 0.005, rationale: "ICU for shock, complications" }
     },
     resolutionRates: {
       untreated: { value: 0.35, rationale: "Self-limiting in many cases" },
